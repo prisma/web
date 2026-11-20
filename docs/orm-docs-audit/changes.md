@@ -307,13 +307,16 @@ Checked against main on 2026-11-21: the merged slices already cover the `turbore
 
 Three pull requests: the databases (1 to 3), the upgrade page (4), and the language server with the MongoDB deploy guide (5 and 6).
 
-### Open: does Prisma Compute deploy SvelteKit?
+### Settled: Prisma Compute deploys SvelteKit
 
-Will, 2026-11-21: run the real deploy. In progress.
+Will approved a real deploy on 2026-11-21. With `create-prisma` 0.14.8 the `svelte` template deployed in 1m 13s, the URL served the three seeded users, and a schema change with a redeploy applied the new migration before the new version started. The guide's deploy section and the three corrected statements are prisma/web#8892.
 
-The SvelteKit guide covers local use only, and the docs root says "SvelteKit and Deno stop at a local run for now". The sources suggest SvelteKit can be deployed, but nobody ran a real deploy, so the guide makes no claim. One real deploy settles it; if it works, the guide gets a deploy section and three lines on `(index)/index.mdx` and `(index)/prisma-orm/index.mdx` change.
+Found during the deploy, for other repositories:
 
-The evidence, from `create-prisma` 0.14.8 and Composer 0.38.0 and 0.39.0: the `svelte` template's `service.ts` declares a `node()` service on `./build/index.js`; its `module.ts` provisions Prisma Postgres; its `vite.config.ts` uses `@sveltejs/adapter-node`; the `deploy` and `dev:composer` scripts are generated for every template except Deno; `--deploy` is refused only for Deno (`src/tasks/prisma-setup/context.ts`); Composer's `lowering/src/compute/artifact.ts` has a fix written for SvelteKit. Locally, `npm run build` wrote `build/index.js`, and `npm run dev:composer` ran the app in the Compute emulator and served the seeded users.
+- Prisma Cloud: after `prisma project delete`, the app URL of the deleted project (`cps_czjpjm6xzsudvp6um2ljquig`, project `svelte-docs-check-7b22b4`) still answered HTTP 200 more than 30 minutes later. The database was gone.
+- create-prisma: the svelte template's `.gitignore` does not ignore `build/` or `.svelte-kit/`, so `git add .` commits build output.
+- create-prisma 0.14.8 pins `prisma` 8.0.0-rc.33 while `latest` is rc.34.
+- Right after a first deploy the URL answers 404 "There is no service on this URL" for some seconds. `prisma deploy` reports success before the service answers.
 
 ### Found while fixing the slices, for other repositories
 
