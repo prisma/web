@@ -17,6 +17,8 @@ series: prisma-8
 seriesIndex: 18
 ---
 
+import { ProtectionLayers, ResetAttempt, RenameWalkthrough, PolicyOutcomes, ApplyRun } from "./figures";
+
 In July 2026, a developer tried a coding agent on their project for the first time. Ten minutes later, [every table in their database was empty](https://www.reddit.com/r/Anthropic/comments/1v9iurd/and_just_like_that_opus_5_ultracode_wipes_the/).
 
 The agent hadn't gone looking for trouble. It ran `prisma migrate diff`, a command that compares schemas, and passed the live connection string as the shadow database. Prisma ORM 7 resets a shadow database before using it, so it reset the real one.
@@ -30,6 +32,10 @@ Agents didn't create these problems. They reach them faster, because an agent ca
 Prisma ORM 8 changes how these situations are handled. The commands behind those incidents are gone. A change that could destroy data needs an explicit decision, and a database can refuse changes it shouldn't accept.
 
 These checks happen at different points in the migration process. Let's look at what each one does, where it stops, and what to tell your coding agent.
+
+<ProtectionLayers />
+
+Two of these only warn or need setup, and every one leaves something to you. The sections below follow the same order.
 
 ## What keeps going wrong?
 
@@ -62,6 +68,10 @@ The error messages changed as well. Earlier versions of Prisma could answer drif
 
 That matters more than it sounds, because an agent that is stuck tends to run whatever the error message offers.
 
+Step through what that looks like for a reset:
+
+<ResetAttempt />
+
 This doesn't make a database indestructible. The notice above also names the Prisma 7 CLI, for projects that haven't finished upgrading, and that CLI still has its old commands. `prisma dev --fresh` clears the local development services on your machine, which is its job. The platform commands `postgres delete` and `project delete` remove a Prisma Postgres database and require its exact id. And anything that holds a connection string can still run `DROP TABLE`.
 
 [Don't Let Your AI Agent Delete Your Production Database](/stop-your-ai-agent-dropping-your-database) covers the reasoning behind this design in more depth.
@@ -75,6 +85,10 @@ Say you have a `User` model with a `username` field, and you want to rename it t
 But when Prisma compares the old schema with the new one, it can't necessarily tell that you intended a rename. It sees a column that disappeared and another that appeared.
 
 The resulting migration could drop `username` and add `handle`. Your schema would be correct, but the existing usernames would be gone.
+
+Here is the whole change in five steps. The sections after it go through each part.
+
+<RenameWalkthrough />
 
 Consider this model:
 
@@ -221,6 +235,10 @@ That someone is often an agent holding the wrong connection string.
 
 Prisma ORM 8 introduces database policies to help enforce this distinction. Unlike the checks so far, policies aren't on by default. You declare them once for each database you want to protect.
 
+Here is what a database with both policies accepts and refuses. The rest of this section explains each case.
+
+<PolicyOutcomes />
+
 For example, you can declare that a production database should only accept migration-based changes. The declaration goes in the ref file for that environment, `migrations/app/refs/production.json`, next to the schema state the environment should be at:
 
 ```json
@@ -315,6 +333,10 @@ In this example, Prisma stops because it cannot find the expected `username` col
 ```
 
 On PostgreSQL, the migration run is executed in a transaction, so a failed operation can roll back the changes made during that run. Prisma updates its recorded migration state only after verifying that the database matches the expected result.
+
+The three outcomes of a run look like this:
+
+<ApplyRun />
 
 This doesn't eliminate every possible migration failure. It does mean Prisma checks its assumptions before executing each operation rather than continuing against a database that differs from the planned state.
 
