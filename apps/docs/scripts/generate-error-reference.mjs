@@ -423,6 +423,24 @@ export function transform(target, markdown, ref = "main") {
   return { mdx: header + body, codeCount: codes.length, warnings };
 }
 
+const VALUE_FLAGS = ["--target", "--ref", "--source", "--missing-tag"];
+const SWITCHES = ["--recorded", "--print-ref"];
+
+// A mistyped switch must fail: `--recorde` silently falling back to npm's
+// latest would make the check compare against the wrong release.
+export function assertKnownArguments(argv) {
+  const unknown = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (VALUE_FLAGS.includes(argv[i])) i++;
+    else if (!SWITCHES.includes(argv[i])) unknown.push(argv[i]);
+  }
+  if (unknown.length > 0) {
+    throw new Error(
+      `Unknown argument(s) ${JSON.stringify(unknown)}. Known: ${[...VALUE_FLAGS, ...SWITCHES].join(", ")}`,
+    );
+  }
+}
+
 export async function run(
   argv,
   {
@@ -434,6 +452,7 @@ export async function run(
     now = Date.now,
   } = {},
 ) {
+  assertKnownArguments(argv);
   const targetName = readFlag(argv, "--target") ?? "orm";
   const target = TARGETS[targetName];
   if (!target) {

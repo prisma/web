@@ -408,3 +408,21 @@ test("--missing-tag reports through the entry point and writes nothing", async (
   });
   assert.equal(warned.length, 1);
 });
+
+for (const argv of [
+  ["--recorde", "--print-ref"],
+  ["--target", "cli", "extra"],
+  ["--print-ref", "--ref"],
+]) {
+  test(`run refuses ${JSON.stringify(argv)}`, async () => {
+    await assert.rejects(
+      run(argv, {
+        fetchImpl: async () => assert.fail("must not reach npm"),
+        readFile: () => assert.fail("must not read"),
+        writeFile: () => assert.fail("must not write"),
+        log: () => assert.fail("must not print"),
+      }),
+      /Unknown argument|requires a value/,
+    );
+  });
+}
