@@ -36,9 +36,9 @@ test("the Console analytics frame permits the bare Google Analytics collection h
   const policy = headers
     .find((rule) => rule.source === "/console-analytics.html")!
     .headers.find(({ key }) => key === "Content-Security-Policy")!.value;
-  const connect = policy.match(/connect-src[^;]+;/)![0].split(/\s+/);
+  const sources = new Set(policy.match(/connect-src[^;]+/)![0].split(/\s+/));
   // A `*.` wildcard source does not match the bare host, and consented GA4 hits post to it.
-  assert.ok(connect.includes("https://analytics.google.com"));
+  assert.ok(sources.has("https://analytics.google.com"));
 });
 
 test("dashboard-only canonical-host redirects are exported with their original statuses", async () => {
