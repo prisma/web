@@ -1,33 +1,34 @@
 ---
 title: Deploy an AdonisJS app with Prisma Postgres and Prisma Compute
 sidebarTitle: "AdonisJS with Lucid"
-description: 'Build an AdonisJS task manager that uses Lucid ORM on Prisma Postgres, and deploy it to Prisma Compute with migrations, a generated app key, and no hand-set environment variables.'
+description: 'Build an AdonisJS and React task manager that uses Lucid ORM on Prisma Postgres, and deploy it to Prisma Compute with migrations, a generated app key, and no hand-set environment variables.'
 url: /guides/compute/adonisjs
 metaTitle: How to deploy an AdonisJS app with Prisma Postgres and Prisma Compute
-metaDescription: 'Step-by-step guide to building an AdonisJS 7 app with Lucid ORM on Prisma Postgres and deploying it to Prisma Compute, with tested commands for the build, migrations, and deploy.'
+metaDescription: 'Step-by-step guide to building an AdonisJS 7 app with React and Lucid ORM on Prisma Postgres and deploying it to Prisma Compute, with tested commands for the build, migrations, and deploy.'
 ---
 
-{/* cspell:ignore adonisjs Vinejs iconify esbuild */}
+{/* cspell:ignore adonisjs Vinejs esbuild */}
 
 ## Introduction
 
-This guide builds a task manager with [AdonisJS](https://adonisjs.com) and deploys it to [Prisma Compute](/compute), with [Prisma Postgres](/postgres) as its database. You sign up, add tasks, rename them, mark them as done, and delete them.
+This guide builds a task manager with [AdonisJS](https://adonisjs.com) and React, and deploys it to [Prisma Compute](/compute), with [Prisma Postgres](/postgres) as its database. You sign up, add tasks, rename them, mark them as done, and delete them.
 
-The app follows AdonisJS conventions: Lucid models and migrations, VineJS validators, Edge templates, and session auth. Prisma Postgres is a standard PostgreSQL database, so Lucid connects to it with the `pg` driver and a connection string. The app does not use Prisma ORM.
+The app follows AdonisJS conventions: Lucid models and migrations, VineJS validators, session auth, and React pages rendered with [Inertia](https://inertiajs.com). Prisma Postgres is a standard PostgreSQL database, so Lucid connects to it with the `pg` driver and a connection string. The app does not use Prisma ORM.
 
-Every command below was run end to end, including the deploy. The finished app is the [AdonisJS + Prisma Postgres template](https://github.com/prisma/prisma-examples/tree/latest/compute/adonisjs), and it runs at [u5cjtjr4sr2llxuy3zgokq7n.ewr.prisma.build](https://u5cjtjr4sr2llxuy3zgokq7n.ewr.prisma.build).
+Every command below was run end to end, including the deploy. The finished app is the [AdonisJS + Prisma Postgres template](https://github.com/prisma/prisma-examples/tree/latest/compute/adonisjs).
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org) 24.11 or later, which AdonisJS 7 and the Prisma CLI both need
+- [Node.js](https://nodejs.org) 26 or later
+- [Bun](https://bun.sh), because `prisma dev` runs the app with Bun, the runtime of Prisma Compute
 - A [Prisma Data Platform account](https://pris.ly/pdp), free to create. You only need it for the deploy step.
 
 ## 1. Create an AdonisJS application
 
-Create a project from the Hypermedia starter kit, which comes with Lucid, session auth, and Edge templates:
+Create a project from the React starter kit, which comes with Lucid, session auth, and Inertia with React:
 
 ```npm
-npm create adonisjs@latest task-manager -- --kit=hypermedia
+npm create adonisjs@latest task-manager -- --kit=react
 cd task-manager
 ```
 
@@ -209,11 +210,25 @@ export default class User extends compose(UserSchema, withAuthFinder(hash)) {
   declare tasks: HasMany<typeof Task> // [!code ++]
 ```
 
-### 4.2. Add the validator and controller
+### 4.2. Add the transformer, validator and controller
 
 ```bash
+node ace make:transformer task
 node ace make:validator task
 node ace make:controller tasks
+```
+
+The transformer picks the task fields that the controller sends to the React pages:
+
+```ts title="app/transformers/task_transformer.ts"
+import type Task from '#models/task'
+import { BaseTransformer } from '@adonisjs/core/transformers'
+
+export default class TaskTransformer extends BaseTransformer<Task> {
+  toObject() {
+    return this.pick(this.resource, ['id', 'title', 'completed', 'createdAt'])
+  }
+}
 ```
 
 ```ts title="app/validators/task.ts"
@@ -244,6 +259,7 @@ export const updateTaskValidator = vine.create({
 Every query in the controller goes through the signed-in user's `tasks` relationship, so a user can only read and change their own tasks:
 
 ```ts title="app/controllers/tasks_controller.ts"
+import TaskTransformer from '#transformers/task_transformer'
 import { createTaskValidator, updateTaskValidator } from '#validators/task'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -256,7 +272,7 @@ export default class TasksController {
   /**
    * Display the user's tasks, open ones first
    */
-  async index({ auth, view }: HttpContext) {
+  async index({ auth, inertia }: HttpContext) {
     const tasks = await auth
       .getUserOrFail()
       .related('tasks')
@@ -264,7 +280,7 @@ export default class TasksController {
       .orderBy('completed', 'asc')
       .orderBy('createdAt', 'desc')
 
-    return view.render('pages/tasks/index', { tasks })
+    return inertia.render('tasks/index', { tasks: TaskTransformer.transform(tasks) })
   }
 
   /**
@@ -280,7 +296,7 @@ export default class TasksController {
   /**
    * Display the form to rename a task
    */
-  async edit({ auth, params, view }: HttpContext) {
+  async edit({ auth, params, inertia }: HttpContext) {
     const task = await auth
       .getUserOrFail()
       .related('tasks')
@@ -288,7 +304,7 @@ export default class TasksController {
       .where('id', params.id)
       .firstOrFail()
 
-    return view.render('pages/tasks/edit', { task })
+    return inertia.render('tasks/edit', { task: TaskTransformer.transform(task) })
   }
 
   /**
@@ -331,126 +347,226 @@ export default class TasksController {
 Replace the kit's empty dashboard with the task routes, and send signed-in users to them:
 
 ```ts title="start/routes.ts"
-    router.on('/dashboard').render('pages/dashboard').as('dashboard') // [!code --]
+    router.on('/dashboard').renderInertia('dashboard', {}).as('dashboard') // [!code --]
     router.resource('tasks', controllers.Tasks).except(['create', 'show']) // [!code ++]
 ```
 
-In `app/controllers/session_controller.ts` and `app/controllers/new_account_controller.ts`, change `toRoute('dashboard')` to `toRoute('tasks.index')`. In `resources/views/components/layouts/marketing.edge`, change `route: 'dashboard'` to `route: 'tasks.index'`. Then update the navigation and delete the dashboard page:
+In `app/controllers/session_controller.ts` and `app/controllers/new_account_controller.ts`, change `toRoute('dashboard')` to `toRoute('tasks.index')`. In `inertia/layouts/marketing.tsx`, change the `Dashboard` link to `<Link route="tasks.index" ...>Tasks</Link>`. Then update the navigation and delete the dashboard page:
 
-```html title="resources/views/components/layouts/app.edge"
-@let(nav = [{ label: 'Dashboard', route: 'dashboard', icon: 'lucide:house' }]) // [!code --]
-@let(nav = [{ label: 'Tasks', route: 'tasks.index', icon: 'lucide:list-checks' }]) // [!code ++]
+```tsx title="inertia/layouts/app.tsx"
+import { House, LogOut } from 'lucide-react' // [!code --]
+import { ListChecks, LogOut } from 'lucide-react' // [!code ++]
+
+const nav: NavItem[] = [{ label: 'Dashboard', route: 'dashboard', icon: House }] // [!code --]
+const nav: NavItem[] = [{ label: 'Tasks', route: 'tasks.index', icon: ListChecks }] // [!code ++]
 ```
 
 ```bash
-rm resources/views/pages/dashboard.edge
+rm inertia/pages/dashboard.tsx
 node ace codegen
 ```
 
-`node ace codegen` regenerates the controller index and route types that `start/routes.ts` imports. The dev server does the same each time it starts.
+`node ace codegen` regenerates the controller index, the route types and the transformer types that the app imports. The dev server does the same each time it starts.
 
-### 4.4. Add the views
+### 4.4. Add the pages
 
-```html title="resources/views/pages/tasks/index.edge"
-@layouts.app({ title: 'Tasks' })
-  @page({
-    title: 'Tasks',
-    description: 'Every task is a row in your Prisma Postgres database.',
-  })
-    <div class="panel">
-      @form({ route: 'tasks.store', method: 'POST', class: 'task-form' })
-        @field.root({ name: 'title' })
-          @!field.label({ text: 'New task', class: 'sr-only' })
-          @!input.control({
-            placeholder: 'What needs doing?',
-            autocomplete: 'off',
-            maxlength: 255,
-            required: true,
-          })
-          @!field.error()
-        @end
-        @!button({ text: 'Add task', type: 'submit' })
-      @end
+The task list adds and deletes tasks optimistically. A new task shows at once with a temporary negative id, and a deleted task goes away at once. If the request fails, Inertia restores the list.
 
-      @if(tasks.length)
-        <ul class="tasks">
-          @each(task in tasks)
-            <li class="task {{ task.completed ? 'task--done' : '' }}">
-              @form({ route: 'tasks.update', routeParams: [task.id], method: 'PUT' })
-                <input type="hidden" name="completed" value="{{ task.completed ? 'false' : 'true' }}" />
-                <button
-                  type="submit"
-                  class="iconbtn"
-                  aria-label="{{ task.completed ? 'Mark as open' : 'Mark as done' }}"
+```tsx title="inertia/pages/tasks/index.tsx"
+import { useRef } from 'react'
+import Page from '~/components/page'
+import AppLayout from '~/layouts/app'
+import { type Data } from '@generated/data'
+import { type InertiaProps } from '~/types'
+import { Form, Link } from '@adonisjs/inertia/react'
+import { Circle, CircleCheckBig, Pencil, Trash2 } from 'lucide-react'
+
+/**
+ * A task that is shown before the server saves it has a negative id.
+ * Its actions stay disabled until the server sends the saved task.
+ */
+const isPending = (task: Data.Task) => task.id < 0
+
+export default function TasksIndex({ tasks }: InertiaProps<{ tasks: Data.Task[] }>) {
+  const titleInput = useRef<HTMLInputElement>(null)
+  const submittedTitle = useRef('')
+
+  return (
+    <Page
+      title="Tasks"
+      description="Every task is a row in your Prisma Postgres database, served by AdonisJS and React."
+    >
+      <div className="panel">
+        <Form
+          route="tasks.store"
+          className="task-form"
+          options={{ preserveScroll: true }}
+          optimistic={(props, data) => ({
+            tasks: [
+              {
+                id: -Date.now(),
+                title: String(data.title).trim(),
+                completed: false,
+                createdAt: new Date().toISOString(),
+              },
+              ...(props.tasks as Data.Task[]),
+            ],
+          })}
+          onStart={() => {
+            submittedTitle.current = titleInput.current?.value ?? ''
+            if (titleInput.current) titleInput.current.value = ''
+          }}
+          onError={() => {
+            if (titleInput.current) titleInput.current.value = submittedTitle.current
+          }}
+        >
+          {({ errors }) => (
+            <>
+              <div className="field">
+                <label className="field__label sr-only" htmlFor="title">
+                  New task
+                </label>
+                <input
+                  ref={titleInput}
+                  id="title"
+                  name="title"
+                  className="field__input"
+                  placeholder="What needs doing?"
+                  autoComplete="off"
+                  maxLength={255}
+                  required
+                  aria-invalid={errors.title ? 'true' : 'false'}
+                />
+                {errors.title && <span className="field__error">{errors.title}</span>}
+              </div>
+              <button type="submit" className="btn btn--primary">
+                Add task
+              </button>
+            </>
+          )}
+        </Form>
+
+        {tasks.length ? (
+          <ul className="tasks">
+            {tasks.map((task) => (
+              <li
+                key={task.id}
+                className={`task ${task.completed ? 'task--done' : ''} ${isPending(task) ? 'task--pending' : ''}`}
+              >
+                <Form
+                  route="tasks.update"
+                  routeParams={{ id: task.id }}
+                  options={{ preserveScroll: true }}
                 >
-                  @if(task.completed)
-                    @svg('lucide:circle-check-big', { width: 18, height: 18 })
-                  @else
-                    @svg('lucide:circle', { width: 18, height: 18 })
-                  @end
-                </button>
-              @end
+                  <input type="hidden" name="completed" value={task.completed ? 'false' : 'true'} />
+                  <button
+                    type="submit"
+                    className="iconbtn"
+                    disabled={isPending(task)}
+                    aria-label={task.completed ? 'Mark as open' : 'Mark as done'}
+                  >
+                    {task.completed ? <CircleCheckBig size={18} /> : <Circle size={18} />}
+                  </button>
+                </Form>
 
-              <span class="task__title">{{ task.title }}</span>
+                <span className="task__title">{task.title}</span>
 
-              @link({
-                route: 'tasks.edit',
-                routeParams: [task.id],
-                class: 'iconbtn',
-                'aria-label': 'Rename task',
-              })
-                @svg('lucide:pencil', { width: 16, height: 16 })
-              @end
+                {isPending(task) ? (
+                  <span className="iconbtn" aria-hidden="true">
+                    <Pencil size={16} />
+                  </span>
+                ) : (
+                  <Link
+                    route="tasks.edit"
+                    routeParams={{ id: task.id }}
+                    className="iconbtn"
+                    aria-label="Rename task"
+                  >
+                    <Pencil size={16} />
+                  </Link>
+                )}
 
-              @form({ route: 'tasks.destroy', routeParams: [task.id], method: 'DELETE' })
-                <button type="submit" class="iconbtn" aria-label="Delete task">
-                  @svg('lucide:trash-2', { width: 16, height: 16 })
-                </button>
-              @end
-            </li>
-          @end
-        </ul>
-      @else
-        <p class="tasks__empty">No tasks yet. Add your first one above.</p>
-      @end
-    </div>
-  @end
-@end
+                <Form
+                  route="tasks.destroy"
+                  routeParams={{ id: task.id }}
+                  options={{ preserveScroll: true }}
+                  optimistic={(props) => ({
+                    tasks: (props.tasks as Data.Task[]).filter(({ id }) => id !== task.id),
+                  })}
+                >
+                  <button
+                    type="submit"
+                    className="iconbtn"
+                    disabled={isPending(task)}
+                    aria-label="Delete task"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </Form>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="tasks__empty">No tasks yet. Add your first one above.</p>
+        )}
+      </div>
+    </Page>
+  )
+}
+
+TasksIndex.layout = [AppLayout]
 ```
 
-```html title="resources/views/pages/tasks/edit.edge"
-@layouts.app({ title: 'Rename task' })
-  @page({ title: 'Rename task' })
-    <div class="panel">
-      @form({
-        route: 'tasks.update',
-        routeParams: [task.id],
-        method: 'PUT',
-        class: 'task-form',
-      })
-        @field.root({ name: 'title' })
-          @!field.label({ text: 'Title', class: 'sr-only' })
-          @!input.control({
-            value: task.title,
-            autocomplete: 'off',
-            maxlength: 255,
-            required: true,
-          })
-          @!field.error()
-        @end
-        @!button({ text: 'Save', type: 'submit' })
-        @link({ route: 'tasks.index', class: 'btn btn--ghost' })
-          Cancel
-        @end
-      @end
-    </div>
-  @end
-@end
+```tsx title="inertia/pages/tasks/edit.tsx"
+import Page from '~/components/page'
+import AppLayout from '~/layouts/app'
+import { type Data } from '@generated/data'
+import { type InertiaProps } from '~/types'
+import { Form, Link } from '@adonisjs/inertia/react'
+
+export default function TasksEdit({ task }: InertiaProps<{ task: Data.Task }>) {
+  return (
+    <Page title="Rename task">
+      <div className="panel">
+        <Form route="tasks.update" routeParams={{ id: task.id }} className="task-form">
+          {({ errors, processing }) => (
+            <>
+              <div className="field">
+                <label className="field__label sr-only" htmlFor="title">
+                  Title
+                </label>
+                <input
+                  id="title"
+                  name="title"
+                  className="field__input"
+                  defaultValue={task.title}
+                  autoComplete="off"
+                  maxLength={255}
+                  required
+                  aria-invalid={errors.title ? 'true' : 'false'}
+                />
+                {errors.title && <span className="field__error">{errors.title}</span>}
+              </div>
+              <button type="submit" className="btn btn--primary" disabled={processing}>
+                Save
+              </button>
+              <Link route="tasks.index" className="btn btn--ghost">
+                Cancel
+              </Link>
+            </>
+          )}
+        </Form>
+      </div>
+    </Page>
+  )
+}
+
+TasksEdit.layout = [AppLayout]
 ```
 
 Append the styles for the list to the kit's stylesheet:
 
-```css title="resources/css/app.css"
+```css title="inertia/css/app.css"
 /* ==========================================================================
    Tasks
    ========================================================================== */
@@ -500,6 +616,9 @@ Append the styles for the list to the kit's stylesheet:
   color: var(--muted);
   font-size: 14.5px;
 }
+.task--pending {
+  opacity: 0.6;
+}
 ```
 
 ## 5. Run locally
@@ -512,17 +631,9 @@ Open [http://localhost:3333](http://localhost:3333), create an account, and add 
 
 ## 6. Prepare for production
 
-Prisma Compute runs the output of `node ace build`. Four things turn that output into something it can start.
+Prisma Compute runs the output of `node ace build`. Three things turn that output into something it can start.
 
-### 6.1. Fix the icon dependency
-
-The kit lists `@iconify-json/lucide` as a dev dependency, but `start/view.ts` imports it when the server starts. A production install leaves it out and the server exits, on any host. Move it:
-
-```npm
-npm install --save-prod @iconify-json/lucide
-```
-
-### 6.2. Declare the app with Prisma Composer
+### 6.1. Declare the app with Prisma Composer
 
 [Prisma Composer](/composer) describes what to deploy. Install it as a dev dependency, with the Prisma CLI and the two build tools the next steps use:
 
@@ -530,9 +641,9 @@ npm install --save-prod @iconify-json/lucide
 npm install -D @prisma/composer @prisma/composer-prisma-cloud prisma arktype esbuild
 ```
 
-Declare the server as a service that needs a Postgres database and an app key:
+Keep the deploy files in an `infra` folder. Declare the server as a service that needs a Postgres database and an app key:
 
-```ts title="service.ts"
+```ts title="infra/service.ts"
 import { secretString } from '@prisma/composer/arktype'
 import node from '@prisma/composer/node'
 import { compute, rawPostgres } from '@prisma/composer-prisma-cloud'
@@ -548,15 +659,15 @@ export default compute({
   input: type({ appKey: secretString() }),
   build: node({
     module: import.meta.url,
-    dir: './build',
+    dir: '../build',
     entry: 'bin/compute.js',
   }),
 })
 ```
 
-The root module is the app, and its name becomes the project name on Compute. `rawPostgres()` creates a Prisma Postgres database and hands its connection string to the service. `generatedParam()` has the platform generate the `APP_KEY`, once for each environment, so the key is never in your repository:
+The root module is the app, and its name becomes the project name on Compute. `dir` is relative to `infra/service.ts`, so it points to `build/` at the project root. `rawPostgres()` creates a Prisma Postgres database and hands its connection string to the service. `generatedParam()` has the platform generate the `APP_KEY`, once for each environment, so the key is never in your repository:
 
-```ts title="module.ts"
+```ts title="infra/module.ts"
 import { module } from '@prisma/composer'
 import { generatedParam, rawPostgres } from '@prisma/composer-prisma-cloud'
 
@@ -588,7 +699,7 @@ import { definePrismaConfig } from 'prisma/config'
 
 export default definePrismaConfig({
   composer: composer({
-    entry: './module.ts',
+    entry: './infra/module.ts',
     extensions: [prismaCloud({ region: 'us-east-1' }), nodeBuild()],
     state: prismaState(),
   }),
@@ -603,7 +714,7 @@ Composer writes local state to three folders. Add them to `.gitignore`:
 .alchemy
 ```
 
-### 6.3. Add the Compute entry point
+### 6.2. Add the Compute entry point
 
 AdonisJS reads its configuration from environment variables. On Compute, the database URL, the port, and the app key come from the service instead, so add an entry point that copies them across, applies migrations, and starts the server:
 
@@ -622,7 +733,7 @@ AdonisJS reads its configuration from environment variables. On Compute, the dat
 
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import service from '../service.ts'
+import service from '../infra/service.ts'
 
 const { db } = service.load()
 
@@ -644,9 +755,13 @@ process.chdir(fileURLToPath(new URL('../', import.meta.url)))
  * A deploy does not run Lucid migrations, so apply them before the server
  * accepts requests. Lucid takes a database lock while it migrates, which
  * makes this safe when several instances start at once.
+ *
+ * Pass "env" explicitly. Prisma Compute runs Bun, and the child process of
+ * Bun does not get the variables that this file sets at runtime.
  */
 const migrate = spawnSync(process.execPath, ['ace.js', 'migration:run', '--force'], {
   stdio: 'inherit',
+  env: process.env,
 })
 
 if (migrate.status !== 0) {
@@ -658,7 +773,7 @@ await import('./server.js')
 
 A deploy does not run Lucid migrations, which is why the entry point runs `migration:run --force` each time an instance starts. A start with nothing to migrate adds about a second.
 
-### 6.4. Extend the build
+### 6.3. Extend the build
 
 ```json title="package.json (excerpt)"
 {
@@ -703,13 +818,13 @@ task-manager
 ✔ Deployed task-manager to production in 46.7s.
 ```
 
-The deploy creates a project named `task-manager` with its own Prisma Postgres database, generates the app key, and prints the live URL. You set no environment variables. If a project with that name already exists and its deploy state cannot be verified, the deploy stops with `HostedStateBootstrapError`, so rename the module in `module.ts`.
+The deploy creates a project named `task-manager` with its own Prisma Postgres database, generates the app key, and prints the live URL. You set no environment variables. If a project with that name already exists and its deploy state cannot be verified, the deploy stops with `HostedStateBootstrapError`, so rename the module in `infra/module.ts`.
 
 ## 8. Verify the deployment
 
 Open the URL, create an account, and add a task. The production database is new, so it has the schema from your migrations and no data from development.
 
-To confirm the data persists, change something small, such as the page description in `resources/views/pages/tasks/index.edge`, then build and deploy again:
+To confirm the data persists, change something small, such as the page description in `inertia/pages/tasks/index.tsx`, then build and deploy again:
 
 ```npm
 npm run build
@@ -724,15 +839,13 @@ npx prisma service logs task-manager.web --project task-manager
 
 ## Common gotchas
 
-**`Cannot find package '@iconify-json/lucide'` in the logs.** The package is still a dev dependency. Run step 6.1, build, and deploy again. `prisma dev` does not catch this, because the local server can still read packages from your project's `node_modules`.
-
 **`Missing manifest file. Make sure to first create a build`.** The server was started from another working directory. Keep the `process.chdir()` call in `bin/compute.ts`.
 
 **`npm ci` fails in GitHub Actions with `Missing: ... from lock file`.** A lockfile written on macOS can leave out packages that Linux needs. Delete `node_modules` and `package-lock.json`, run `npm install`, and commit the new lockfile.
 
 ## Next steps
 
-- [Deploy on push](/compute/deploy-on-push): connect the GitHub repository so every push deploys, with a preview and its own database for every branch other than the default one. Set `node-version: 24` in the workflow, because AdonisJS 7 needs it.
+- [Deploy on push](/compute/deploy-on-push): connect the GitHub repository so every push deploys, with a preview and its own database for every branch other than the default one. Set `node-version: 26` in the workflow.
 - [AdonisJS + Prisma Postgres template](https://github.com/prisma/prisma-examples/tree/latest/compute/adonisjs): the finished app, also in the [Prisma Apps gallery](https://www.prisma.io/apps).
 - [Databases in Prisma Composer](/composer/databases): how `rawPostgres()` works and when to keep the connection pool small.
 - [Add a custom domain](/compute/domains) to the deployed app.
