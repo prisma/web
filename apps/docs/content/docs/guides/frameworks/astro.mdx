@@ -27,7 +27,7 @@ Answer the prompts, then export `DATABASE_URL` in your shell before running the 
 - [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended)
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a Prisma Postgres database for you
 
-To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. A deploy does not create a MongoDB database for you. Export `MONGODB_URL` with your connection string in the shell you deploy from: the first deploy stores it on the project, and the app reads it from there.
+To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. Neither `npm run dev:composer` (the local run in step 3) nor a deploy creates a MongoDB database for you, so export `MONGODB_URL` with your connection string before you run either. The first deploy copies the value to your project on Prisma Compute, and the deployed app reads it from there. Later deploys keep that stored value even if you export a different one. To change it, export the new connection string as `MONGODB_URL` and run `npx prisma project env update MONGODB_URL --project my-astro-app --role production`, which copies the exported value to the project (see [`prisma project`](/cli/project)); the app gets the new value on its next deploy.
 
 ## 1. Scaffold and enter the project
 
@@ -109,9 +109,9 @@ my-astro-app
               https://xyz.ewr.prisma.build
 ```
 
-The first deploy creates a project named after your module (the first argument to `module()` in `module.ts`) in your workspace, with its own Prisma Postgres database declared in `module.ts`. The `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. Running `npx prisma deploy` again updates that same project.
+The first deploy creates a project in your workspace named after your module, which is the first argument to `module()` in `module.ts` (`my-astro-app` here). The project gets its own Prisma Postgres database, declared in `module.ts`. The deploy does not use the `DATABASE_URL` from your local steps, and the deployed database seeds on the app's first query. Running `npx prisma deploy` again updates that same project.
 
-If a project with that name exists but the CLI cannot identify or verify its stored state (one deployed by an older version of Composer, for example), the deploy stops with `HostedStateBootstrapError`. Deploy under another name with `--name <unique-name>` and pass the same `--name` on every later deploy, or rename the module in `module.ts`.
+The deploy finds the project by that name, so a deploy from any app whose module has the same name, such as two apps both scaffolded as `my-app`, goes to that same project. Give each app its own name in `module.ts`. If a project with that name exists but the CLI cannot identify or verify its stored state (one deployed by an older version of Composer, for example), the deploy stops with `HostedStateBootstrapError`: rename the module in `module.ts`, or deploy under another name with `--name <unique-name>` and pass the same `--name` on every later deploy.
 
 Verify the live API route returns the seeded users:
 
