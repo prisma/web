@@ -7,7 +7,7 @@ metaTitle: How to deploy an AdonisJS app with Prisma Postgres and Prisma Compute
 metaDescription: 'Step-by-step guide to building an AdonisJS 7 app with React and Lucid ORM on Prisma Postgres and deploying it to Prisma Compute, with tested commands for the build, migrations, and deploy.'
 ---
 
-{/* cspell:ignore adonisjs Vinejs esbuild */}
+{/* cspell:ignore adonisjs Vinejs esbuild iconbtn */}
 
 ## Introduction
 
@@ -111,15 +111,18 @@ const dbConfig = defineConfig({
 export default dbConfig
 ```
 
-AdonisJS validates environment variables when it starts, so declare `DATABASE_URL`. Make `APP_URL` optional too, because the app does not use it and Prisma Compute does not set it:
+AdonisJS validates environment variables when it starts, so declare `DATABASE_URL` in place of `DB_DATABASE`, the SQLite file name that the app no longer reads. Make `APP_URL` optional too, because the app does not use it and Prisma Compute does not set it:
 
 ```ts title="start/env.ts"
   APP_URL: Env.schema.string({ format: 'url', tld: false }), // [!code --]
   APP_URL: Env.schema.string.optional({ format: 'url', tld: false }), // [!code ++]
 
-  // Database // [!code ++]
+  // Database
+  DB_DATABASE: Env.schema.string(), // [!code --]
   DATABASE_URL: Env.schema.string(), // [!code ++]
 ```
+
+Remove `DB_DATABASE`, or the deployed server stops at start, because Prisma Compute does not set it.
 
 Run the kit's migration to check the connection. It creates the `users` table in Prisma Postgres:
 
@@ -128,7 +131,7 @@ node ace migration:run
 ```
 
 ```text no-copy
-❯ migrated database/migrations/1758943358073_create_users_table
+❯ migrated database/migrations/1761885935168_create_users_table
 [ success ] Schema classes generated
 ```
 
@@ -351,15 +354,16 @@ Replace the kit's empty dashboard with the task routes, and send signed-in users
     router.resource('tasks', controllers.Tasks).except(['create', 'show']) // [!code ++]
 ```
 
-In `app/controllers/session_controller.ts` and `app/controllers/new_account_controller.ts`, change `toRoute('dashboard')` to `toRoute('tasks.index')`. In `inertia/layouts/marketing.tsx`, change the `Dashboard` link to `<Link route="tasks.index" ...>Tasks</Link>`. Then update the navigation and delete the dashboard page:
+In `app/controllers/session_controller.ts` and `app/controllers/new_account_controller.ts`, change `toRoute('dashboard')` to `toRoute('tasks.index')`. In `inertia/layouts/marketing.tsx`, change the `Dashboard` link to `<Link route="tasks.index" ...>Tasks</Link>`. In `inertia/layouts/app.tsx`, import `ListChecks` in place of `House`, and replace the `Dashboard` link in the navigation with a link to the tasks:
 
 ```tsx title="inertia/layouts/app.tsx"
-import { House, LogOut } from 'lucide-react' // [!code --]
-import { ListChecks, LogOut } from 'lucide-react' // [!code ++]
-
-const nav: NavItem[] = [{ label: 'Dashboard', route: 'dashboard', icon: House }] // [!code --]
-const nav: NavItem[] = [{ label: 'Tasks', route: 'tasks.index', icon: ListChecks }] // [!code ++]
+<NavLink route="tasks.index" className="subnav__item">
+  <ListChecks size={14} />
+  Tasks
+</NavLink>
 ```
+
+Then delete the dashboard page and regenerate the types:
 
 ```bash
 rm inertia/pages/dashboard.tsx
@@ -370,7 +374,7 @@ node ace codegen
 
 ### 4.4. Add the pages
 
-The task list adds and deletes tasks optimistically. A new task shows at once with a temporary negative id, and a deleted task goes away at once. If the request fails, Inertia restores the list.
+The task list adds and deletes tasks optimistically. A new task shows at once with a temporary negative id, and a deleted task goes away at once. If the request fails, Inertia restores the list, and the form puts the title back unless you have typed another one.
 
 ```tsx title="inertia/pages/tasks/index.tsx"
 import { useRef } from 'react'
@@ -390,6 +394,16 @@ const isPending = (task: Data.Task) => task.id < 0
 export default function TasksIndex({ tasks }: InertiaProps<{ tasks: Data.Task[] }>) {
   const titleInput = useRef<HTMLInputElement>(null)
   const submittedTitle = useRef('')
+
+  /**
+   * Put the title back when the request fails, unless the user has
+   * already typed another one.
+   */
+  const restoreTitle = () => {
+    if (titleInput.current && titleInput.current.value === '') {
+      titleInput.current.value = submittedTitle.current
+    }
+  }
 
   return (
     <Page
@@ -416,9 +430,9 @@ export default function TasksIndex({ tasks }: InertiaProps<{ tasks: Data.Task[] 
             submittedTitle.current = titleInput.current?.value ?? ''
             if (titleInput.current) titleInput.current.value = ''
           }}
-          onError={() => {
-            if (titleInput.current) titleInput.current.value = submittedTitle.current
-          }}
+          onError={restoreTitle}
+          onHttpException={restoreTitle}
+          onNetworkError={restoreTitle}
         >
           {({ errors }) => (
             <>
@@ -585,6 +599,15 @@ Append the styles for the list to the kit's stylesheet:
 }
 .task-form .field {
   flex: 1;
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .task-form {
+    flex-wrap: wrap;
+  }
+  .task-form .field {
+    flex-basis: 100%;
+  }
 }
 .tasks {
   list-style: none;
@@ -845,7 +868,7 @@ npx prisma service logs task-manager.web --project task-manager
 
 ## Next steps
 
-- [Deploy on push](/compute/deploy-on-push): connect the GitHub repository so every push deploys, with a preview and its own database for every branch other than the default one. Set `node-version: 26` in the workflow.
+- [Deploy on push](/compute/deploy-on-push): connect the GitHub repository so every push deploys, with a preview and its own database for every branch other than the default one. In the workflow, set `node-version: 26`, and set the action's `module` input to `infra/module.ts`, because the action looks for `module.ts` in the project root.
 - [AdonisJS + Prisma Postgres template](https://github.com/prisma/prisma-examples/tree/latest/compute/adonisjs): the finished app, also in the [Prisma Apps gallery](https://www.prisma.io/apps).
 - [Databases in Prisma Composer](/composer/databases): how `rawPostgres()` works and when to keep the connection pool small.
 - [Add a custom domain](/compute/domains) to the deployed app.
