@@ -294,6 +294,19 @@ Each slice is one pull request. Fix every finding in the named file, including i
 | F8 CLI and error references | prisma/web#8884 | Merged 2026-11-20 |
 | F9 pages that do not exist | not started | Needs the shape of each page decided first |
 
+### Proposed shape of the pages that do not exist, 2026-11-21 (waiting for Will)
+
+Checked against main on 2026-11-21: the merged slices already cover the `turborepo` template (`guides/deployment/turborepo.mdx`) and the guides overview. Five pages are still missing.
+
+1. `(index)/prisma-orm/quickstart/sqlite.mdx`: manual setup of `@prisma/orm-sqlite`, marked experimental, because neither `create-prisma` nor `orm init` scaffolds SQLite.
+2. `(index)/prisma-orm/quickstart/mysql.mdx`: manual setup of `@prisma/orm-mysql`, marked early preview, ending with a MariaDB section (config import, migrations only, no client).
+3. No separate client reference for SQLite and MySQL. Add SQLite and MySQL columns to "What each database supports" on `orm/supported-databases.mdx`, each cell settled by running it.
+4. `guides/upgrade-prisma-orm/release-candidates.mdx`: the steps for any move between release candidates, then one table of the actions each version needs. The "when you upgrade from a release before rc.N" notes on the CLI pages become links to it.
+5. `cli/lsp.mdx`: reference for `prisma lsp`, a row in `cli/index.mdx`, and an "Other editors" section on `orm/contract-authoring/editor-support.mdx` with only editor configs that were run.
+6. `guides/deployment/mongodb.mdx`: deploying a MongoDB app with Docker and MongoDB Atlas, kept apart from the PostgreSQL guides.
+
+Three pull requests: the databases (1 to 3), the upgrade page (4), and the language server with the MongoDB deploy guide (5 and 6).
+
 ### Open: does Prisma Compute deploy SvelteKit?
 
 Will, 2026-11-21: run the real deploy. In progress.
