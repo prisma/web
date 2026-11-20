@@ -32,7 +32,7 @@ In a project that `npm create prisma` generated, that command fails with `ERESOL
 npm install --save-exact "@prisma/orm-extension-paradedb@$(npm pkg get 'dependencies.@prisma/orm-postgres' | tr -d '"')"
 ```
 
-A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. If `npm create prisma` generated your project, do not replace these files. In `prisma.config.ts`, add the `/control` import and `extensions: [paradedb]` inside the `ormConfig({ ... })` call. The generated file also has an `extensions` array inside `composer({ ... })`, which is for Prisma Composer and is the wrong place. In `src/prisma/db.ts`, add the `/runtime` import and `extensions: [paradedb]` to every `postgres(...)` call, and change `service.load().database.client` to `service.load().database.clientWith({ extensions: [paradedb] })`. The generated app runs on that Composer client under `npm run dev:composer`, and the plain `client` has no extensions: it fails with `RUNTIME.MISSING_EXTENSION_PACK`, the generated file catches that error, and the app falls back to a client with no database connection. The smallest files that work look like this:
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. If `npm create prisma` generated your project, do not replace these files. In `prisma.config.ts`, add the `/control` import and `extensions: [paradedb]` inside the `ormConfig({ ... })` call. The generated file also has an `extensions` array inside `composer({ ... })`, which is for Prisma Composer and is the wrong place. In `src/prisma/db.ts`, add the `/runtime` import and `extensions: [paradedb]` to every `postgres(...)` call. `npm run dev:composer` cannot run this extension: the local database it starts is PGlite, which does not include `pg_search`, so the extension's migration fails with `MIGRATION.EXECUTION_FAILED`. Start the app with `npm run dev` instead, with `DATABASE_URL` set to a PostgreSQL server that has `pg_search`, such as the `paradedb/paradedb` Docker image above. The smallest files that work look like this:
 
 ```ts title="prisma.config.ts"
 import 'dotenv/config';
@@ -106,6 +106,11 @@ npx prisma contract emit
 npx prisma migration plan --name add-search
 npx prisma db migrate --advance-ref db
 ```
+
+In a project that `npm create prisma` generated, two things differ:
+
+- The project has a first migration but no `db` ref, so `migration plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. Unless you have run `npm run db:init` in this checkout, run `npx prisma migration ref set db <directory>` once before `migration plan`, with the name of the first directory that `ls migrations/app` lists, such as `20261120T1155_init`.
+- `db migrate` applies the migrations to the database in `DATABASE_URL`, so set it to the server with `pg_search` first.
 
 `migration plan` writes your migration under `migrations/app/`, and `contract emit` has already written the extension's files under `migrations/paradedb/`, whose migration installs `pg_search` in the database. Commit both. `pg_search` may already be installed in another schema on the connection's search path, and `db sign` and `db verify` accept it there. Do not declare `extension pg_search {}` in your own contract, because the extension declares it. [Generating a migration](/orm/migrations/generating-a-migration) explains `--advance-ref db`.
 
