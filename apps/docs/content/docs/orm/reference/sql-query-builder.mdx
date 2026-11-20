@@ -153,7 +153,7 @@ const users = await db.query(plan);
 
 The example schema's `Embedding1536` column is a pgvector type, so a client for that schema also needs pgvector in `extensions`, as [Built-in functions](#built-in-functions) shows.
 
-SQLite works the same way: create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. Of the SELECT methods on this page, `lateralJoin()`, `outerLateralJoin()`, and `distinctOn()` are not available on SQLite, but every other one is. MySQL, an early preview, works like SQLite: create the client with `mysql(...)` from `@prisma/orm-mysql/runtime`, and the table is `db.sql.user`. On MySQL, row locks, lateral joins, `distinctOn()`, and `.returning(...)` are refused with an error, because MySQL has no `RETURNING` or `DISTINCT ON` and Prisma ORM does not support its row locks or lateral joins yet. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
+SQLite works the same way: create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. Of the SELECT methods on this page, `lateralJoin()`, `outerLateralJoin()`, and `distinctOn()` are not available on SQLite, but every other one is. MySQL, an early preview, works like SQLite: create the client with `mysql(...)` from `@prisma/orm-mysql/runtime`, and the table is `db.sql.user`. On MySQL, row locks, lateral joins, `distinctOn()`, and `.returning(...)` are not available: TypeScript rejects them, or the query throws an error when it runs, because MySQL has no `RETURNING` or `DISTINCT ON` and Prisma ORM does not support its row locks or lateral joins yet. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
 
 ### Table access
 
@@ -520,7 +520,7 @@ Lock the rows a `SELECT` reads, so another transaction cannot change them, or lo
 
 #### Remarks
 
-- PostgreSQL only. SQLite has no row locks, so the methods do not exist on a SQLite builder.
+- PostgreSQL only. SQLite has no row locks, so the methods do not exist on a SQLite builder. MySQL does not support row locks yet.
 - A lock cannot be combined with `distinct()`, `distinctOn()`, `groupBy()`, `having()`, or an aggregate in `select()`, such as `fns.count(...)`, and a locked query cannot be used as a subquery. TypeScript accepts some of these combinations, but the query throws an error whose `code` is `ORM.LOCK_INCOMPATIBLE` before anything is sent to the database.
 - A lock lasts until the transaction ends, so run the query inside `db.transaction(...)`. Outside a transaction the lock ends as soon as the statement does.
 - The methods exist only when the contract records that your database supports them. A contract emitted before `8.0.0-rc.15` has none of them: run `prisma contract emit` again to get them. See [supported database features](/orm/contract-authoring/capabilities).
@@ -670,7 +670,7 @@ const rows = await db.query(plan);
 // rows === [{ yearPlaced: '2024', orderCount: 10 }]. PostgreSQL computes EXTRACT as numeric, which arrives as the string '2024'. Write Number(row.yearPlaced) for 2024.
 ```
 
-Here `pg/numeric@1` types `yearPlaced` as `string` and reads it as one, because PostgreSQL computes `EXTRACT` as `numeric`. A year has no fraction, so `.returns('pg/int4@1')` works too, and gives you the number `2024`. `.groupBy('yearPlaced')` groups by the alias given to the selected value. To group by the expression itself, repeat the fragment inside `groupBy()`, `.returns()` and all:
+Here `pg/numeric@1` types `yearPlaced` as `string` and reads it as one, because PostgreSQL computes `EXTRACT` as `numeric`. You may declare a different type id when PostgreSQL's value can be read as it: a year has no fraction, so `.returns('pg/int4@1')` works too, and gives you the number `2024`. `.groupBy('yearPlaced')` groups by the alias given to the selected value. To group by the expression itself, repeat the fragment inside `groupBy()`, `.returns()` and all:
 
 ```ts
   .groupBy((f, fns) => fns.raw`EXTRACT(YEAR FROM ${f.placedAt})`.returns('pg/numeric@1'))
@@ -1067,7 +1067,7 @@ Write a raw SQL fragment as a tagged template, and interpolate columns, typed ex
 #### Remarks
 
 - **Always call `.returns()`.** Nothing in the builder accepts a fragment without it.
-- **`.returns()` sets the type and, for most type ids, how the value is read.** In a `select()`, `pg/int4@1` reads the value as a `number`, `pg/int8@1` as a `bigint`, `pg/bool@1` as a `boolean`, `pg/numeric@1` as a `string`, and `pg/timestamptz-date@1` as a JavaScript `Date`. Some type ids are not applied to the value, among them `pg/timestamptz@1`, `pg/timestamp@1`, and `pg/date@1`, and the value then arrives as the text PostgreSQL sends, such as `'2026-11-20 10:48:42.034415+00'`. For a point in time, write `pg/timestamptz-date@1`.
+- **`.returns()` sets the type and, for most type ids, how the value is read.** In a `select()`, `pg/int4@1` reads the value as a `number`, `pg/int8@1` as a `bigint`, `pg/bool@1` as a `boolean`, `pg/numeric@1` as a `string`, and `pg/timestamptz-date@1` as a JavaScript `Date`. The date and time ids that take a setting such as a precision, among them `pg/timestamptz@1`, `pg/timestamp@1`, and `pg/date@1`, do not convert it, and the value then arrives as the text PostgreSQL sends, such as `'2026-11-20 10:48:42.034415+00'`. For a point in time, write `pg/timestamptz-date@1`.
 - Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on. There is no `fns.coalesce` and no `fns.cast`.
 
 #### Examples
@@ -1090,7 +1090,7 @@ Attach notes that a middleware reads, such as the cache middleware's [`cacheAnno
 
 - Available on a `SELECT`, a grouped query, and `insert()`, `update()`, and `delete()`. Call it anywhere in the chain before `build()`, and pass one or more annotations.
 - Each annotation says whether it applies to reads, writes, or both. Passing a read annotation to a write, or a write annotation to a read, is a type error, and if you force it through, `annotate()` throws an error whose `code` is `RUNTIME.ANNOTATION_INAPPLICABLE`.
-- Calling `annotate()` again adds to the annotations already attached. An annotation of the same kind replaces the earlier one.
+- Calling `annotate()` again adds to the annotations already attached. A second annotation made by the same function, such as a second `cacheAnnotation(...)`, replaces the first.
 
 #### Example
 

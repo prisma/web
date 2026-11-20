@@ -26,7 +26,7 @@ Install the package next to `@prisma/orm-postgres`:
 npm install @prisma/orm-extension-paradedb
 ```
 
-A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. Keep everything else in each file, such as the `skills` and `composer` sections of a generated `prisma.config.ts`, and the code in a generated `db.ts` that takes the client from Prisma Composer, where you add `extensions` to each `postgres(...)` call. The smallest files that work look like this:
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. If `npm create prisma` generated your project, do not replace these files: add the import and the `extensions` entry to `prisma.config.ts`, and add the import and `extensions: [...]` to every `postgres(...)` call in `src/prisma/db.ts`. The smallest files that work look like this:
 
 ```ts title="prisma.config.ts"
 import 'dotenv/config';
@@ -146,11 +146,11 @@ In the SQL query builder, `fns` also has operations that change how a query matc
 
 | Operation | What it does |
 | --- | --- |
-| `fns.paradeDbFuzzy(word, distance)` | Also matches words that are up to `distance` typing edits away from `word`. `distance` is 0, 1, or 2. |
-| `fns.paradeDbSlop(query, slop)` | Used with `paradeDbPhrase`, also matches the phrase with up to `slop` other words between its words. |
-| `fns.paradeDbProximity(word).within(distance, other)` | Matches `word` with `other` at most `distance` words away, in either order. Pass `{ ordered: true }` as a third argument to `within` to require that order, and chain more `.within(...)` calls for more words. |
-| `fns.paradeDbBoost(query, weight)` | Weights the score of the rows this query matches by `weight`, an integer from -2048 to 2048, so they rank higher or lower. |
-| `fns.paradeDbConst(query, value)` | Gives every row this query matches the same score, `value`, an integer. |
+| `fns.paradeDbFuzzy(word, distance)` | Also matches words that are up to `distance` single-character changes (an added, removed, or replaced character) away from `word`. `distance` is 0, 1, or 2. |
+| `fns.paradeDbSlop(query, slop)` | Pass it to `paradeDbPhrase`. Also matches the phrase with up to `slop` other words between its words. `slop` is 0 or more. |
+| `fns.paradeDbProximity(word).within(distance, other)` | Pass it to `paradeDbMatch`. Matches `word` with `other` at most `distance` words away, in either order. `distance` is 0 or more. Pass `{ ordered: true }` as a third argument to `within` to require that order, and chain more `.within(...)` calls for more words. |
+| `fns.paradeDbBoost(query, weight)` | Weights the `paradeDbScore` of the rows this query matches by `weight`, an integer from -2048 to 2048. Use it in one part of an `or(...)`, such as the title match, so those rows rank higher. |
+| `fns.paradeDbConst(query, value)` | Gives every row this query matches the same `paradeDbScore`, `value`, an integer. |
 
 ```ts
 const plan = db.sql.public.Article.select('id')
@@ -162,7 +162,19 @@ const rows = await db.query(plan).toArray();
 // [{ id: 1 }, { id: 3 }, { id: 4 }]: every article whose body contains "migration", despite the typo
 ```
 
-A value outside the range in the table throws an error whose `code` is `PARADEDB.ARGUMENT_INVALID`, before anything is sent to the database.
+`paradeDbSlop` and `paradeDbProximity` go into a phrase search and a match:
+
+```ts
+const nearby = db.sql.public.Article.select('id')
+  .where((f, fns) => fns.paradeDbMatch(f.body, fns.paradeDbProximity('migration').within(3, 'graph')))
+  .build();
+
+const loosePhrase = db.sql.public.Article.select('id')
+  .where((f, fns) => fns.paradeDbPhrase(f.body, fns.paradeDbSlop('migration graph', 2)))
+  .build();
+```
+
+A value outside the range in the table, or a number that is not an integer, throws an error whose `code` is `PARADEDB.ARGUMENT_INVALID`, before anything is sent to the database.
 
 ## Next steps
 

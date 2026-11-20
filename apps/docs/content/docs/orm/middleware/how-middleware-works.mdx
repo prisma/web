@@ -284,7 +284,7 @@ Inside a transaction, the hooks run while the transaction's connection is still 
 {/* extensions-catalog:start tag=middleware source=official */}
 | Name | What it adds | Package | Databases | By |
 | --- | --- | --- | --- | --- |
-| [Cache middleware](https://www.prisma.io/extensions/middleware-cache) | Serve repeated reads from an in-memory or pluggable cache, opted in per query. | `@prisma/orm-extension-middleware-cache` | PostgreSQL and the other SQL databases | Prisma |
+| [Cache middleware](https://www.prisma.io/extensions/middleware-cache) | Serve repeated reads from an in-memory or pluggable cache, opted in per query. | `@prisma/orm-extension-middleware-cache` | PostgreSQL, SQLite, MySQL | Prisma |
 {/* extensions-catalog:end */}
 
 "Opted in per query" in that row means nothing is cached until you say so on one particular read, which you do by attaching `cacheAnnotation({})` to it. How long a cached entry lives is [set on the store](/orm/middleware/built-in-cache#options), not on the annotation. On the ORM API the annotation goes in a callback you pass after the arguments. That callback receives a `meta` object whose `annotate` method attaches the annotation to that one call:
@@ -309,7 +309,7 @@ If none of them do what you need, the [authoring guide](/orm/middleware/authorin
 Prisma ORM sorts the databases it supports into two families, SQL and MongoDB, and a middleware cannot always work on both. The `familyId` key next to `name` is where a middleware says which family it was written for, and a middleware that leaves `familyId` out runs on either.
 
 - `budgets` and `lints` declare `familyId: 'sql'`. They register on PostgreSQL and are rejected on MongoDB.
-- The cache declares no `familyId`, so a MongoDB client accepts it too. It caches only reads that carry its annotation, and a MongoDB read has no way to carry one, so on MongoDB it stores and serves nothing.
+- The cache declares no `familyId`, so a MongoDB client accepts it too. It caches only reads you opt in, and a MongoDB read has no way to be opted in yet, so on MongoDB it stores and serves nothing.
 
 If you register a middleware against a database it was not written for, that client throws at its first query (or at `connect()`, if you call it), before anything reaches the database. The error's `code` is `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`.
 
