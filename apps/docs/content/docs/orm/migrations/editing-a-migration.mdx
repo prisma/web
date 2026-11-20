@@ -50,7 +50,7 @@ app space:  migrations/app/20260707T1008_add_display_name
 → Run it to self-emit ops.json and attest the package: node migrations/app/20260707T1008_add_display_name/migration.ts
 ```
 
-In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. The operation list shows only the table changes; the backfill between them is the `dataTransform` you fill in. Run the file as `node migrations/app/<dir>/migration.ts` from the project root, or as `node migration.ts` from its directory. Because of `--backfill User.displayName`, `migration plan` writes the change as three steps rather than one, so you decide what the rows that already exist get: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required:
+In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. `Statements applied` lists the flags you passed, such as `--backfill User.displayName`, and what each one changed in the plan; nothing has run against a database yet. The operation list shows only the table changes; the backfill between them is the `dataTransform` you fill in. Run the file as `node migrations/app/<dir>/migration.ts` from the project root, or as `node migration.ts` from its directory. Because of `--backfill User.displayName`, `migration plan` writes the change as three steps rather than one, so you decide what the rows that already exist get: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required:
 
 ```ts title="migration.ts (as planned)"
 override get operations() {
@@ -117,7 +117,14 @@ export default class M extends Migration<Start, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-If you compare that with the file `migration plan` wrote, there are four differences. The planned migration import is `import { Migration, MigrationCLI, col, placeholder } from '@prisma/orm-postgres/migration';`, and the filled-in one no longer brings in `placeholder`. Two imports and the line that builds `db` and `contract` are new: `postgres(...)` is given the end snapshot's JSON and no connection string, so it builds the query builder, `db`, and the contract object it needs, and never connects to a database. Writing `sql: db` names the builder `db`, so it does not clash with the `sql` that a planned file imports when the migration holds a SQL value, such as a default or a check. `dataTransform` takes `contract` in place of `endContract`, because it needs the contract object, not the JSON the planned file passes. And the `placeholder(...)` calls become your `check` and `run` queries. The rest of each operation, such as `codecRef` and `backfillsColumn`, stays exactly as `migration plan` wrote it. Keep `backfillsColumn`: when rows still hold `NULL` after `run`, the error then counts those rows.
+If you compare that with the file `migration plan` wrote, there are four differences:
+
+1. The migration import no longer brings in `placeholder`. The planned one is `import { Migration, MigrationCLI, col, placeholder } from '@prisma/orm-postgres/migration';`.
+2. Two imports and the line that builds `db` and `contract` are new. `postgres(...)` is given the end snapshot's JSON and no connection string, so it builds the query builder, `db`, and the contract object it needs, and never connects to a database. Writing `sql: db` names the builder `db`, so it does not clash with the `sql` that a planned file imports when the migration holds a SQL value, such as a default or a check.
+3. `dataTransform` takes `contract` in place of `endContract`, because it needs the contract object that `db` was built from, not the JSON the planned file passes.
+4. The `placeholder(...)` calls become your `check` and `run` queries.
+
+The rest of each operation, such as `codecRef` and `backfillsColumn`, stays exactly as `migration plan` wrote it. Keep `backfillsColumn`: when rows still hold `NULL` after `run`, the error then counts those rows.
 
 Now recompile the file with `node migrations/app/20260707T1008_add_display_name/migration.ts`. If you left a `placeholder(...)` call in it, recompiling fails with an error whose `code` is `MIGRATION.UNFILLED_PLACEHOLDER`, and `npx prisma db migrate` fails as well, because `ops.json` is still empty. Once it recompiles, read the `UPDATE` it produced in `ops.json` and check that it sets the value you meant on the rows you meant:
 
@@ -301,7 +308,7 @@ dataTransform('Product.status', {
 }),
 ```
 
-The update is a MongoDB update document, such as `{ $set: { status: 'active' } }`, or an aggregation pipeline, such as `[{ $set: { status: { $toLower: '$state' } } }]`, which can read each document's own values, here the old field `state`. `dataTransform`, `rawAggregate` and `rawUpdateMany` come from `@prisma/orm-mongo/target/migration`, and the planned file already imports them. Keep `{ bypassDocumentValidation: true }`: the documents do not fit the new validator until the update has run, and the planned validator change after it checks every document. Then run `node migration.ts` as on PostgreSQL. [MongoDB operations](/orm/reference/migration-api#mongodb-operations) in the Migration API reference shows a data transform written by hand.
+The update is a MongoDB update document, such as `{ $set: { status: 'active' } }`, or an aggregation pipeline, such as `[{ $set: { status: { $toLower: '$state' } } }]`, which can read each document's own values, here the old field `state`. `dataTransform`, `rawAggregate` and `rawUpdateMany` come from `@prisma/orm-mongo/target/migration`, and the planned file already imports them. Keep `{ bypassDocumentValidation: true }`: until the validator change after it runs, the collection still has the old validator, which does not allow the new field, so it would refuse the update. Then run `node migration.ts` as on PostgreSQL. [MongoDB operations](/orm/reference/migration-api#mongodb-operations) in the Migration API reference shows a data transform written by hand.
 
 ## Starting from a blank migration
 
