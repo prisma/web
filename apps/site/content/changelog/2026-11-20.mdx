@@ -1,0 +1,176 @@
+---
+title: "Prisma Console now offers to fix a repository that is not ready to deploy to Prisma Compute"
+date: "2026-11-20"
+version: "2026-11-20"
+slug: "2026-11-20"
+headline: "Prisma Console now offers to fix a repository that is not ready to deploy to Prisma Compute"
+tags:
+  - "Prisma"
+  - "Prisma Compute"
+  - "Prisma Console"
+  - "Prisma ORM"
+canonical: "/changelog#log2026-11-20"
+metaDescription: "When your GitHub repository cannot deploy to Prisma Compute as it is, Prisma Console now offers to fix the code and open one pull request with the fix and the deploy setup, and you can merge it from the Console. Also new: the Prisma 8 command-line tool answers a Prisma ORM 7 command with what to run instead, and the Prisma ORM 8 release candidate lets you set an isolation level and a timeout on a transaction."
+share:
+  active: true
+  content: "Look at this page: "
+---
+**When you connect a GitHub repository that cannot deploy to Prisma Compute as it is, Prisma Console now offers to fix the code for you and open one pull request with the fix and the deploy setup.** You can then check the preview deployment, add the production secrets, and merge that pull request from the Console. The Prisma 8 command-line tool, `prisma@8.0.0-rc.34`, now answers a Prisma ORM 7 command such as `prisma migrate dev` with what to run instead. Prisma ORM 8 is still a release candidate, and version `8.0.0-rc.24` of its library, `@prisma/orm-postgres`, lets you set an isolation level and a timeout on a transaction.
+
+If your connection string contains `accelerate.prisma-data.net`, Accelerate stops working on **December 1, 2026**, as earlier entries announced. If you use Prisma ORM 7, the `prisma` installed in your project is not affected by anything here, but a script that runs `npx prisma` where no `prisma` is installed gets the Prisma 8 release candidate, because that is what `prisma@latest` on npm points to. If you run `prisma deploy` for a Prisma Compute app, a deploy no longer copies secrets from your `.env` file. "What you need to do" has the steps for each case.
+
+## Let the Console fix your repository and set up deploys in one pull request
+
+When you connect a GitHub repository to Prisma Compute, the Console checks whether it can deploy the app and opens a pull request that adds what a deploy needs. Until now, if something in the code stood in the way, such as dependencies that do not install or an app still on Prisma ORM 6 or 7, the Console showed you what was wrong and stopped there.
+
+The Console now shows **Fix and set up deploys** in that case. An agent run by Prisma works on a copy of the repository, makes the change, runs the app's checks, and opens one pull request that contains the fix and the deploy setup. Nothing reaches your default branch until you merge it. If your app is on Prisma ORM 6 or 7, the pull request upgrades it to the Prisma ORM 8 release candidate, so review it as you would a major upgrade. If that app also uses a database outside Prisma, the pull request tells you to run `prisma db sign` against it before you merge. While the agent works, the setup page shows what it is doing, for example "Running `pnpm install`", and you can open each command to read its output and each edit to read its diff. A run takes up to 25 minutes. If the preview build then fails, or the app answers with a server error, the Console offers **Fix with agent**, and the fix is pushed to the same pull request.
+
+From there, **Finish setup** on the project page walks you through the rest:
+
+1. **Check the preview**, a deployment of the pull request's branch at its own URL. If it cannot start because a value is missing, the Console names the variable, for example "Preview can't start: `SESSION_SECRET` is not set", and lets you enter it for preview and for production and deploy the preview again.
+2. **Add the production secrets** the app needs.
+3. **Merge pull request.** The Console asks you to authorize on GitHub, and the merge then runs with your own GitHub permissions and follows the repository's branch protection. If a review or a check is still pending, the Console turns on auto-merge and shows what it is waiting for. When it cannot merge, it gives you the reason and a link to merge on GitHub.
+
+After the merge, the same page follows the first production deploy until it shows "Production is live".
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://console.prisma.io/?utm_source=changelog&utm_medium=cta&utm_campaign=setup-agent" ctaLocation="changelog-setup-agent">Connect a repository</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/docs/guides/compute/deploy-existing-app" ctaLocation="changelog-setup-agent">Read the deploy guide</PrismButtonOutline>
+</div>
+
+## A Prisma ORM 7 command on Prisma 8 now tells you what to run instead
+
+Prisma 8 replaced most Prisma ORM 7 commands, including `prisma migrate dev` and `prisma generate`, so an old script, a habit, or a coding agent trained on Prisma ORM 7 keeps typing commands that are gone. Until now those failed with `No command registered`, or with an error that named a single replacement.
+
+Since `prisma@8.0.0-rc.34`, a Prisma ORM 7 command fails with `CLI.V7_COMMAND`, and the error explains what replaced it and lists the commands to run, in order. The steps are for a project that is moving to Prisma ORM 8. If you meant to stay on Prisma ORM 7, do not run them, and use the Prisma ORM 7 tool as the last lines of the error describe. In the output below, the contract is the pair of files Prisma ORM 8 reads to know your data model, and `prisma contract emit` writes them from your schema:
+
+```text title="Terminal"
+$ npx prisma migrate dev
+✘ [CLI.V7_COMMAND] `prisma migrate dev` is a Prisma 7 command and is not available in Prisma 8
+  why: Prisma 8 emits the contract, plans the migration and applies it in separate steps: run `contract emit`,
+       then `migration plan --name <name>` (for `--create-only`, stop here), then `db migrate --advance-ref db`.
+       While Prisma 7 still owns this project's migrations, install its CLI with
+       `npm install --save-dev @prisma/prisma7@7` and run `prisma7 migrate dev` instead.
+→ Step 1: prisma contract emit
+→ Step 2: prisma migration plan --name <name>
+→ Step 3: prisma db migrate --advance-ref db
+→ Read its help: prisma contract emit --help
+```
+
+This covers the Prisma ORM 7 commands that Prisma 8 dropped or renamed, such as `generate`, `db push`, `db pull`, the `prisma migrate` commands, and `prisma dev ls`. Where Prisma 8 has no equivalent, as for `prisma studio`, the error links the docs. Each error ends with how to keep the Prisma ORM 7 tool beside the new one in the same project, which is to install `@prisma/prisma7` and run the old command as `prisma7`. A project that uses only Prisma ORM 7 keeps `prisma@7` in its `package.json` and needs neither. With `--json`, the same steps come back as a list a coding agent can read. ([#31027](https://github.com/prisma/orm/pull/31027), [prisma-cli#390](https://github.com/prisma/prisma-cli/pull/390), [composer#429](https://github.com/prisma/composer/pull/429))
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/docs/orm/coming-from-prisma-orm-7" ctaLocation="changelog-v7-commands">What changed from Prisma ORM 7</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/docs/cli/error-reference#CLI.V7_COMMAND" ctaLocation="changelog-v7-commands">Read the error reference</PrismButtonOutline>
+</div>
+
+## Set an isolation level and a timeout on a Prisma ORM 8 transaction
+
+Prisma ORM 7 lets you set an isolation level and a timeout on a transaction, and the Prisma ORM 8 release candidates did not: you could not choose the isolation level, and a transaction stayed open for as long as your callback ran. Since `8.0.0-rc.24`, you can set both, as a default for the client or for one call:
+
+```ts title="src/prisma/db.ts"
+import postgres, { IsolationLevel } from "@prisma/orm-postgres/runtime";
+
+const db = postgres({
+  contract,
+  url: process.env.DATABASE_URL!,
+  transactionOptions: { isolationLevel: IsolationLevel.RepeatableRead, timeout: 5000 },
+});
+
+await db.transaction(
+  async (tx) => {
+    // your writes
+  },
+  { isolationLevel: IsolationLevel.Serializable },
+);
+```
+
+The timeout is in milliseconds, and there is none unless you set one. When a transaction runs out of time, the call rejects with `RUNTIME.TRANSACTION_TIMEOUT`, none of its writes are committed, and its connection is closed instead of going back to the pool. This works on PostgreSQL, SQLite, and MySQL. ([#30990](https://github.com/prisma/orm/pull/30990), [#31012](https://github.com/prisma/orm/pull/31012))
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/docs/orm/fundamentals/transactions" ctaLocation="changelog-transactions">Read about transactions</PrismButton>
+</div>
+
+## What you need to do
+
+- **Accelerate is retired on December 1, 2026.** If your connection string contains `accelerate.prisma-data.net`, [switch to a pooled connection or to the serverless driver](https://www.prisma.io/docs/postgres/database/switch-from-accelerate) before then. If you use Accelerate with your own database, [keep your database and connect to it without Accelerate](https://www.prisma.io/docs/accelerate/keep-your-database).
+- **If you use Prisma ORM 7**, nothing else here needs a change in your app. Check any script or CI job that runs `npx prisma` without a version in a place where `prisma` is not installed, because it gets Prisma 8 and the error above. Change it to `npx prisma@7`.
+- **If you run `prisma deploy` for a Prisma Compute app that reads secrets**, set those secrets on Prisma Compute yourself before you upgrade. `prisma deploy` used to copy a secret from your `.env` file or your shell to any environment that did not have it yet, which is how a test key in `.env` could end up in production. Since Composer 0.39.0, it copies nothing. If a secret that a service requires has no value, the deploy stops before it creates any service or database and prints the command to run, in the form `prisma project env add 'EMAIL_API_KEY=<value>' --project '<project id>' --role production`. Run it once more with `--role preview` to set the value that every preview branch uses, because a new preview branch no longer gets a copy from your machine either. The [environment variables](https://www.prisma.io/docs/compute/environment-variables) page shows both. Composer is the part of the Prisma 8 command-line tool that deploys a Prisma Compute app. You get version 0.39.0 by installing `prisma@8.0.0-rc.34` and raising `@prisma/composer` and `@prisma/composer-prisma-cloud` in your `package.json` to `0.39.0` in the same step. ([composer#426](https://github.com/prisma/composer/pull/426))
+- **If your Prisma Compute app has a database**, keep `@prisma/orm-postgres` at `8.0.0-rc.23` when you make that upgrade. `@prisma/composer-prisma-cloud@0.39.0` requires exactly that version, so `npm install` beside `8.0.0-rc.24` fails with `ERESOLVE`. This means such an app cannot use the `8.0.0-rc.24` features in this entry yet. If your `package.json` lists `alchemy` or `effect`, Composer 0.39.0 needs them at `2.0.0-beta.85` and `4.1.0`. ([composer#404](https://github.com/prisma/composer/pull/404))
+- **If you use a Prisma ORM 8 release candidate with MySQL or MongoDB**, read "Breaking changes" below before you upgrade to `8.0.0-rc.24`.
+- **If a script or a coding agent checks for the error code of a Prisma ORM 7 command**, the code is now `CLI.V7_COMMAND`. It was `CLI.COMMAND_MOVED`. The exit code is 2, as before.
+
+## Breaking changes between Prisma ORM 8 release candidates
+
+These apply only if you already use a Prisma ORM 8 release candidate and upgrade to `8.0.0-rc.24`. The most common ones are below, and the [rc.24 release notes](https://github.com/prisma/orm/releases/tag/v8.0.0-rc.24) list every change, including those for extension authors, with a link to the [upgrade guide for this step](https://github.com/prisma/orm/blob/v8.0.0-rc.24/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.23-to-8.0.0-rc.24/). After you upgrade, run `prisma contract emit` once.
+
+- **On MySQL, a `db.transaction()` callback now runs at the server's default isolation level.** Earlier release candidates set every session to READ COMMITTED. To keep that, pass `transactionOptions: { isolationLevel: 'ReadCommitted' }` to `mysql()`. ([#30990](https://github.com/prisma/orm/pull/30990))
+- **On MongoDB, `Date` is now a calendar date, and `DateTime` is what `Date` was.** A `Date` field is read as a string such as `"2024-02-29"`, and a `DateTime` field as a JavaScript `Date` with the time. Rename `Date` to `DateTime` in your MongoDB schema with the script that the upgrade guide provides. A field you miss still compiles, but `@onCreate(now())` on it then stores today's date at midnight and loses the time. ([#30989](https://github.com/prisma/orm/pull/30989))
+- **On MongoDB, a change to a collection's validation rules checks your documents first.** When you apply such a change, it stops with `MIGRATION.PRECHECK_FAILED` while a document does not fit the new rules. If changing a field's type can lose values, `prisma migration plan` and `prisma db update` now stop until you pass `--convert` or `--delete`, as they do on PostgreSQL. ([#30970](https://github.com/prisma/orm/pull/30970))
+- **In a PostgreSQL `migration.ts`, call `this.createExtension(...)` and `this.dataTransform(...)`.** The standalone `createExtension` and `dataTransform` imports from `@prisma/orm-postgres/migration` are removed. ([#30988](https://github.com/prisma/orm/pull/30988))
+- **`prisma db update --json` and `prisma db init --json` list the planner's warnings under `plannerWarnings`**, as `prisma migration plan --json` does. They were under `warnings`, which now keeps only each command's own messages. ([#30970](https://github.com/prisma/orm/pull/30970))
+
+## Prisma ORM
+
+Inside `update()`, you can now change or delete the related records a filter matches, and run several such operations in one call. A relation callback can return an array, and the operations run in the order you list them:
+
+```ts title="src/index.ts"
+await db.orm.public.User
+  .where({ email: "jane@prisma.io" })
+  .update({
+    posts: (p) => [
+      p.where({ published: false }).updateAll({ published: true }),
+      p.where({ title: "Old post" }).deleteAll(),
+    ],
+  });
+```
+
+This works on PostgreSQL, SQLite, and MySQL. The [writing data](https://www.prisma.io/docs/orm/fundamentals/writing-data#create-a-record-and-its-related-records) page has the example, and the [`update()` reference](https://www.prisma.io/docs/orm/reference/orm-client#update) explains what `deleteAll()` does on a many-to-many relation. ([#31013](https://github.com/prisma/orm/pull/31013), [#31014](https://github.com/prisma/orm/pull/31014), [#31016](https://github.com/prisma/orm/pull/31016))
+
+The other additions in `8.0.0-rc.24`:
+
+- **The `prisma` commands work against MariaDB.** With the new `@prisma/orm-mariadb` package, `prisma contract emit`, `prisma db migrate`, `prisma db verify`, and `prisma db sign` run against a MariaDB database. This is an early preview for migrations only, and there is no MariaDB client for your app yet, as the [supported databases](https://www.prisma.io/docs/orm/supported-databases) page says. ([#30964](https://github.com/prisma/orm/pull/30964))
+- **`db.raw.sql` can contain a query from the query builder**, as in ``db.raw.sql`INSERT INTO ... ${query} RETURNING ...` ``. ([#30991](https://github.com/prisma/orm/pull/30991))
+- **`update()` and `delete()` by primary key or unique field send one query on PostgreSQL and SQLite.** They used to send two, one to find the row and one to write it. The result is the same. ([#31026](https://github.com/prisma/orm/pull/31026))
+- **A MongoDB client can prepare a query once and run it many times** with `db.prepare(declaration, callback)`, as SQL clients already could. ([#30967](https://github.com/prisma/orm/pull/30967))
+
+## Prisma Compute
+
+Deploying an [app template](/apps) from the Console now takes you to the new project's page. It used to leave you on the workspace dashboard with a notice. The page has a **First deploy** section that updates by itself and shows the build's progress, then the app's URL, and what to do next: open your new repository, clone it with a command you can copy, and push to deploy again. A project name that is already taken is now reported before you are sent to GitHub to authorize.
+
+When you promote or roll back a deployment and moving a custom domain to it fails, Prisma Compute now tries again and keeps the error for you to see. Before, the domain stayed on the old deployment until someone promoted again.
+
+When you connect a GitHub repository to an empty project from its **Branches** page, you now get the same setup options as for a new project, and the app deploys into that project.
+
+## Prisma Console
+
+Signing in to the Console now happens at `auth.prisma.io`. The sign-in page at `console.prisma.io/login` sends you there, for email, GitHub, and Google, and you come back to the Console signed in. Google and GitHub sign-in now show the account picker. They used to sign you in with the account the browser was already signed in to.
+
+## Docs and website
+
+- The [Prisma Studio](/studio) page is rebuilt. It shows how to start Studio, what it does, and how to embed it in your own app.
+- [Getting started with Prisma Studio](https://www.prisma.io/docs/studio/getting-started) now covers a Prisma ORM 8 project. The Prisma 8 command-line tool has no `studio` command, so you run Studio with the Prisma ORM 7 tool. Run it from a folder outside the project, because that tool cannot read a Prisma ORM 8 config file: `cd .. && npx prisma@prev studio --url "$DATABASE_URL"`.
+- The [upgrade guide that moves one route at a time](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql-incremental) now keeps your existing `schema.prisma` through the whole upgrade.
+
+## Fixes
+
+### Prisma ORM 8
+
+- `gt`, `lt`, `gte`, and `lte` now accept a column that can be `null` as the value to compare with. ([#30477](https://github.com/prisma/orm/pull/30477))
+- `prisma orm init` keeps a `tsconfig.json` that uses `node16` or `nodenext`, and the `db.ts` it writes imports the contract in a way that resolves there. ([#30360](https://github.com/prisma/orm/pull/30360))
+- `prisma contract format` now follows the `formatter` setting in `prisma.config.ts`, for example `formatter: { indent: 4, newline: "LF" }`. The [configuration reference](https://www.prisma.io/docs/cli/configuration) lists the values. ([#30960](https://github.com/prisma/orm/pull/30960))
+- `prisma db schema` on MongoDB prints a field that holds several types as `a | b`. ([#30476](https://github.com/prisma/orm/pull/30476))
+
+### Prisma Compute
+
+- Pressing Ctrl-C on `prisma dev` when you started it through `npm run` or `npx` left the app running on its port. `prisma dev` now stops the app's services before it exits, so the port is free when the prompt returns. ([composer#424](https://github.com/prisma/composer/pull/424))
+- The Console's setup checks no longer fail on a build that downloads something from the internet, such as a font from Google Fonts.
+- The Console and the setup pull request no longer tell everyone to run `prisma db sign`, the command that records in a database that it matches your schema, before merging. The note now appears only when the setup moved the app from Prisma ORM 6 or 7.
+
+## Guides and articles
+
+- [Codeless Sync](https://www.prisma.io/docs/guides/integrations/codeless-sync): a community guide that connects Codeless Sync to Prisma Postgres, copies Stripe customers into a table, and shows how many operations a sync uses.
+
+---
+
+*Need help applying these changes in production? [Prisma Enterprise Support](/enterprise) can help with schema design, performance, security, and compliance.*
