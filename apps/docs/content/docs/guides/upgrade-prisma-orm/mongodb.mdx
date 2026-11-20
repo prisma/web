@@ -161,7 +161,7 @@ A fresh install, such as a CI run or a new clone, no longer generates the Prisma
 }
 ```
 
-The script skips generation when `prisma6` is not installed. That keeps an install without dev dependencies, such as `npm install --omit=dev` in a Docker image, from failing, but such an install has no Prisma ORM 6 client either. If you install that way, run `npm run prisma6 -- generate` in your build step, where dev dependencies are installed, and copy `node_modules` from there.
+If `package.json` already has a `postinstall`, add this command to it with `&&` instead of replacing it. The script skips generation when `prisma6` is not installed. That keeps an install without dev dependencies, such as `npm install --omit=dev` in a Docker image, from failing, but such an install has no Prisma ORM 6 client either. If you install that way, run `npm run prisma6 -- generate` in your build step, where dev dependencies are installed, and copy `node_modules` from there.
 
 ### 1.2. Install Prisma ORM 8
 
@@ -210,14 +210,14 @@ Some features of a Prisma ORM 6 schema have no Prisma ORM 8 equivalent on MongoD
 
 | Error | Schema feature | What you change | Effect on the Prisma ORM 6 app |
 | --- | --- | --- | --- |
-| `PSL.PRISMA6_MONGO_DEFAULT_UNSUPPORTED` | A `@default(...)` other than `auto()` on the id and `now()` on a `DateTime`, such as `@default(false)`, `@default("draft")` or `@default(uuid())` | Set the value in the code that creates documents, then remove the default | Every Prisma ORM 6 `create` must now pass the value |
+| `PSL.PRISMA6_MONGO_DEFAULT_UNSUPPORTED` | A `@default(...)` other than `auto()` on the id and `now()` on a `DateTime`, such as `@default(false)`, `@default("draft")` or `@default(uuid())` | Set the value in the code that creates documents, then remove the default | A required field must now be passed to every Prisma ORM 6 `create`; an optional or list field no longer gets the default when a `create` leaves it out |
 | `PSL.PRISMA6_MONGO_OPTIONAL_GENERATED_FIELD_UNSUPPORTED` | An optional field with `@default(now())` or `@updatedAt` | Make the field required once every document has a value, or set the value in code and remove the attribute | A required field fails to read on a document without it; without the attribute the Prisma ORM 6 client stops filling it |
 | `PSL.PRISMA6_MONGO_UPDATED_AT_TYPE_UNSUPPORTED` | `@updatedAt` on a field that is not a `DateTime` | Set the value in code when you write documents, then remove `@updatedAt` | The Prisma ORM 6 client stops setting the field |
 | `PSL.PRISMA6_MONGO_REFERENTIAL_ACTION_UNSUPPORTED` | `onDelete` or `onUpdate` on a relation | Delete or update the related documents in your own code, then remove the argument | The Prisma ORM 6 client stops deleting or updating them for you |
 | `PSL.PRISMA6_MONGO_LIST_RELATION_UNSUPPORTED` | A many-to-many relation that stores ids in a list field | Remove the relation fields and keep the id list as a plain field | Prisma ORM 6 code that uses the relation through `include` or `connect` must use the id list instead |
 | `PSL.PRISMA6_MONGO_COMPOSITE_INDEX_PATH_UNSUPPORTED` | An index on a field inside a composite type, such as `@@index([address.city])` | Remove the index, or index a top-level field | `npm run prisma6 -- db push` no longer creates that index |
 | `PSL.PRISMA6_MONGO_COMPOSITE_MAP_UNSUPPORTED` | `@map` on a field of a composite type | Rename the field to the name it is stored under, and remove `@map` | Prisma ORM 6 code uses the new field name |
-| `PSL.PRISMA6_MONGO_ID_NOT_OBJECTID` | An `@id` that is not an ObjectId stored as `_id` | Rewrite the documents with ObjectId ids, and every field that refers to them | The model cannot be read until then |
+| `PSL.PRISMA6_MONGO_ID_NOT_OBJECTID` | An `@id` that is not an ObjectId stored as `_id` | Declare the id as `String @id @default(auto()) @map("_id") @db.ObjectId`, and rewrite the documents with ObjectId ids, and every field that refers to them | Prisma ORM 6 creates ObjectId ids from then on, and every id stored outside the database, such as an id in a URL, changes |
 | `PSL.PRISMA6_MONGO_VIEW_UNSUPPORTED` | A `view` block | Remove it | The Prisma ORM 6 client loses the view's model |
 
 `contract emit` names any other feature it cannot read with an error whose code starts with `PSL.PRISMA6_MONGO_`. The [error reference](/orm/reference/error-reference#psl) explains each one, and [Use a Prisma ORM 6 MongoDB schema](/cli/configuration#use-a-prisma-orm-6-mongodb-schema) has the details of how the schema is read.
@@ -655,7 +655,7 @@ Run `npx prisma db migrate --advance-ref db` against every other database you si
 
 ### 4.3. Remove Prisma ORM 6
 
-Delete `prisma6.config.ts`, `prisma/schema.prisma`, and the `prisma6` and `postinstall` scripts, and remove `npm run prisma6 -- generate` from your build. Then uninstall Prisma ORM 6 and install again:
+Delete `prisma6.config.ts`, `prisma/schema.prisma` and the `prisma6` script, remove the `prisma6` command from `postinstall` (or the whole script, if it runs nothing else), and remove `npm run prisma6 -- generate` from your build. Then uninstall Prisma ORM 6 and install again:
 
 ```npm
 npm uninstall prisma6 @prisma/client
