@@ -9,13 +9,7 @@ metaDescription: 'Step-by-step guide to migrating a Prisma ORM 6 MongoDB project
 
 This guide is for developers moving a Prisma ORM 6 MongoDB project to **Prisma ORM 8**. Prisma ORM 7 has **no MongoDB connector**, so Prisma ORM 8 is the successor path. This is a **code and workflow migration against the same database**: your data never moves.
 
-You install Prisma ORM 8 next to Prisma ORM 6 in the same app. Prisma ORM 8 reads your existing `schema.prisma`, while Prisma ORM 6 keeps running the app and changing the database. You move client calls over one at a time, and the app stays deployable on Prisma ORM 6 at every point. When no code uses the Prisma ORM 6 client any more, Prisma ORM 8 takes over the schema and its migrations, and you remove Prisma ORM 6.
-
-:::tip[Using an AI coding agent]
-
-Install the companion [prisma-mongodb-upgrade](https://github.com/prisma/skills/tree/main/prisma-mongodb-upgrade) skill with `npx skills add prisma/skills` to help your agent with this migration.
-
-:::
+You install Prisma ORM 8 next to Prisma ORM 6 in the same app. Prisma ORM 8 reads your existing `schema.prisma`, while Prisma ORM 6 keeps running the app and changing the database. Some schema features need an edit before Prisma ORM 8 can read the file, such as a `@default` other than `now()` or an `onDelete` on a relation, and a few of those edits change what the Prisma ORM 6 client does; step 1.3 lists them. You move client calls over one at a time, and the app stays deployable on Prisma ORM 6 at every point. When no code uses the Prisma ORM 6 client any more, Prisma ORM 8 takes over the schema and its migrations, and you remove Prisma ORM 6.
 
 ## Prerequisites
 
@@ -157,7 +151,17 @@ export default defineConfig({ schema: 'prisma/schema.prisma' });
 
 From now on, run every Prisma ORM 6 command through the script, such as `npm run prisma6 -- db push` and `npm run prisma6 -- generate`. Update your scripts, CI jobs and deploy commands the same way.
 
-A fresh install no longer generates the Prisma ORM 6 client, because `@prisma/client` cannot find a Prisma ORM 6 CLI named `prisma` and prints a warning instead. Generate it in a script that runs after every install, such as `"postinstall": "npm run prisma6 -- generate"`, or as the first step of your build.
+A fresh install, such as a CI run or a new clone, no longer generates the Prisma ORM 6 client, because `@prisma/client` cannot find a Prisma ORM 6 CLI named `prisma`. The app then fails with `@prisma/client did not initialize yet`. Generate the client after every install with this `postinstall` script:
+
+```json title="package.json (excerpt)"
+{
+  "scripts": {
+    "postinstall": "node -e \"if (require('fs').existsSync('node_modules/prisma6')) require('child_process').execSync('npm run prisma6 -- generate', { stdio: 'inherit' })\"" // [!code ++]
+  }
+}
+```
+
+The script skips generation when `prisma6` is not installed. That keeps an install without dev dependencies, such as `npm install --omit=dev` in a Docker image, from failing, but such an install has no Prisma ORM 6 client either. If you install that way, run `npm run prisma6 -- generate` in your build step, where dev dependencies are installed, and copy `node_modules` from there.
 
 ### 1.2. Install Prisma ORM 8
 
@@ -192,7 +196,7 @@ export default definePrismaConfig({
 });
 ```
 
-Prisma ORM 8 describes your collections as a [contract](/orm/contract-authoring/the-data-contract). `prisma6Schema(...)` reads your Prisma ORM 6 schema as that contract, unchanged, so both versions work from the same file and you keep editing it. Without `output`, the contract files are written next to `schema.prisma`, in `prisma/`.
+Prisma ORM 8 describes your collections as a [contract](/orm/contract-authoring/the-data-contract). `prisma6Schema(...)` reads your Prisma ORM 6 schema as that contract, so both versions work from the same file and you keep editing it. Without `output`, the contract files are written next to `schema.prisma`, in `prisma/`.
 
 Prisma ORM 8 reads your schema the way Prisma ORM 6 stores the data, so check your schema and documents for the cases below before you emit:
 
@@ -202,7 +206,21 @@ Prisma ORM 8 reads your schema the way Prisma ORM 6 stores the data, so check yo
 - Each index keeps the name Prisma ORM 6 gave it, such as `users_email_key` for the unique index on `email` in the example, or the name its `map:` sets.
 - Two indexes of one model on the same fields, written with the same sort, stop `contract emit` with `PSL.PRISMA6_MONGO_INDEX_ALREADY_EXISTS`. Remove one of them, and if only one is unique, keep the unique one. A field written with no sort and one written `sort: Asc` count as different, so `@unique` on `email` beside `@@index([email(sort: Asc)])` is fine.
 
-[Use a Prisma ORM 6 MongoDB schema](/cli/configuration#use-a-prisma-orm-6-mongodb-schema) has the details.
+Some features of a Prisma ORM 6 schema have no Prisma ORM 8 equivalent on MongoDB yet. `contract emit` stops on each one with an error that names the line. You fix them in `schema.prisma`, which Prisma ORM 6 reads too, so some of these edits change the running Prisma ORM 6 app:
+
+| Error | Schema feature | What you change | Effect on the Prisma ORM 6 app |
+| --- | --- | --- | --- |
+| `PSL.PRISMA6_MONGO_DEFAULT_UNSUPPORTED` | A `@default(...)` other than `auto()` on the id and `now()` on a `DateTime`, such as `@default(false)`, `@default("draft")` or `@default(uuid())` | Set the value in the code that creates documents, then remove the default | Every Prisma ORM 6 `create` must now pass the value |
+| `PSL.PRISMA6_MONGO_OPTIONAL_GENERATED_FIELD_UNSUPPORTED` | An optional field with `@default(now())` or `@updatedAt` | Make the field required once every document has a value, or set the value in code and remove the attribute | A required field fails to read on a document without it; without the attribute the Prisma ORM 6 client stops filling it |
+| `PSL.PRISMA6_MONGO_UPDATED_AT_TYPE_UNSUPPORTED` | `@updatedAt` on a field that is not a `DateTime` | Set the value in code when you write documents, then remove `@updatedAt` | The Prisma ORM 6 client stops setting the field |
+| `PSL.PRISMA6_MONGO_REFERENTIAL_ACTION_UNSUPPORTED` | `onDelete` or `onUpdate` on a relation | Delete or update the related documents in your own code, then remove the argument | The Prisma ORM 6 client stops deleting or updating them for you |
+| `PSL.PRISMA6_MONGO_LIST_RELATION_UNSUPPORTED` | A many-to-many relation that stores ids in a list field | Remove the relation fields and keep the id list as a plain field | Prisma ORM 6 code that uses the relation through `include` or `connect` must use the id list instead |
+| `PSL.PRISMA6_MONGO_COMPOSITE_INDEX_PATH_UNSUPPORTED` | An index on a field inside a composite type, such as `@@index([address.city])` | Remove the index, or index a top-level field | `npm run prisma6 -- db push` no longer creates that index |
+| `PSL.PRISMA6_MONGO_COMPOSITE_MAP_UNSUPPORTED` | `@map` on a field of a composite type | Rename the field to the name it is stored under, and remove `@map` | Prisma ORM 6 code uses the new field name |
+| `PSL.PRISMA6_MONGO_ID_NOT_OBJECTID` | An `@id` that is not an ObjectId stored as `_id` | Rewrite the documents with ObjectId ids, and every field that refers to them | The model cannot be read until then |
+| `PSL.PRISMA6_MONGO_VIEW_UNSUPPORTED` | A `view` block | Remove it | The Prisma ORM 6 client loses the view's model |
+
+`contract emit` names any other feature it cannot read with an error whose code starts with `PSL.PRISMA6_MONGO_`. The [error reference](/orm/reference/error-reference#psl) explains each one, and [Use a Prisma ORM 6 MongoDB schema](/cli/configuration#use-a-prisma-orm-6-mongodb-schema) has the details of how the schema is read.
 
 ### 1.4. Emit the contract and sign the database
 
@@ -211,7 +229,7 @@ npx prisma contract emit
 npx prisma db sign
 ```
 
-`contract emit` writes `contract.json` and `contract.d.ts` to `src/prisma/`. `db sign` checks that the database matches the contract and records the contract's hash in a new `_prisma_migrations` collection. It changes nothing else:
+`contract emit` writes `contract.json` and `contract.d.ts` to `src/prisma/`. `db sign` checks that the database matches the contract and records the contract's hash in a new `_prisma_migrations` collection. It changes nothing else in the database:
 
 ```text no-copy
 ✔ Connecting to database...
@@ -246,11 +264,10 @@ export const contract = contractFromJson<Contract>(contractJson);
 export const db = mongo({
   contract,
   url: process.env['DATABASE_URL']!,
-  dbName: 'my-app-db',
 });
 ```
 
-`contractFromJson` turns `contract.json` into a typed contract value, and the client takes it as `contract`. If your connection string has no database name in its path, set `dbName` to the database your Prisma ORM 6 app uses; otherwise leave `dbName` out, and the client uses the name in the URL.
+`contractFromJson` turns `contract.json` into a typed contract value, and the client takes it as `contract`. The client uses the database named in the path of your connection string, such as `my-app-db` in `mongodb://localhost:27017/my-app-db`. If your connection string names no database, add `dbName: 'my-app-db'` with the name your Prisma ORM 6 app uses.
 
 Your `tsconfig.json` needs `"resolveJsonModule": true` for the JSON import, and a `module` setting that accepts `with { type: 'json' }`, such as `"module": "preserve"` with `"moduleResolution": "bundler"`, or `"nodenext"` for both in a package with `"type": "module"`.
 
@@ -446,7 +463,7 @@ const rows = await prisma.post.aggregateRaw({
 
 #### Commands
 
-`db.raw` is collection-scoped, so v6's database-level `$runCommandRaw` has no ORM equivalent. Construct your own `MongoClient` and pass it to the client from step 1.5 in place of `url`: the same client then powers the typed ORM and runs arbitrary commands, sharing one connection pool.
+`db.raw` is collection-scoped, so v6's database-level `$runCommandRaw` has no ORM equivalent. Construct your own `MongoClient` and pass it to the client from step 1.5 in place of `url`, together with `dbName`, which this form requires: the same `MongoClient` then serves the typed ORM and runs arbitrary commands, sharing one connection pool.
 
 ```typescript tab="After"
 // src/prisma/db.ts
@@ -508,12 +525,6 @@ In this step Prisma ORM 8 takes over the schema: you port `schema.prisma` to a P
 ### 4.1. Port the schema to a contract file
 
 In the table below, the left column is how you wrote it in Prisma ORM 6 and the right column is the Prisma ORM 8 equivalent:
-
-:::tip
-
-You can use the [prisma-mongodb-upgrade](https://github.com/prisma/skills/tree/main/prisma-mongodb-upgrade) skill to help your agent map the contract to your schema.
-
-:::
 
 | Concept | Prisma ORM 6 (`schema.prisma`) | Prisma ORM 8 (`contract.prisma`) |
 |---------|----------------------|---------------------------------|
@@ -634,7 +645,9 @@ App space
 
 `db migrate` skips the baseline, because the database already holds it, and applies the validators. `db verify` then prints `Database marker and schema match contract`.
 
-Before it adds each validator, `db migrate` checks every document already in the collection. If one does not fit, for example a long in a field you typed `Int`, or a field the contract does not declare, it stops with `MIGRATION.PRECHECK_FAILED` before it changes that collection. The message names one such document by its `_id`, says why it does not fit, and prints the `mongosh` query that finds all of them. Fix the contract or the documents, and run `db migrate` again; validators it already added stay, and it skips them. To add the validator over documents that do not fit, open the `migration.ts` file that `migration plan` wrote in the migration's folder under `migrations/app/`, set `checkDocuments: false` in the `collMod(...)` for that collection, run the file with `node migrations/app/<folder>/migration.ts` to write the change into the migration, and run `db migrate` again. Those documents then fail their next update until they fit.
+Before it adds each validator, `db migrate` checks every document already in the collection. If one does not fit, for example a long in a field you typed `Int`, or a field the contract does not declare, it stops with `MIGRATION.PRECHECK_FAILED` before it changes that collection. The message names one such document by its `_id`, says why it does not fit, and prints the `mongosh` query that finds all of them. Fix the contract or the documents, and run `db migrate` again; validators it already added stay, and it skips them.
+
+You can also add a validator over documents that do not fit. Those documents then fail their next update until they fit. To do it, open the `migration.ts` file that `migration plan` wrote in the migration's folder under `migrations/app/`, set `checkDocuments: false` in the `collMod(...)` for that collection, run the file with `node migrations/app/<folder>/migration.ts` to write the change into the migration, and run `db migrate` again.
 
 Once the validators are live, every write must match the contract, including writes from a copy of the app that still runs Prisma ORM 6: a document that doesn't match fails with `Document failed validation`.
 
@@ -642,11 +655,15 @@ Run `npx prisma db migrate --advance-ref db` against every other database you si
 
 ### 4.3. Remove Prisma ORM 6
 
+Delete `prisma6.config.ts`, `prisma/schema.prisma`, and the `prisma6` and `postinstall` scripts, and remove `npm run prisma6 -- generate` from your build. Then uninstall Prisma ORM 6 and install again:
+
 ```npm
 npm uninstall prisma6 @prisma/client
+npm install
+npx prisma --version
 ```
 
-Delete `prisma6.config.ts`, `prisma/schema.prisma` and the `prisma6` script, and remove `npm run prisma6 -- generate` from your install or build scripts.
+`npm uninstall` also removes the `prisma` command, because the `prisma6` alias declared a command of the same name. `npm install` links the Prisma ORM 8 command again. **Expected result:** `npx prisma --version` prints `8.0.0-rc.34` or a newer version. Without the second install, `npx prisma` runs a different copy of the CLI or downloads one.
 
 ## 5. Every schema change after that
 

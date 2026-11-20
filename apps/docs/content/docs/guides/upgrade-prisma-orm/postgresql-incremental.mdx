@@ -37,7 +37,7 @@ The migration runs in five phases. The application works at the end of each one.
 
 The ownership timeline matters more than the code timeline. Prisma ORM 7 owns schema migrations through phases 1 to 3, and routes move to Prisma ORM 8 independently of that. Prisma ORM 8 takes over migrations only in phase 4, after a database signature and a `db` ref are in place; the first `migration plan` then writes the baseline migration itself. You can pause between phases for as long as you need.
 
-The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) repository shows the finished result of each phase (tags `step-0` through `step-3`). Unlike this guide, the repository gives Prisma ORM 8 its own copy of the schema, `prisma8/contract.prisma`, instead of having it read `prisma/schema.prisma`. It also pins earlier release candidates of Prisma ORM 8 than this guide uses, so where its code differs from this guide, follow this guide.
+The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) repository shows the finished result of each phase (tags `step-0` through `step-3`). Unlike this guide, the repository gives Prisma ORM 8 its own copy of the schema, `prisma8/contract.prisma`, instead of having it read `prisma/schema.prisma`.
 
 ## Prerequisites
 
@@ -55,9 +55,9 @@ One command does this phase and steps 2.1 to 2.4 for you:
 npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 ```
 
-Write `prisma@latest`, because before this phase `npx prisma` runs version 7. The command asks you to confirm by typing the project's name. It moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract to `src/prisma/`. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes.
+Write `prisma@latest`, because before this phase `npx prisma` runs version 7. The command asks you to confirm by typing the name of the project's folder. It moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract to `src/prisma/contract.json` and `src/prisma/contract.d.ts`. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes.
 
-The rest of this guide puts the contract in `generated/prisma8/`. After the one command, it is in `src/prisma/` instead, so where the guide says `generated/prisma8`, read `src/prisma`. In step 2.5, `orm init` has already added `"resolveJsonModule": true`, and an `include` that covers `src/**/*.ts` already sees `contract.d.ts`, so only the `module` setting is left to check. In phase 3, import the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
+Then continue with step 2.5. `orm init` has already added `"resolveJsonModule": true` to `tsconfig.json`, and it may have set `module` to `preserve`, so check `module` against the cases in step 2.5. In the CommonJS case, the `with { type: "json" }` to remove is in `src/prisma/db.ts`. An `include` that covers `src/**/*.ts` already sees `src/prisma/contract.d.ts`. In phase 3, import the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
 
 The command does not work yet if the `datasource` block lists `citext`, `vector`, `postgis` or `pg_search` in `extensions = [...]`, or a field uses `@db.Citext`. It then stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. By then it has installed `@prisma/orm-postgres` and `dotenv` and changed nothing else. Keep both packages, and do phase 1 and steps 2.1 to 2.4 by hand.
 
