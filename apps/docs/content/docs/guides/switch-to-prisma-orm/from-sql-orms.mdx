@@ -24,23 +24,6 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 - A Sequelize or TypeORM project that already connects to a PostgreSQL database
 - A TypeScript project. The scripts in this guide are written for an app that runs as ES modules, and steps 2 and 5 say what to change in a CommonJS app
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Add Prisma ORM to this Sequelize or TypeORM project so I can migrate queries incrementally.
-
-1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Before you run `orm init`, note whether package.json has "type": "module". If it does not, and the code uses `require` or compiles to `require` calls, the app is CommonJS: after `orm init`, apply the changes under "In a CommonJS project" in https://www.prisma.io/docs/cli/orm-init.md. Make sure `.env` contains the DATABASE_URL the app already uses.
-2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the existing tables into a contract. Open the file and keep the `@@map` attributes so model names stay clean while table names stay as they are.
-3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. Do not run `db init` or `db update`; the tables already exist.
-4. Following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-sql-orms.md, rewrite the read queries first, then the writes, importing `db` from `src/prisma/db.ts`. Run each rewritten query with `node <script>.ts` and show me the output. In a CommonJS project, import `db` from `./prisma/db` without the `.ts` extension, put the `await` calls inside an `async` function, and run the script with `npx tsx <script>.ts` instead. Leave the old ORM in place for queries you have not rewritten yet, but turn off its schema sync (`synchronize` in TypeORM, `sequelize.sync()` in Sequelize).
-```
-
-</AgentPrompt>
-
 ## 1. The starting point
 
 The app has two TypeORM entities. `synchronize: true` in the data source created the `user` and `post` tables in PostgreSQL, and a script inserted two users and a post through TypeORM repositories.
@@ -413,9 +396,24 @@ Turn off schema synchronization in the ORM you are leaving once the database is 
 - Do not run `db init` or `db update` on the existing database. `db sign` is the step for a database that already has the tables; `db update` and `migration plan` come later, when you change the contract yourself.
 - Do not call `db.close()` in a request handler. The pool is shared across requests; close it only when a script or the process ends.
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Add Prisma ORM to this Sequelize or TypeORM project so I can migrate queries incrementally.
+
+1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Before you run `orm init`, note whether package.json has "type": "module". If it does not, and the code uses `require` or compiles to `require` calls, the app is CommonJS: after `orm init`, apply the changes under "In a CommonJS project" in https://www.prisma.io/docs/cli/orm-init.md. Make sure `.env` contains the DATABASE_URL the app already uses.
+2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the existing tables into a contract. Open the file and keep the `@@map` attributes so model names stay clean while table names stay as they are.
+3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. Do not run `db init` or `db update`; the tables already exist.
+4. Following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-sql-orms.md, rewrite the read queries first, then the writes, importing `db` from `src/prisma/db.ts`. Run each rewritten query with `node <script>.ts` and show me the output. In a CommonJS project, import `db` from `./prisma/db` without the `.ts` extension, put the `await` calls inside an `async` function, and run the script with `npx tsx <script>.ts` instead. Leave the old ORM in place for queries you have not rewritten yet, but turn off its schema sync (`synchronize` in TypeORM, `sequelize.sync()` in Sequelize).
+```
+
+</AgentPrompt>
+
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, rewrite every TypeORM read in `src/services/users.ts` as a Prisma ORM query and leave the writes on TypeORM."
 - "Translate the Sequelize `include` in the posts list to a Prisma ORM `.include()` with only `id` and `title` selected."

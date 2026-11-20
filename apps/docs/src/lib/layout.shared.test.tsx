@@ -106,11 +106,13 @@ test("the lockup images are decorative and keep their alt text", () => {
   }
 });
 
-test("the section breadcrumb is a named link to the section", () => {
+test("the navbar title is the Prisma lockup and the docs wordmark only", () => {
+  // The section now leads the page's own path above the title, so the
+  // navbar no longer repeats it.
   const found = anchors(renderNavTitle("/composer/quickstart", [composerSection]));
 
-  assert.equal(found.length, 3, "expected the lockup, the wordmark, and the section crumb");
-  assert.deepEqual(found.map((a) => [a.href, a.text]).at(-1), ["/composer", "Composer"]);
+  assert.equal(found.length, 2, "expected the lockup and the wordmark, no section crumb");
+  assert.ok(!found.some((a) => a.href === "/composer"));
 });
 
 test("the navbar offers Log in and then Sign up, each on its own Console page", () => {

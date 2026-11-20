@@ -5,6 +5,7 @@ import { gatewaySites } from "./config.ts";
 import { proxyRequestHeaders } from "../request-origin.ts";
 import { withGatewayTiming } from "./timing.ts";
 import { withOriginCache } from "./cache.ts";
+import { withRobotsDirectives } from "./robots.ts";
 import { readFileSync } from "node:fs";
 import type { PublicFile } from "./file-validators.ts";
 import { createHttpServer } from "@prisma/proxy/node";
@@ -48,6 +49,8 @@ const proxy = createProxy(gatewaySites(), {
   onDiagnostic: ({ site, message }) => console.warn(`[${site}] ${message}`),
 });
 
+const indexableProxy = withRobotsDirectives(proxy);
+
 createHttpServer(
   withOriginCache(
     withRetainedStatic(
@@ -55,7 +58,7 @@ createHttpServer(
         withGatewayTiming((request) =>
           new URL(request.url).pathname === "/_composer/health"
             ? new Response("ok")
-            : proxy(request),
+            : indexableProxy(request),
         ),
       ),
       retained,

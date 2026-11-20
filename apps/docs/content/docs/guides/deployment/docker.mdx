@@ -42,24 +42,6 @@ To stop all running Docker containers and free up ports:
 docker ps -q | xargs docker stop
 ```
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Containerize a new Express app on Prisma ORM with Docker Compose, following https://www.prisma.io/docs/guides/deployment/docker.md.
-
-1. Create `docker-test`, run `npm init -y` and `npm install express`, then run `npx prisma@latest orm init --yes --target postgres --authoring psl`. Set `"type": "module"` in package.json and add the scripts `start` (`node src/index.ts`), `contract:emit` (`prisma contract emit`), and `db:migrate` (`prisma db migrate`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
-2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
-3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma migration plan --name init` then `npx prisma db migrate`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
-4. Regenerate the lockfile with `rm -rf node_modules package-lock.json && npm install` so `npm ci` succeeds on Linux. Write a `.dockerignore` (node_modules, .env, .env.prod), a `Dockerfile` based on `node:24-alpine` that runs `npm ci`, copies the project, and uses `CMD ["sh", "-c", "npm run db:migrate && npm start"]`, a `docker-compose.yml` with a `postgres_db` service and a `server` service that builds the Dockerfile, publishes port 3000, waits for the database healthcheck, and loads `.env.prod`, and `.env.prod` with `DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres"`.
-5. Run `docker compose up --build -d`, verify `curl http://localhost:3000` returns "No users have been added yet.", show me the `server` logs, then run `docker compose down -v`.
-```
-
-</AgentPrompt>
-
 ## 1. Set up your Node.js and Prisma ORM application
 
 Start by creating a small Node.js application with Express and Prisma ORM.
@@ -556,9 +538,25 @@ Do not call `db.close()` in a route handler. The client's connection pool is sha
 - **`docker run --env-file` keeps the quotes.** Compose strips the quotes around `DATABASE_URL` in `.env.prod`; plain `docker run --env-file` does not, and the Prisma CLI then rejects the URL. Pass `-e DATABASE_URL=...` without quotes when you run the image by hand.
 - **Port 3000 or 5432 is already in use.** Change the host side of the port mapping (`"3100:3000"`) or stop the service that holds the port; the container side stays the same.
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Containerize a new Express app on Prisma ORM with Docker Compose, following https://www.prisma.io/docs/guides/deployment/docker.md.
+
+1. Create `docker-test`, run `npm init -y` and `npm install express`, then run `npx prisma@latest orm init --yes --target postgres --authoring psl`. Set `"type": "module"` in package.json and add the scripts `start` (`node src/index.ts`), `contract:emit` (`prisma contract emit`), and `db:migrate` (`prisma db migrate`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
+2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
+3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma migration plan --name init` then `npx prisma db migrate`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
+4. Regenerate the lockfile with `rm -rf node_modules package-lock.json && npm install` so `npm ci` succeeds on Linux. Write a `.dockerignore` (node_modules, .env, .env.prod), a `Dockerfile` based on `node:24-alpine` that runs `npm ci`, copies the project, and uses `CMD ["sh", "-c", "npm run db:migrate && npm start"]`, a `docker-compose.yml` with a `postgres_db` service and a `server` service that builds the Dockerfile, publishes port 3000, waits for the database healthcheck, and loads `.env.prod`, and `.env.prod` with `DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres"`.
+5. Run `docker compose up --build -d`, verify `curl http://localhost:3000` returns "No users have been added yet.", show me the `server` logs, then run `docker compose down -v`.
+```
+
+</AgentPrompt>
+
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add a POST /users route that creates a user from the request body."
 - "Add a `Post` model with an author relation to the contract, plan a migration named add_posts, and apply it with db migrate."

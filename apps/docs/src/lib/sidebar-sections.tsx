@@ -25,10 +25,9 @@ export const sidebarSectionGroups: SidebarSectionGroup[] = [
     sections: [
       { url: "/" },
       { url: "/prisma-compute/deploy", title: "Deploy your first app" },
-      {
-        url: "/full-stack-tutorial",
-        title: "Start a TypeScript app with Postgres on Prisma for free",
-      },
+      // Sidebar labels fit on one line; the page title (and llms.txt) keep
+      // the full "Start a TypeScript app with Postgres on Prisma for free".
+      { url: "/full-stack-tutorial", title: "Full-stack tutorial" },
     ],
   },
   {

@@ -3,29 +3,29 @@ title: migration plan
 description: Plan an on-disk migration from Prisma ORM contract changes.
 url: /cli/migration-plan
 metaTitle: migration plan | Prisma ORM CLI
-metaDescription: Learn how to create a Prisma ORM migration package from contract changes.
+metaDescription: Learn how to create a Prisma ORM migration from contract changes.
 ---
 
-`migration plan` compares the emitted contract against a starting contract and produces a new migration package with the required operations.
+`migration plan` compares the emitted contract with a starting contract and writes a new migration directory with the operations that turn one into the other.
 
 The starting contract is whatever `--from` names, or the [ref](/cli/migration-ref) named `db` when `--from` is absent.
 
 With neither, what happens depends on the migrations already on disk:
 
 - **`migrations/app/` is empty.** The plan starts from an empty database and contains the full `CREATE` operations for the whole contract. This is the first migration in a new project. The command says so under its summary (`No db ref set — planning from an empty database`), and `--json` output carries `fromDefaulted: true`, so a plan that recreates a database you already have is easy to spot. If a database already exists, run `db init`, `db update`, or `db sign` first.
-- **Migrations already exist.** The command refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` rather than write a full-create package that no real database could apply. The error names the three exits: `migration ref set db <contract>` to point the ref at the state your database is on, `--from <ref>` to name the origin for this one plan, or `--from @empty` to plan from an empty database deliberately.
+- **Migrations already exist.** The command refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` rather than write a migration that creates every table from nothing, which no existing database could apply. The error names three ways out: `migration ref set db <contract>` to point the ref at the state your database is at, `--from <ref>` to name the starting state for this one plan, or `--from @empty` when you do mean to plan from an empty database. To find the state your database is at, run `npx prisma migration status`, which prints its hash next to the `@db` label, and pass that hash, or the directory name of the migration that ends at it, as `<contract>`.
 
-Keep the `db` ref current and you never see the refusal. [`db init`](/cli/db-init) and [`db update`](/cli/db-update) advance it for you when you run them without `--db`; with `--db` you have to add `--advance-ref db`. [`db sign`](/cli/db-sign) advances it whenever it signs, `--db` or not. [`db migrate`](/cli/db-migrate) advances nothing unless you pass `--advance-ref db`.
+Keep the `db` ref current and you never see the refusal. [`db init`](/cli/db-init) and [`db update`](/cli/db-update) update it for you when you run them without `--db`; with `--db` you have to add `--advance-ref db`. [`db sign`](/cli/db-sign) updates it whenever it signs, `--db` or not, unless you pass `--no-advance-ref`. [`db migrate`](/cli/db-migrate) updates no ref unless you pass `--advance-ref db`.
 
 ### The automatic baseline
 
-Say `migrations/app/` has no migrations yet, the `db` ref is set, and `migrations/snapshots/` holds a copy of the contract the ref points at. Then `migration plan` writes a baseline: a migration from an empty database to the ref's contract. If your emitted contract has changed since then, the same run also writes a second migration with those changes. Expect one or two new directories in `git status`.
+Say `migrations/app/` has no migrations yet, the `db` ref is set, and `migrations/snapshots/` holds a copy of the contract the ref points at. `db init`, `db update`, and `db sign` save that copy when they point the `db` ref at a state, so after one of them this is where you are. Then `migration plan` writes a baseline: a migration from an empty database to the ref's contract. If your emitted contract has changed since then, the same run also writes a second migration with those changes. Expect one or two new directories in `git status`.
 
 `db migrate` never applies the baseline to a database that already records which contract it matches, such as one you ran `db sign` on. It applies only the migrations after the contract that database records.
 
 The baseline only creates things, because it is planned from an empty database, so it never removes data. The second migration can remove data, and `migration plan` asks about it before it writes either one, as [Renames and data loss](#renames-and-data-loss) describes.
 
-If a migration already starts from the contract the `db` ref points at, `migration plan` writes a second migration that starts from the same contract, so the [migration history](/orm/migrations/the-migration-graph) splits into two branches. This happens, for example, after `db migrate` without `--advance-ref db`, which applies migrations but leaves the `db` ref where it was. `migration plan` still writes the migration and prints a warning. A database that has already run the existing migration then has no migration leading to your new contract, so `db migrate` on that database fails with `MIGRATION.PATH_UNREACHABLE`. To build on the newest migration instead, delete the directory this run wrote and plan again with `--from` set to the newest migration's directory name.
+If a migration already starts from the contract the `db` ref points at, `migration plan` writes a second migration that starts from the same contract, so the [migration history](/orm/migrations/the-migration-graph) splits into two branches. This happens, for example, after `db migrate` without `--advance-ref db`, which applies migrations but leaves the `db` ref where it was. `migration plan` still writes the migration and prints a warning. A database that has already run the existing migration then has no migration leading to your new contract, so `db migrate` on that database fails with `MIGRATION.PATH_UNREACHABLE`. To build on what that database has applied instead, delete the directory this run wrote and plan again with `--from` set to the state the database is at. `npx prisma migration status` prints that state's hash next to the `@db` label.
 
 The command is offline, so it does not need a database connection.
 
@@ -40,7 +40,7 @@ npx prisma migration plan --name add_users_table
 | Option | What it does |
 | --- | --- |
 | `--name <slug>` | Sets the migration directory name suffix. |
-| `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
+| `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
 | `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
 | `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. On PostgreSQL and SQLite, also renames an enum value in the rows that hold it, as in `--rename Status.ARCHIVED:Status.RETIRED`, a field of a value object, as in `--rename GeoPoint.lat:GeoPoint.latitude`, and a variant. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
 | `--delete <subject>` | Lets the migration lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed, a field of a value object, or the rows of a variant. For a type change, accepts the database's own cast. Repeatable. |
@@ -51,7 +51,7 @@ npx prisma migration plan --name add_users_table
 
 ### Contract references [#contract-references]
 
-A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. `@empty` names the empty database, before any migration. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
+A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. `@empty` names the empty database, before any migration. [Contract references each command accepts](/cli/migration-ref#contract-reference-forms) lists the forms for every command.
 
 ## Renames and data loss [#renames-and-data-loss]
 
@@ -119,7 +119,7 @@ The first MongoDB migration you plan after upgrading from a release before `8.0.
 
 ## Type changes and required fields [#type-changes-and-required-fields]
 
-On PostgreSQL and SQLite, a type change that can lose values, such as `String` to `Int` or a longer `varchar` to a shorter one, is a question like a drop. Answer it in one of two ways:
+On PostgreSQL and SQLite, a type change that can lose values, such as `String` to `Int` or a longer `varchar` to a shorter one, is a question like a drop. Answer it with one of these flags:
 
 - `--convert <Model.field>` writes an `alterColumnType` with `using: placeholder('<Model.field>:convert')`. Replace the placeholder with the conversion as SQL over the column, such as `using: '"age"::integer'`, then run `node migration.ts`. On SQLite the slot is the column's copy expression in `recreateTable`, such as `copyExpressions: { age: 'CAST("age" AS INTEGER)' }`.
 - `--delete <Model.field>` lets the database's own cast run. It may cut or round values, and a value it cannot cast fails the apply.
@@ -147,14 +147,14 @@ npx prisma migration plan --name add_users_table
 npx prisma migration show <migration-dir>
 ```
 
-Review the generated migration package before applying it with [`db migrate`](/cli/db-migrate).
+`<migration-dir>` is the new migration's directory name, such as `20260707T1006_add_user_phone`, which `migration plan` prints. Review the migration before you apply it with [`db migrate`](/cli/db-migrate).
 
 ## Planning a rollback
 
-Because `--to` accepts `<dir>^` (the source contract of a migration), you can plan a migration that walks back a change:
+`<dir>^` names the contract state before the migration in `<dir>`, so with `--from <migration-dir>` and `--to "<migration-dir>^"` you plan a migration from the state after that migration back to the state before it. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) shows the whole rollback:
 
 ```npm
-npx prisma migration plan --to <migration-dir>^ --name rollback
+npx prisma migration plan --from <migration-dir> --to "<migration-dir>^" --name rollback
 ```
 
 ## Data lines

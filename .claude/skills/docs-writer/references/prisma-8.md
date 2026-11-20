@@ -31,7 +31,7 @@ Every code sample must be executed against the published `@prisma/orm-*` package
 - Open with a section-linked intro; add an expandable `<details>` example schema when the page's examples depend on one.
 - Prisma 7 migration notes are ` ```diff ` blocks, framed as help, never required context.
 - Diagrams: add a `FlowScene` to `apps/docs/src/components/concept-animation/flow-presets.ts` and render with `<ConceptAnimation name="..." />`. Design as Mermaid first in the PR description.
-- End each page with a "Prompt your coding agent" section: copyable prompts per section referencing the scaffolded skills (`prisma-next-queries`, `prisma-next-contract`, ...), then "Next" links.
+- End each page with a "Use with your agent" section, after all the content a person reads: copyable prompts per section referencing the `prisma-8` skill, then "Next" links.
 
 ## Naming and claims
 

@@ -1,46 +1,70 @@
 import {
-  CONSOLE_URL,
-  FEATURE_CARDS,
-  FEATURE_ROWS,
-  STUDIO_DOCS_URL,
-  TRY_STUDIO_COMMAND,
+  OPEN_STUDIO_COMMAND,
+  QUICK_ACCESS,
+  STUDIO_COMPARISON,
+  STUDIO_EMBED,
+  STUDIO_FAQ,
+  STUDIO_HERO,
+  STUDIO_TOUR,
+  TRY_STUDIO_STEPS,
 } from "@/app/studio/studio-content";
-import { ctaList, heading, joinBlocks, paragraphs } from "./blocks";
+import { ctaList, heading, joinBlocks, paragraphs, table } from "./blocks";
 
-export const STUDIO_H1 = "Explore and understand your data";
-export const STUDIO_SUBHEADLINE =
-  "A visual browser and editor for the data in your Prisma project. Work locally or team up inside the Prisma Console.";
+export const STUDIO_H1 = STUDIO_HERO.headline;
+export const STUDIO_SUBHEADLINE = STUDIO_HERO.subheadline;
 
 /** Markdown rendition of /studio (src/app/studio/page.tsx). */
 export function renderStudioMarkdown(): string {
   return joinBlocks([
     // Hero. The H1, the subheadline and the "Prisma Studio" role kicker are
-    // the caller's job; the rendition starts at the hero CTAs.
-    ctaList([
-      { label: "Explore Studio in Prisma Console", href: CONSOLE_URL },
-      { label: "Try locally", href: STUDIO_DOCS_URL },
-    ]),
+    // the caller's job; the rendition starts at the hero CTAs. "Get started"
+    // is an in-page jump to the next section, so only Console gets a line.
+    ctaList([STUDIO_HERO.secondaryCta]),
 
-    // The three intro cards title themselves with <h2>, so they keep that level.
-    ...FEATURE_CARDS.flatMap((card) => [heading(2, card.title), paragraphs(card.description)]),
+    // Quick access: the two ways to open Studio.
+    heading(2, QUICK_ACCESS.title),
+    paragraphs(QUICK_ACCESS.intro),
+    heading(3, QUICK_ACCESS.local.title),
+    paragraphs(QUICK_ACCESS.local.description),
+    paragraphs("New example:"),
+    ["```bash", TRY_STUDIO_STEPS.join("\n"), "```"].join("\n"),
+    paragraphs("Any database:"),
+    ["```bash", OPEN_STUDIO_COMMAND, "```"].join("\n"),
+    paragraphs(QUICK_ACCESS.local.note),
+    heading(3, QUICK_ACCESS.console.title),
+    paragraphs(QUICK_ACCESS.console.description),
+    QUICK_ACCESS.console.points.map((point) => `- ${point}`).join("\n"),
+    ctaList([QUICK_ACCESS.console.cta, QUICK_ACCESS.console.secondaryCta]),
 
-    // Feature tour. Each row's eyebrow (RoleKicker) is visible copy that the
-    // heading alone would lose, so it stays as a bold lead-in above the prose.
-    ...FEATURE_ROWS.flatMap((row) => [
-      heading(2, row.title),
-      `**${row.eyebrow}**`,
-      paragraphs(row.description),
-    ]),
+    // Feature tour: every stop's title and description (the page keeps them
+    // all in the DOM; only the screenshots swap).
+    heading(2, STUDIO_TOUR.title),
+    ...STUDIO_TOUR.stops.flatMap((stop) => [heading(3, stop.title), paragraphs(stop.description)]),
 
-    // Video walkthrough: the embed is dropped, the copy and its link stay.
-    heading(2, "See how Studio works"),
-    paragraphs(
-      "Access Prisma Studio on your local machine during development, or in the Prisma Console to collaborate on data with your team.",
+    // Embed: intro, use cases, facts, the snippet and both links.
+    heading(2, STUDIO_EMBED.title),
+    paragraphs(STUDIO_EMBED.intro),
+    STUDIO_EMBED.useCases.map((useCase) => `- ${useCase}`).join("\n"),
+    paragraphs(STUDIO_EMBED.facts),
+    ["```tsx", STUDIO_EMBED.code, "```"].join("\n"),
+    ctaList([STUDIO_EMBED.cta, STUDIO_EMBED.demo]),
+
+    // Comparison table, then its date-and-sources note.
+    heading(2, STUDIO_COMPARISON.title),
+    paragraphs(STUDIO_COMPARISON.intro),
+    table(
+      [STUDIO_COMPARISON.corner, ...STUDIO_COMPARISON.columns],
+      STUDIO_COMPARISON.rows.map((row) => [row.label, ...row.cells]),
     ),
-    ctaList([{ label: "Explore Studio in Console", href: CONSOLE_URL }]),
+    paragraphs(
+      `${STUDIO_COMPARISON.note} Sources: ${STUDIO_COMPARISON.sources
+        .map((source) => `[${source.label}](${source.href})`)
+        .join(", ")}.`,
+    ),
 
-    heading(2, "Try it out"),
-    paragraphs("Take Studio for a spin with a local pre-seeded database and example project."),
-    ["```bash", TRY_STUDIO_COMMAND, "```"].join("\n"),
+    // FAQ: the accordion's heading, then each question with its answer (the
+    // answers' inline markup is already Markdown).
+    heading(2, "Prisma Studio FAQ"),
+    ...STUDIO_FAQ.flatMap((item) => [heading(3, item.question), paragraphs(item.answer)]),
   ]);
 }

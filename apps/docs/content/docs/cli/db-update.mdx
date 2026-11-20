@@ -6,9 +6,9 @@ metaTitle: db update | Prisma ORM CLI
 metaDescription: Learn how to reconcile a database with the current Prisma ORM contract.
 ---
 
-`db update` compares the live database with the emitted contract and applies the changes that close the gap, whether or not the database was bootstrapped with `db init`.
+`db update` compares the live database with the emitted contract and applies the changes that make the database match it, whether or not the database was set up with `db init`. After it applies the changes, it signs the database, as [`db sign`](/cli/db-sign) does: it records there which contract the database now matches.
 
-Use it for direct reconciliation when you do not need a checked-in migration package.
+Like Prisma ORM 7's `db push`, use it when you want a database to match your contract and do not need a migration file for the change, for example on your development database while you try out a contract change.
 
 ## Usage
 
@@ -22,24 +22,26 @@ npx prisma db update --db "$DATABASE_URL"
 | --- | --- |
 | `--db <url>` | Connects to the database. |
 | `--dry-run` | Shows planned operations without applying them. |
-| `--to <contract>` | Updates to a specific contract state. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). It refuses `@contract`, `@db`, and `@empty` with the error code `MIGRATION.REF_WRONG_GRAMMAR`. To update to the contract in `contract.json`, leave out `--to`. |
+| `--to <contract>` | Updates to a specific contract state. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). It refuses `@contract`, `@db`, and `@empty` with the error code `MIGRATION.REF_WRONG_GRAMMAR`. To update to the contract in `contract.json`, leave out `--to`. |
 | `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. On PostgreSQL and SQLite, also renames an enum value in the rows that hold it, as in `--rename Status.ARCHIVED:Status.RETIRED`, a field of a value object, as in `--rename GeoPoint.lat:GeoPoint.latitude`, and a variant. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
 | `--delete <subject>` | Lets the update lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed, a field of a value object, or the rows of a variant. Repeatable. |
 | `--convert <Variant>` | On PostgreSQL and SQLite, rewrites the stored discriminator value of a variant whose value changed. Repeatable. |
 | `--allow <Model>` | Lets one operation change who can read or write the model's data. Repeatable. |
-| `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-command contract hash. Without it, `db update` advances `db` when `--db` is omitted, and advances nothing when `--db` is passed. |
+| `--advance-ref <name>` | After the update, points the named [ref](/cli/migration-ref) at the contract state the database now matches. Without it, `db update` points the `db` ref there when you leave out `--db`, and changes no ref when you pass `--db`. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
+The [global flags](/cli/global-flags), such as `--no-interactive` and `--confirm`, apply too.
+
 ### Contract references [#contract-references]
 
-A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
+A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. [Contract references each command accepts](/cli/migration-ref#contract-reference-forms) lists the forms for every command.
 
-## How the db ref moves
+## What happens to the db ref [#how-the-db-ref-moves]
 
-Run without `--db`, `db update` takes the connection from `db.connection` in `prisma.config.ts` and advances the [ref](/cli/migration-ref) named `db` to the contract it just applied. Pass `--db` and that advancement is suppressed, even when the URL is the same one the config holds. Pass `--advance-ref db` alongside `--db` to get it back.
+The [ref](/cli/migration-ref) named `db` records which contract state your development database is at, which is the database `db.connection` in `prisma.config.ts` connects to. So when you run `db update` without `--db`, it uses that connection and points the `db` ref at the contract it just applied. When you pass `--db`, `db update` treats the URL as some other database and leaves the `db` ref alone, even when the URL is the same one the config holds. Pass `--advance-ref db` alongside `--db` to update the ref anyway.
 
-The `db` ref is what [`migration plan`](/cli/migration-plan) uses as its starting point when you do not pass `--from`. Passing `--db` only suppresses the advancement; it never removes a `db` ref that already exists. So a loop that always passes `--db` without `--advance-ref db` leaves the ref wherever it was last set, and the next `migration plan` starts from that stale contract. If the ref was never created, `migration plan` plans from an empty database while `migrations/app/` is empty, and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist on disk.
+The `db` ref is what [`migration plan`](/cli/migration-plan) uses as its starting point when you do not pass `--from`. Passing `--db` only leaves the ref unchanged; it never removes a `db` ref that already exists. So if you always pass `--db` without `--advance-ref db`, the ref keeps naming the state it was last set to, and the next `migration plan` starts from that out-of-date contract. If the ref was never created, `migration plan` plans from an empty database while `migrations/app/` is empty, and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist on disk.
 
 ## Renames and data loss [#renames-and-data-loss]
 
@@ -54,7 +56,7 @@ It also asks before each operation that changes who can read or write a model's 
 npx prisma db update --db "$DATABASE_URL" --advance-ref db --no-interactive --delete Legacy --rename User.name:User.fullName
 ```
 
-In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with [`CLI.CONSENT_REQUIRED`](/cli/error-reference#CLI.CONSENT_REQUIRED) instead. The error lists each question still unanswered, and its next actions give the flags to add. A `--delete` or `--allow` that answers no question fails the run with `CLI.CONSENT_UNUSED`. To list the questions without applying anything, run with `--dry-run --json` and read `dataLoss` and `accessChanges`. `--confirm` does not answer them: only `--rename`, `--delete`, `--allow` or your answers in a terminal do.
+In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with [`CLI.CONSENT_REQUIRED`](/cli/error-reference#CLI.CONSENT_REQUIRED) instead. The error lists each question still unanswered, and its next actions give the flags to add. A `--delete` or `--allow` that answers no question fails the run with `CLI.CONSENT_UNUSED`. To list the questions without applying anything, run with `--dry-run --json` and read `dataLoss` and `accessChanges`. The global `--confirm` flag does not answer these questions: only `--rename`, `--delete`, `--allow` or your answers in a terminal do.
 
 Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type loses no data, so the update asks nothing about it.
 

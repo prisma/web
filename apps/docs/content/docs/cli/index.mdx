@@ -75,7 +75,7 @@ npx prisma contract emit
 npx prisma db init --db "$DATABASE_URL" --advance-ref db
 ```
 
-`db init` and `db update` advance the [ref](/cli/migration-ref) named `db` on their own when you leave `--db` off and let the connection come from `prisma.config.ts`. Passing `--db` suppresses that, so add `--advance-ref db` to keep the ref current. Without it, `--db` leaves any existing `db` ref where it was, and a later [`migration plan`](/cli/migration-plan) starts from that stale contract; if the ref was never created, `migration plan` refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` as soon as migrations exist on disk.
+The [ref](/cli/migration-ref) named `db` is a file in your repository, `migrations/app/refs/db.json`, that records which version of your contract your development database has, and [`migration plan`](/cli/migration-plan) starts from that version. When you leave `--db` off and let the connection come from `prisma.config.ts`, `db init` and `db update` point the `db` ref at the state they applied. When you pass `--db`, they leave the ref alone, so add `--advance-ref db` as above. Without it, an existing `db` ref keeps naming an older state, and a later `migration plan` starts from that out-of-date contract. If the ref was never created, `migration plan` refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` as soon as migrations exist on disk.
 
 ### Adopt an existing database
 
@@ -86,7 +86,7 @@ npx prisma db sign --db "$DATABASE_URL"
 npx prisma db verify --db "$DATABASE_URL"
 ```
 
-`db sign` also sets the `db` ref to the signed contract, so the next `migration plan` starts from the database you adopted. Pass `--no-advance-ref` to sign without moving a ref.
+`db sign` also sets the `db` ref to the signed contract, so the next `migration plan` starts from the database you adopted. Pass `--no-advance-ref` to sign without changing any ref.
 
 ### Use checked-in migrations
 
@@ -98,7 +98,7 @@ npx prisma db migrate --db "$DATABASE_URL" --advance-ref db
 npx prisma db verify --db "$DATABASE_URL"
 ```
 
-Plain `db migrate` never moves a ref; `--advance-ref db` is what keeps the next `migration plan` incremental. Leave it off in deploy and CI applies, where a repository ref should not move.
+`db migrate` changes no ref unless you pass `--advance-ref db`. Pass it in development, so that the next `migration plan` starts from what you just applied instead of planning the same change again. Leave it off in CI and deployments, which should not change the refs in your repository: there, run `npx prisma db migrate`, or `npx prisma db migrate --to <ref>` if you name the state each environment should reach with a ref.
 
 ## Agent skills
 
@@ -112,7 +112,14 @@ npx prisma skills sync
 
 ## Other commands
 
-A few commands ship without dedicated pages yet. `contract format` formats your PSL contract source in place, including a Prisma ORM 7 schema read through `prisma7Schema`, and `lsp` starts the Prisma ORM language server (spawned by editors, not run interactively; see [Editor support](/orm/contract-authoring/editor-support)). The `migration` group also has read-only inspection commands: `migration list` (on-disk migrations per [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page); `--space`, `--ascii`, `--legend`), `migration log` (executed history from the database ledger; `--db`, `--utc`, `--ascii`), `migration graph` (the chain of migrations; `--space`, `--dot` for Graphviz output, `--ascii`, `--legend`), and `migration check [target]` (artifact and graph integrity; `--space`). Run any of them with `--help` for the details.
+A few commands have no page of their own yet. `contract format` formats your `contract.prisma` in place, with the indentation and line endings that [`formatter`](/cli/configuration#schema-formatting) sets. It also formats a Prisma ORM 7 `schema.prisma` that your config reads with `prisma7Schema(...)`. `lsp` starts the Prisma ORM language server, which your editor runs for you, as [Editor support](/orm/contract-authoring/editor-support) describes.
+
+The `migration` group also has commands that only read and change nothing. Run any of them with `--help` for what each option does:
+
+- `migration list` lists the migrations on disk, for each [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page). Options: `--space`, `--ascii`, `--legend`.
+- `migration log` lists the migrations the database has actually applied, and when, from the database's own record of them. Options: `--db`, `--utc`, `--ascii`.
+- `migration graph` draws the chain of migrations. Options: `--space`, `--dot` for Graphviz output, `--ascii`, `--legend`.
+- `migration check [target]` checks that no `ops.json` or `migration.json` was edited by hand, and that every ref names a contract state that exists. Option: `--space`.
 
 ## Global flags
 

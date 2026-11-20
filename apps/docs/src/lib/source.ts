@@ -25,11 +25,37 @@ function customIconsPlugin(): LoaderPlugin {
   };
 }
 
+// Sidebar labels must fit on one line. A page whose title is too long sets
+// `sidebarTitle` in its frontmatter, and the page tree (sidebar, page path,
+// previous / next) uses that instead. Same pattern as fumadocs' status badges.
+function sidebarTitlePlugin(): LoaderPlugin {
+  return {
+    name: "docs:sidebar-title",
+    transformPageTree: {
+      file(node, filePath) {
+        if (!filePath) return node;
+        const file = this.storage.read(filePath);
+        const data = file?.format === "page" ? (file.data as { sidebarTitle?: unknown }) : null;
+        if (typeof data?.sidebarTitle === "string" && data.sidebarTitle.trim()) {
+          node.name = data.sidebarTitle;
+        }
+        return node;
+      },
+    },
+  };
+}
+
 // See https://fumadocs.dev/docs/headless/source-api for more info
 export const source = loader({
   baseUrl: "/",
   source: docs.toFumadocsSource(),
-  plugins: [hiddenPagesPlugin(), customIconsPlugin(), lucideIconsPlugin(), openapiPlugin()],
+  plugins: [
+    hiddenPagesPlugin(),
+    sidebarTitlePlugin(),
+    customIconsPlugin(),
+    lucideIconsPlugin(),
+    openapiPlugin(),
+  ],
 });
 
 export function getPageImage(page: InferPageType<typeof source>) {

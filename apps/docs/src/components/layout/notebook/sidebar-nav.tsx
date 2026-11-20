@@ -106,8 +106,7 @@ export function SidebarViewProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * The sidebar's current view. Exported for the navbar breadcrumb, which needs
- * it to name the section on the docs root — see NavBreadcrumb.
+ * The sidebar's current view.
  */
 export function useSidebarView() {
   const ctx = use(SidebarViewContext);

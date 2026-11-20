@@ -172,7 +172,7 @@ function formatRelatedPages(relatedPages: RelatedPageLink[]) {
   const links = relatedPages
     .map((page) => {
       const description = page.description ? `: ${page.description}` : "";
-      return `- [\`${page.title}\`](${page.href})${description}`;
+      return `- [${page.title}](${page.href})${description}`;
     })
     .join("\n");
 
