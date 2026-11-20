@@ -211,6 +211,7 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const config = {
+  poweredByHeader: false,
   ...composerNextConfig,
   reactStrictMode: true,
   transpilePackages: ["@prisma/eclipse"],

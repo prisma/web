@@ -1,38 +1,54 @@
 import { createPageMetadata } from "@/lib/page-metadata";
 import Image from "next/image";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
-import { Youtube } from "@prisma-docs/ui/components/youtube";
-import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
-import { RoleKicker } from "@/components/brand/role-kicker";
-import { Texture } from "@/components/brand/texture";
-import { ArrowRight } from "@/components/icons/forma";
-import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
-import { cn } from "@/lib/utils";
-import { CopyCommand } from "./_components/copy-command";
+import { PrismButtonOutline } from "@/components/brand/prism-button";
+import { ProductHero } from "@/components/product/product-hero";
+import { ArrowRight, CheckBold } from "@/components/icons/forma";
+import { Faq } from "@/components/sections/faq";
 import {
-  CONSOLE_URL,
-  FEATURE_CARDS,
-  FEATURE_ROWS,
-  STUDIO_DOCS_URL,
-  TRY_STUDIO_COMMAND,
+  createFaqStructuredData,
+  createSoftwareApplicationStructuredData,
+} from "@/lib/structured-data";
+import { CompareTable } from "@/app/compare/compare-table";
+import { renderFaqAnswer } from "@/lib/faq-answer";
+import { BrowserFrame } from "./_components/browser-frame";
+import { CommandBox } from "./_components/command-box";
+import { StudioTour } from "./_components/studio-tour";
+import {
+  OPEN_STUDIO_COMMAND,
+  QUICK_ACCESS,
+  STUDIO_COMPARISON,
+  STUDIO_EMBED,
+  STUDIO_FAQ,
+  STUDIO_HERO,
+  STUDIO_TOUR,
+  TRY_STUDIO_STEPS,
 } from "./studio-content";
 
-// Rebuilt in the 2026 redesign language: wrapped-panel hero, paper surfaces,
+// Rebuilt in the 2026 redesign language: the shared ProductHero, paper surfaces,
 // hairline borders, one accent (yellow: Studio ships with Prisma Postgres).
-// The product mockups are dark assets from the old site, so they sit in ink
-// frames; copy and links carry over from the previous page.
+// Every screenshot is captured from one local instance of the latest Studio
+// and shown in the same light browser frame: hero, feature tour and embed. The
+// released CLI (`prisma@prev`) can trail that build by a version, so small UI
+// details, such as the logo, may differ from what a visitor's command opens.
 
 const studioStructuredData = createSoftwareApplicationStructuredData({
   path: "/studio",
   name: "Prisma Studio",
   description:
-    "Visual database browser and editor for Prisma. Explore and edit your data with a model-aware interface, locally or in the Prisma Console.",
+    "Prisma Studio is a free visual editor for PostgreSQL, MySQL and SQLite. Browse, edit and query your data, with or without Prisma ORM, locally or in Prisma Console.",
 });
 
+const studioFaqStructuredData = createFaqStructuredData(
+  "/studio",
+  [...STUDIO_FAQ],
+  "Prisma Studio FAQ",
+);
+
 export const metadata = createPageMetadata({
-  title: "Prisma Studio | Visual Database Browser and Editor",
+  title: "Prisma Studio | Free Postgres GUI to View and Edit Data",
   description:
-    "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
+    "Prisma Studio is a free visual editor for PostgreSQL, MySQL and SQLite. Browse and edit rows, run SQL and map your schema, locally or in Prisma Console.",
   path: "/studio",
   ogKicker: "Prisma Studio",
 });
@@ -41,165 +57,249 @@ export default function StudioPage() {
   return (
     <>
       <JsonLd id="studio-software-application" data={studioStructuredData} />
+      <JsonLd id="studio-faq" data={studioFaqStructuredData} />
 
-      {/* Hero: wrapped-panel title band, yellow wash only (one accent per page) */}
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-[24rem] overflow-hidden"
+      {/* Hero: the shared product-page hero (copy left, Studio right) */}
+      <ProductHero
+        name="Database GUI"
+        accent="postgres"
+        hero={STUDIO_HERO}
+        visualAspect={false}
+        // The product carries this page, so the screenshot gets the larger
+        // share of the split from xl up. At lg (1024–1279) an even split keeps
+        // the copy wide enough (~430px) for both buttons on one line; below
+        // lg the hero stacks.
+        columns="lg:grid-cols-2 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
+        // No custom actions: the shared hero's two buttons, like the other
+        // product pages. "Get started" jumps to the launch commands below;
+        // "Open Prisma Console" is the shortcut for people who already have a
+        // Prisma Postgres database. VS Code and the docs live in Quick access
+        // and the site header.
+        visual={
+          <div className="flex w-full animate-hero-rise-late [contain:inline-size] motion-reduce:animate-none lg:h-full lg:items-center">
+            {/* The same frame and capture size as the tour below, so every
+                screenshot on the page reads as the same Studio. */}
+            <figure className="w-full">
+              <BrowserFrame>
+                <Image
+                  src="/illustrations/studio/hero.png"
+                  alt="Prisma Studio at localhost:5555 showing the team_members table: names, on-call status, skills and job titles across 400 rows, with one title cell open for editing"
+                  width={1040}
+                  height={643}
+                  sizes="(min-width: 1280px) 60vw, (min-width: 1024px) 50vw, 100vw"
+                  className="h-auto w-full"
+                  // The LCP image. Next 16 deprecates `priority`; eager plus
+                  // high fetch priority is its recommended replacement.
+                  loading="eager"
+                  fetchPriority="high"
+                />
+              </BrowserFrame>
+            </figure>
+          </div>
+        }
+      />
+
+      {/* Quick access: the two ways to open Studio, side by side. The local
+          path carries the launch commands; the Console path its benefits. */}
+      <section aria-labelledby="quick-access" className="bg-white px-4 pt-20 sm:px-8 sm:pt-24">
+        <div className="mx-auto max-w-site">
+          <h2
+            id="quick-access"
+            className="scroll-mt-28 text-balance text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]"
           >
-            <div
-              className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
-              style={{
-                background: [
-                  "radial-gradient(50% 62% at 30% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 18%, transparent), transparent 70%)",
-                  "radial-gradient(44% 54% at 56% 100%, color-mix(in srgb, var(--color-prism-yellow-100) 30%, transparent), transparent 68%)",
-                  "radial-gradient(40% 48% at 78% 100%, color-mix(in srgb, var(--color-prism-yellow-400) 14%, transparent), transparent 70%)",
-                ].join(","),
-              }}
-            />
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
-          </div>
-          <Texture opacity={0.06} blend="multiply" />
-
-          <div className="relative px-4 sm:px-8">
-            <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
-              <RoleKicker color="bg-prism-yellow-300" className="justify-center">
-                Prisma Studio
-              </RoleKicker>
-              <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
-                Explore and understand your data
-              </h1>
-              <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                A visual browser and editor for the data in your Prisma project. Work locally or
-                team up inside the Prisma Console.
+            {QUICK_ACCESS.title}
+          </h2>
+          <p className="mt-3 text-pretty leading-relaxed text-muted-foreground">
+            {QUICK_ACCESS.intro}
+          </p>
+          <div className="mt-10 grid gap-12 border-t border-black/[0.08] pt-10 lg:grid-cols-2 lg:gap-16">
+            <div className="flex flex-col items-start">
+              <h3 className="text-lg leading-snug">{QUICK_ACCESS.local.title}</h3>
+              <p className="mt-2 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                {renderFaqAnswer(QUICK_ACCESS.local.description)}
               </p>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-                <PrismButton href={CONSOLE_URL} size="lg">
-                  Explore Studio in Prisma Console
-                </PrismButton>
-                <PrismButtonOutline href={STUDIO_DOCS_URL} size="lg">
-                  Try locally
-                </PrismButtonOutline>
-              </div>
-
-              {/* dark product mockup in an ink frame */}
-              <div className="mt-14 w-full max-w-5xl rounded-2xl bg-[#151515] p-2 shadow-[0_16px_40px_-20px_rgba(21,21,21,0.35)] sm:p-3">
-                <Image
-                  src="/illustrations/studio/hero.svg"
-                  alt="Prisma Studio interface showing a filterable table view of database records"
-                  width={966}
-                  height={270}
-                  className="h-auto w-full rounded-lg"
-                  priority
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Three ways in: card grid with accent top bars */}
-      <section className="bg-white px-4 pt-14 sm:px-8">
-        <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-3">
-          {FEATURE_CARDS.map((card) => (
-            <div
-              key={card.title}
-              className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
-            >
-              <span aria-hidden className={`absolute left-0 top-0 h-1 w-full ${card.accent}`} />
-              <h2 className="text-lg leading-snug">{card.title}</h2>
-              <p className="text-sm leading-relaxed text-muted-foreground">{card.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Feature tour: alternating two-column rows, mockups in ink frames */}
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
-        <div className="mx-auto flex max-w-site flex-col gap-16 sm:gap-20">
-          {FEATURE_ROWS.map((feature, index) => (
-            <div
-              key={feature.title}
-              className={cn(
-                "grid items-center gap-8 lg:grid-cols-2 lg:gap-16",
-                index % 2 === 1 && "lg:[&>*:first-child]:order-2",
-              )}
-            >
-              <div className="max-w-[52ch]">
-                <RoleKicker color="bg-prism-yellow-300">{feature.eyebrow}</RoleKicker>
-                <h2 className="mt-3 text-balance text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">
-                  {feature.title}
-                </h2>
-                <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-                  {feature.description}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-[#151515] p-2 shadow-[0_12px_32px_-18px_rgba(21,21,21,0.3)] sm:p-3">
-                <Image
-                  src={feature.imageSrc}
-                  alt={feature.imageAlt}
-                  width={feature.imageWidth}
-                  height={feature.imageHeight}
-                  className="h-auto w-full rounded-lg"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Video walkthrough */}
-      <section className="bg-white px-4 pb-20 sm:px-8 sm:pb-24">
-        <div className="mx-auto flex max-w-3xl flex-col gap-10">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="max-w-[44ch]">
-              <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">
-                See how Studio works
-              </h2>
-              <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground">
-                Access Prisma Studio on your local machine during development, or in the Prisma
-                Console to collaborate on data with your team.
-              </p>
-            </div>
-            <a
-              href={CONSOLE_URL}
-              className="group flex shrink-0 items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-prism-yellow-700"
-            >
-              Explore Studio in Console
-              <ArrowRight
-                className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
-                aria-hidden
+              <CommandBox
+                className="mt-6"
+                tabs={[
+                  { label: "New example", steps: TRY_STUDIO_STEPS },
+                  { label: "Any database", steps: [OPEN_STUDIO_COMMAND] },
+                ]}
               />
-            </a>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-[#151515] shadow-[0_12px_32px_-18px_rgba(21,21,21,0.3)] [&>iframe]:block [&>iframe]:w-full">
-            <Youtube videoId="s3NS9KBRMcQ" width="100%" title="See how Prisma Studio works" />
+              <p className="mt-3 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                {QUICK_ACCESS.local.note}
+              </p>
+            </div>
+            <div className="flex flex-col items-start lg:border-l lg:border-black/[0.08] lg:pl-16">
+              <h3 className="text-lg leading-snug">{QUICK_ACCESS.console.title}</h3>
+              <p className="mt-2 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                {renderFaqAnswer(QUICK_ACCESS.console.description)}
+              </p>
+              <ul className="mt-6 flex flex-col gap-3">
+                {QUICK_ACCESS.console.points.map((point) => (
+                  <li
+                    key={point}
+                    className="flex items-start gap-2.5 text-[0.9375rem] font-medium text-foreground"
+                  >
+                    <CheckBold
+                      className="mt-0.5 size-4 shrink-0 text-prism-yellow-500"
+                      aria-hidden
+                    />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+              {/* The button, then the editor route as a quiet arrow link in
+                  the hero links' style. */}
+              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+                <PrismButtonOutline href={QUICK_ACCESS.console.cta.href}>
+                  {QUICK_ACCESS.console.cta.label}
+                </PrismButtonOutline>
+                <a
+                  href={QUICK_ACCESS.console.secondaryCta.href}
+                  className="group inline-flex items-center gap-1 text-sm font-medium text-foreground transition-colors hover:text-prism-yellow-700"
+                >
+                  {QUICK_ACCESS.console.secondaryCta.label}
+                  <ArrowRight
+                    className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                    aria-hidden
+                  />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Try it out: ink terminal card */}
-      <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
-        <div className="mx-auto flex max-w-2xl flex-col items-center gap-8 text-center">
-          <div>
-            <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Try it out</h2>
-            <p className="mt-3 text-pretty leading-relaxed text-muted-foreground">
-              Take Studio for a spin with a local pre-seeded database and example project.
+      {/* Feature tour: heading and feature list on the left, one large
+          screenshot on the right (lg+); a plain stack below that. */}
+      <section aria-labelledby="studio-tour" className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+        <div className="mx-auto max-w-site">
+          <StudioTour
+            heading={STUDIO_TOUR.title}
+            headingId="studio-tour"
+            stops={STUDIO_TOUR.stops}
+          />
+        </div>
+      </section>
+
+      {/* Embed: Studio as a React component in your own app. Copy, use cases
+          and links on the left, Studio inside an example host app on the
+          right (lg+); a stack below that. Sits before the comparison, whose last row is
+          embedding. */}
+      <section aria-labelledby="studio-embed" className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
+        <div className="mx-auto grid max-w-site items-center gap-12 lg:grid-cols-[minmax(0,0.76fr)_minmax(0,1.24fr)] lg:gap-16 xl:gap-20">
+          <div className="flex flex-col items-start">
+            <h2
+              id="studio-embed"
+              className="text-balance text-[clamp(1.75rem,2.6vw,2.25rem)] leading-[1.1]"
+            >
+              {STUDIO_EMBED.title}
+            </h2>
+            <p className="mt-4 max-w-[52ch] text-pretty leading-relaxed text-muted-foreground">
+              {renderFaqAnswer(STUDIO_EMBED.intro)}
             </p>
+            <ul className="mt-6 flex flex-col gap-3">
+              {STUDIO_EMBED.useCases.map((useCase) => (
+                <li
+                  key={useCase}
+                  className="flex items-start gap-2.5 text-[0.9375rem] font-medium text-foreground"
+                >
+                  <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-yellow-500" aria-hidden />
+                  {useCase}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-6 max-w-[52ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+              {STUDIO_EMBED.facts}
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+              <PrismButtonOutline href={STUDIO_EMBED.cta.href}>
+                {STUDIO_EMBED.cta.label}
+              </PrismButtonOutline>
+              <a
+                href={STUDIO_EMBED.demo.href}
+                className="group inline-flex items-center gap-1 text-sm font-medium text-foreground transition-colors hover:text-prism-yellow-700"
+              >
+                {STUDIO_EMBED.demo.label}
+                <ArrowRight
+                  className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  aria-hidden
+                />
+              </a>
+            </div>
           </div>
-
-          <div className="relative w-full overflow-hidden rounded-2xl bg-[#151515] p-6 text-left shadow-[0_16px_40px_-20px_rgba(21,21,21,0.4)] sm:p-7">
-            <span aria-hidden className="absolute left-0 top-0 h-1 w-full bg-prism-yellow-300" />
-            <CopyCommand text={TRY_STUDIO_COMMAND} />
-            <pre className="overflow-x-auto pr-12 font-mono text-sm leading-7 text-[#f9faf5]">
-              <code>{TRY_STUDIO_COMMAND}</code>
-            </pre>
+          <div className="min-w-0">
+            <BrowserFrame address={STUDIO_EMBED.address}>
+              <Image
+                src={STUDIO_EMBED.imageSrc}
+                alt={STUDIO_EMBED.imageAlt}
+                width={1040}
+                height={643}
+                sizes="(min-width: 1024px) 60vw, 100vw"
+                className="h-auto w-full"
+              />
+            </BrowserFrame>
           </div>
         </div>
       </section>
+
+      {/* Comparison: Studio next to the database GUIs people search it
+          against. Every cell is a checked fact (see STUDIO_COMPARISON). The
+          answer-prose wrapper only lends the table its cell padding and the
+          card stacking below 640px, same as the /compare pages. */}
+      <section aria-labelledby="studio-compare" className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
+        <div className="mx-auto max-w-site">
+          <h2
+            id="studio-compare"
+            className="text-balance text-[clamp(1.75rem,2.6vw,2.25rem)] leading-[1.1]"
+          >
+            {STUDIO_COMPARISON.title}
+          </h2>
+          <p className="mt-4 max-w-[60ch] text-pretty leading-relaxed text-muted-foreground">
+            {STUDIO_COMPARISON.intro}
+          </p>
+          <div className="answer-prose mt-10">
+            <CompareTable
+              labelledBy="studio-compare"
+              corner={STUDIO_COMPARISON.corner}
+              columns={STUDIO_COMPARISON.columns}
+              // Monochrome so five brand colours don't fight the page's one
+              // accent; the names beside them carry the meaning.
+              columnIcons={STUDIO_COMPARISON.columnLogos.map((src) => (
+                <Image
+                  key={src}
+                  src={src}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="size-5 shrink-0 object-contain opacity-85"
+                />
+              ))}
+              rows={STUDIO_COMPARISON.rows}
+              minWidth="60rem"
+            />
+          </div>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">
+            {STUDIO_COMPARISON.note} Sources:{" "}
+            {STUDIO_COMPARISON.sources.map((source, i) => (
+              <span key={source.href}>
+                {i > 0 ? ", " : null}
+                <a
+                  href={source.href}
+                  className="underline decoration-black/25 underline-offset-4 transition-colors hover:text-foreground hover:decoration-black/50"
+                >
+                  {source.label}
+                </a>
+              </span>
+            ))}
+            .
+          </p>
+        </div>
+      </section>
+
+      <div className="bg-white">
+        <Faq heading="Prisma Studio FAQ" items={STUDIO_FAQ} id="faq" />
+      </div>
     </>
   );
 }

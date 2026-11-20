@@ -1,6 +1,21 @@
 import { rehypeCodeDefaultOptions, type RehypeCodeOptions } from "fumadocs-core/mdx-plugins";
 import { transformerShikiTokenClasses } from "@prisma-docs/ui/mdx/shiki-token-classes";
 
+/*
+ * The current Prisma mark (apps/docs/public/logo/mark.svg), for code blocks
+ * in `prisma` files. fumadocs still ships the retired triangle from Simple
+ * Icons for that language. Brand colours are kept: the mark is defined by its
+ * three colour bands and collapses to a plain block in one colour. Its
+ * clip-path and the two zero-area sliver paths are dropped, so the inline SVG
+ * carries no ids that could collide when a page repeats it.
+ */
+const prismaMark =
+  '<svg viewBox="0 0 263 264" fill="none" aria-hidden="true">' +
+  '<path d="M57.3357 92.5003L0 149.939V53.5L53.2105 0.10425V0H149.524L57.3357 92.5003Z" fill="#04D5E7"/>' +
+  '<path d="M263 91.7452L91.0537 264H0V172.229L171.92 0H263V91.7452Z" fill="#FE4352"/>' +
+  '<path d="M209.686 264H113.373L156.453 220.773L263.001 114.034V210.5L209.686 264Z" fill="#FEBE29"/>' +
+  "</svg>";
+
 /**
  * `rehypeCodeOptions` for every app whose global CSS imports
  * `@prisma-docs/ui/styles` — docs, blog and eclipse. It is the fumadocs
@@ -17,6 +32,7 @@ import { transformerShikiTokenClasses } from "@prisma-docs/ui/mdx/shiki-token-cl
  */
 export const rehypeCodeOptions: RehypeCodeOptions = {
   ...rehypeCodeDefaultOptions,
+  icon: { extend: { prisma: prismaMark } },
   transformers: [...(rehypeCodeDefaultOptions.transformers ?? []), transformerShikiTokenClasses()],
 };
 

@@ -16,7 +16,6 @@ import { ShareRow } from "../_components/share-row";
 import { TemplatePreview } from "../_components/template-preview";
 import {
   authorBadge,
-  CATEGORY_META,
   CONTRIBUTE,
   ogCardPathFor,
   templatePage,
@@ -413,7 +412,6 @@ function Facts({
             </ul>
           </Fact>
         )}
-        <Fact label="Type">{CATEGORY_META[template.category].label}</Fact>
         {added && <Fact label="Added">{added}</Fact>}
         <Fact label="Source">
           <a href={template.sourceUrl} target="_blank" rel="noopener noreferrer" className={LINK}>

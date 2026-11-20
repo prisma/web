@@ -7,7 +7,7 @@ import { createFaqStructuredData } from "@/lib/structured-data";
 export const metadata = createPageMetadata({
   title: "Prisma Postgres | Serverless PostgreSQL database for TypeScript apps",
   description:
-    "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
+    "Prisma Postgres is a serverless cloud PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing.",
   path: "/postgres",
   ogKicker: "Prisma Postgres",
   ogAccent: "yellow",

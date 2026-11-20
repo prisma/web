@@ -8,7 +8,7 @@ metaDescription: 'Group writes atomically with db.transaction() on PostgreSQL, a
 
 Run several writes as one unit with `db.transaction(...)`: they all commit together, or they all roll back.
 
-Prisma ORM 8 runs on PostgreSQL, SQLite, and MongoDB. MySQL is an early preview that reads data, and its `db.transaction(...)` runs reads and raw SQL. The examples on this page are PostgreSQL; `db.transaction(...)` works the same way on SQLite, and MongoDB is covered in [Transactions on MongoDB](#transactions-on-mongodb).
+The examples on this page are PostgreSQL. `db.transaction(...)` works the same way on SQLite and MySQL. MongoDB is covered in [Transactions on MongoDB](#transactions-on-mongodb).
 
 ## Run writes in a transaction
 
@@ -56,21 +56,32 @@ await db.transaction(async (tx) => {
 });
 ```
 
-Prisma ORM does not export a type for `tx`, so add this line to `src/prisma/db.ts`: `export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];`, then import `Tx` wherever a helper needs it.
+To type the helper's parameter, add this line to `src/prisma/db.ts`: `export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];`, then import `Tx` wherever a helper needs it. The package also exports a type for this, `PostgresTransactionContext<Contract>` from `@prisma/orm-postgres/runtime`, which the [reference](/orm/reference/transactions-and-runtime#dbtransactioncallback) describes.
+
 Do not open a second transaction inside the helper, because calling `db.transaction(...)` again inside a callback does not nest: the inner call is a separate transaction that commits or rolls back on its own, and the outer one cannot roll it back. Pass `tx` down instead.
 
 ### Options and isolation level
 
-`db.transaction(...)` takes the callback and nothing else. There are no `isolationLevel`, `timeout`, or `maxWait` options; see [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet). Every transaction runs at the database's default isolation level, `READ COMMITTED` on PostgreSQL, and you cannot ask for another level yet. If you need one, set it yourself as the first statement in the callback:
+`db.transaction(...)` takes a second argument with an isolation level and a time limit in milliseconds. Set defaults for every call with `transactionOptions`, where you create the client in `src/prisma/db.ts`, and override them on one call:
 
 ```typescript
-await db.transaction(async (tx) => {
-  await tx.execute(db.raw.sql`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`.affectedCount().build());
-  // your writes
+import postgres, { IsolationLevel } from "@prisma/orm-postgres/runtime";
+
+const db = postgres({
+  contract,
+  url: process.env.DATABASE_URL!,
+  transactionOptions: { isolationLevel: IsolationLevel.RepeatableRead, timeout: 5000 },
 });
+
+await db.transaction(
+  async (tx) => {
+    // your writes
+  },
+  { isolationLevel: IsolationLevel.Serializable },
+);
 ```
 
-There is no transaction timeout either, so a transaction stays open for as long as your callback runs. If you need a limit, set PostgreSQL's `idle_in_transaction_session_timeout` on the connection (`transaction_timeout` on PostgreSQL 17 and later).
+Without an isolation level, a transaction runs at the database's default, `READ COMMITTED` on PostgreSQL. Without a timeout, a transaction stays open for as long as your callback runs; `timeout: null` on a call turns off the client's default. When a transaction runs out of time, the call rejects with an error whose `code` is `RUNTIME.TRANSACTION_TIMEOUT`, and none of its writes are committed. There is no `maxWait` option. The [transactions reference](/orm/reference/transactions-and-runtime#dbtransactioncallback) has the details.
 
 ## Roll back on errors
 
@@ -274,7 +285,7 @@ await db.transaction(async (tx) => {
 
 Queries on `db` run on their own connection, outside the open transaction, so they commit immediately and won't roll back with the rest of the callback. Use `tx` for every query inside the callback: `tx.orm` for models, `tx.sql` and `tx.execute` for the SQL query builder.
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for coding agents, and in an existing project you run `npx prisma skills sync` to add them. The `prisma-8` skill covers transactions, so try prompts that map to each section:
 

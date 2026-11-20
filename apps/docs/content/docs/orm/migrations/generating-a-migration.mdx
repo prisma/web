@@ -71,7 +71,7 @@ Read the rest of that output closely, because it tells you what was planned and 
 
 The `No db ref set` line is telling you that nothing in this project records which contract state your database matches, so `migration plan` assumed an empty database and planned from there. That assumption is right for a new project. If you already have a database, tell Prisma ORM what is in it before you plan anything, and which command does that depends on what the database holds:
 
-- If Prisma ORM 7 migrated the database, follow the steps in the [upgrade guide](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) first.
+- If Prisma ORM 7 migrated the database, follow the steps in the [upgrade guide](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership) first.
 - If the database is empty, you need nothing: `npx prisma db migrate` creates the tables for you, though it does not create the database itself.
 - If every table in the database already matches your contract, run [`npx prisma db sign`](/cli/db-sign) and then read [The automatic baseline](#the-automatic-baseline) below. `db sign` checks the tables against your contract and then writes the [marker](/orm/migrations/the-migration-graph#terms-used-on-this-page), which is the record in the database of which contract state it matches.
 - If the database has only some of your tables, run [`npx prisma db init`](/cli/db-init). It adds what is missing and nothing else, and it stops if matching your contract would need a change that could lose data, such as dropping a column.
@@ -198,12 +198,24 @@ npx prisma migration plan --name add_display_name --backfill User.displayName
 │  migrations:  migrations/app
 │  name:        add_display_name
 
-⚠ Planned migration with placeholder(s) — edit migration.ts then run `node migration.ts` to self-emit
+⚠ Planned migration with placeholder(s) — edit migration.ts, then run `node migrations/app/20260707T1008_add_display_name/migration.ts` to self-emit
+
+migrations/app/20260707T1008_add_display_name
+├─ Add column "displayName" to "user"
+└─ Set NOT NULL on "user"."displayName"
+
+Statements applied
+└─ backfill field "User.displayName" (backfill slots written in migration.ts)
 
 from:       967cb9f63587c1d90f64716780f04eec22b263424e89f07139233fc2c3d710c4
 to:         866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484
 app space:  migrations/app/20260707T1008_add_display_name
+
+→ Replace each placeholder(...) call in migrations/app/20260707T1008_add_display_name/migration.ts with your query
+→ Run it to self-emit ops.json and attest the package: node migrations/app/20260707T1008_add_display_name/migration.ts
 ```
+
+`Statements applied` lists the flags you passed, such as `--backfill User.displayName`, and what each one changed in the plan; nothing has run against a database yet.
 
 Open the new `migration.ts` and you will find a `dataTransform` step between the `ADD COLUMN` and the `SET NOT NULL`, which is the step that updates the rows already in the table. The two `placeholder(...)` calls inside it mark where your queries go: the first finds the rows that still need a `displayName`, and the second fills the value in. Write both with the [SQL query builder](/orm/reference/sql-query-builder), then recompile the file, which is the step the output above calls self-emit. Until you fill the placeholders in and recompile, this migration cannot run at all, so a forgotten placeholder costs you a failed deploy rather than a wrong database. [Editing a migration](/orm/migrations/editing-a-migration) walks through writing both queries and recompiling.
 
@@ -228,7 +240,7 @@ Planning covers tables, columns, indexes, constraints, and the backfill placehol
 
 :::
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. The skills are instruction files your agent reads, so you can ask it to:
 

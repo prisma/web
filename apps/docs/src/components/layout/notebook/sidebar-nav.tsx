@@ -106,8 +106,7 @@ export function SidebarViewProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * The sidebar's current view. Exported for the navbar breadcrumb, which needs
- * it to name the section on the docs root — see NavBreadcrumb.
+ * The sidebar's current view.
  */
 export function useSidebarView() {
   const ctx = use(SidebarViewContext);
@@ -220,13 +219,17 @@ export function SidebarNavHeader({ banner }: { banner?: ReactNode }) {
         <ChevronLeft />
         All docs
       </Link>
+      {/* The title takes a row's vertical padding (py-2), so "All docs" →
+          title → list reads in the same rhythm as the rows below. The banner
+          (version switcher) then sits ~20px under the title text, matching the
+          ~19px between it and the first list label. */}
       {section && (
-        <div className="flex items-center gap-2 px-2 font-medium text-fd-foreground [&_svg]:size-4 [&_svg]:shrink-0">
+        <div className="flex items-center gap-2 px-2 py-2 font-medium text-fd-foreground [&_svg]:size-4 [&_svg]:shrink-0">
           {section.icon}
           {section.title}
         </div>
       )}
-      {banner}
+      {banner && <div className="mt-1">{banner}</div>}
     </div>
   );
 }

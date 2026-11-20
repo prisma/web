@@ -47,7 +47,7 @@ model User {
   id        ObjectId @id @map("_id")
   email     String   @unique
   name      String?
-  createdAt Date
+  createdAt DateTime
   posts     Post[]
   @@map("users")
 }
@@ -60,7 +60,7 @@ model Post {
   tags      String[]
   author    User     @relation(fields: [authorId], references: [id])
   authorId  ObjectId
-  createdAt Date
+  createdAt DateTime
   @@map("posts")
 }
 ```
@@ -141,7 +141,7 @@ On MongoDB the driver throws its own error, and a duplicate key gives you an err
 
 :::note
 
-MongoDB contracts do not support `@default`. For a timestamp, type the field `temporal.CreatedAt` or `temporal.UpdatedAt` and a client created by `mongo()` fills it in, as [Field types](/orm/data-modeling/mongodb#field-types) shows. Pass any other value yourself.
+MongoDB contracts do not support `@default`. For a timestamp, type the field `temporal.CreatedAt` or `temporal.UpdatedAt`, or write `@onCreate(now())` on a `DateTime` field, and a client created by `mongo()` fills it in, as [Field types](/orm/data-modeling/mongodb#field-types) shows. An id declared `id ObjectId @id @map("_id")` is filled in too. Pass any other value yourself: the id generators such as `nanoid()` and `uuid()` do not apply to a MongoDB `String` field, and `npx prisma contract emit` fails with `PSL_UNKNOWN_GENERATOR_FUNCTION` if you write one.
 
 `@map("_id")` stores the id field as the document's `_id`, and the returned document still has an `id` key, the field's name in the contract.
 
@@ -172,7 +172,22 @@ await db.orm.public.User
 
 `p.disconnect(...)` unlinks a related record, but it applies on `.update(...)` only, not on `.create(...)`.
 
-`connectOrCreate`, the relation `set`, and nested updates, upserts, and deletes do not exist: see [Not available](/orm/coming-from-prisma-orm-7#not-available-yet). For the full picture of relations, see [Relations and joins](/orm/fundamentals/relations-and-joins).
+On PostgreSQL, SQLite, and MySQL, `.update(...)` can also change or delete the related records a filter matches, on a list field such as `posts`. Call `where(...)` on the relation builder, then `updateAll(...)` or `deleteAll()`. To run several of these in one call, return them as an array, and they run in the order you list them:
+
+```typescript
+await db.orm.public.User
+  .where({ email: "jane@prisma.io" })
+  .update({
+    posts: (p) => [
+      p.where({ published: false }).updateAll({ published: true }),
+      p.where({ title: "Old post" }).deleteAll(),
+    ],
+  });
+```
+
+Only the user's own posts change. [`update()`](/orm/reference/orm-client#update) has the rules for each operation.
+
+`connectOrCreate`, the relation `set`, and nested upserts do not exist, and a nested update or delete always goes through `where(...).updateAll(...)` or `where(...).deleteAll()` as above: see [Not available](/orm/coming-from-prisma-orm-7#not-available-yet). For the full picture of relations, see [Relations and joins](/orm/fundamentals/relations-and-joins).
 
 ## Update one record
 
@@ -420,7 +435,7 @@ await db.transaction(async (tx) => {
 
 Prisma ORM 7 supported `$transaction([query1, query2])`, but Prisma ORM 8 does not: there is no `$transaction`, and queries don't queue up in arrays. Put the calls inside one `db.transaction(...)` callback instead, and the [Transactions page](/orm/fundamentals/transactions) shows the pattern.
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent, and in an existing project you run `npx prisma skills sync` to add them. Skills are instruction files that tell the agent how Prisma ORM 8 works, and the `prisma-8` skill covers everything on this page, so try prompts that map to each section:
 

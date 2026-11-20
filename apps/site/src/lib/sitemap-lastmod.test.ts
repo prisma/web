@@ -320,6 +320,19 @@ test("the production build may fetch git history for the sitemap dates", () => {
   assert.match(sitemapSource, /fetchHistory: process\.env\.NODE_ENV === "production"/);
 });
 
+test("the site sitemap is built once per deploy, where the git history is", () => {
+  // A fetch with `next.revalidate` behind the route sets the route's own
+  // revalidation. Next then rebuilds the sitemap on the server, which has no
+  // git history, and every TSX route loses its lastmod.
+  const route = readFileSync(new URL("../app/sitemap-site.xml/route.ts", import.meta.url), "utf8");
+  assert.match(route, /export const dynamic = "force-static";/);
+  assert.doesNotMatch(route, /export const revalidate\b/);
+
+  const sitemapSource = readFileSync(new URL("./sitemap.ts", import.meta.url), "utf8");
+  assert.match(sitemapSource, /loadTemplates\("build"\)/);
+  assert.doesNotMatch(sitemapSource, /\brevalidate\s*:/);
+});
+
 test("gitLogArgs follows the built branch and needs no file contents", () => {
   const args = gitLogArgs("abc", "apps/site/src");
   assert.deepEqual(args.slice(0, 2), ["log", "abc"]);
@@ -474,6 +487,57 @@ describe("git history on each kind of build host", () => {
     });
     assert.deepEqual(relative(origin, dates), fullHistory);
     assert.deepEqual(messages, []);
+  });
+
+  test("/pricing, /postgres, /compute and /compare/neon get their lastmod from the commits that changed them", () => {
+    // The routes' real page and content file paths, in a repository whose
+    // history the test sets.
+    const pages: Record<string, string> = {
+      "/pricing": "app/pricing/page.tsx",
+      "/postgres": "app/postgres/page.tsx",
+      "/compute": "app/compute/page.tsx",
+      "/compare/neon": "app/compare/neon/page.tsx",
+    };
+    const realSrc = path.join(process.cwd(), "src");
+    const files = (pathname: string) => [pages[pathname]!, ...ROUTE_CONTENT_FILES[pathname]!];
+    for (const pathname of Object.keys(pages)) {
+      for (const file of files(pathname)) {
+        assert.ok(existsSync(path.join(realSrc, file)), `${pathname}: ${file} does not exist`);
+      }
+    }
+
+    const repo = path.join(root, "routes");
+    mkdirSync(repo);
+    git(repo, ["init", "-q", "-b", "main"]);
+    const at = (file: string) => `apps/site/src/${file}`;
+    write(
+      repo,
+      Object.fromEntries(
+        Object.keys(pages).flatMap((pathname) => files(pathname).map((file) => [at(file), "v1"])),
+      ),
+    );
+    commit(repo, "2026-10-01T10:00:00+00:00");
+    write(repo, { [at("lib/markdown/pricing.ts")]: "v2" });
+    commit(repo, "2026-10-20T10:00:00+00:00");
+    write(repo, { [at("app/compare/neon/_sections.tsx")]: "v2" });
+    commit(repo, "2026-10-30T10:00:00+00:00");
+    // A shared module: not a content change to any of these routes.
+    write(repo, { [at("components/brand/prism-button.tsx")]: "v1" });
+    commit(repo, "2026-11-02T10:00:00+00:00");
+
+    const dates = getGitFileDates(src(repo), { env: {}, ignoreRevs: new Set() });
+    const lastmod = Object.fromEntries(
+      Object.entries(pages).map(([pathname, page]) => [
+        pathname,
+        getRouteLastModified(pathname, path.join(src(repo), page), src(repo), dates),
+      ]),
+    );
+    assert.deepEqual(lastmod, {
+      "/pricing": "2026-10-20",
+      "/postgres": "2026-10-01",
+      "/compute": "2026-10-01",
+      "/compare/neon": "2026-10-30",
+    });
   });
 
   test("ignored commits are skipped in local and fetched history", () => {

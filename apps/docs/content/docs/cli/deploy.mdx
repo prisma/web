@@ -1,9 +1,9 @@
 ---
 title: deploy
-description: Deploy a Composer application to Prisma Compute, to production or an isolated stage.
+description: Deploy a Composer application to Prisma Compute, to production or another environment.
 url: /cli/deploy
 metaTitle: deploy | Prisma CLI
-metaDescription: Complete reference for the prisma deploy command, including stages, credentials, CI reports, and the in-process control API.
+metaDescription: Complete reference for the prisma deploy command, including environments, credentials, CI reports, and the in-process control API.
 ---
 
 `deploy` deploys a [Prisma Composer](/composer) application to [Prisma Compute](/compute). It loads the module whose default export is the application root, named by `entry` in the `composer` section of `prisma.config.ts`, typically `./module.ts`. The command streams the deploy pipeline's own output to the terminal.
@@ -20,7 +20,7 @@ The `deploy` command does not build your application. Run your build command bef
 
 ```npm
 npx prisma deploy
-npx prisma deploy --stage feat-auth
+npx prisma deploy --environment feat-auth
 ```
 
 ## Flags
@@ -29,7 +29,7 @@ npx prisma deploy --stage feat-auth
 | --- | --- |
 | `--entry <path>` | Deploy the app from this module instead of the `entry` in `prisma.config.ts` |
 | `--name <name>` | Override the application name for this deploy. It defaults to the name of the exported application, and that name selects the project in your workspace: a project this module deployed before is reused, and a same-name project whose hosted state cannot be verified stops the deploy with `HostedStateBootstrapError`, so pass `--name` when the default would land in a project you did not mean to deploy into |
-| `--stage <stage>` | Deploy scope to target; omit for production |
+| `--environment <name>` | The environment to deploy to (default: `production`). Any other name is a complete, isolated copy of the app, such as `staging` or one per pull request. Must be a valid git ref name |
 | `--report <path>` | Write the deploy's outcome as JSON to this path: resources, preview URLs, and the failure cause. Also settable as `PRISMA_COMPOSER_REPORT_FILE` |
 | `--build-id <id>` | Join the deploy record your CI already created rather than letting the target create one |
 
@@ -48,18 +48,28 @@ The Prisma CLI's global flags also apply: `--format`, `--json`, `--log-level`, `
 
 ## Tearing down and log tailing
 
-The unified CLI has no `destroy` or `log` command. Both operations are available in-process through the control API below: `destroy` takes an explicit target (`{ kind: 'production' }` or `{ kind: 'stage', stage }`), and `log` tails a locally running application.
+The unified CLI has no `destroy` or `log` command. Both operations are available in-process through the control API below: `destroy` takes a required `environment` (production is `environment: 'production'`), and `log` tails a locally running application.
 
 ## The control API
 
 Everything the CLI does is also callable in-process, from `@prisma/composer/control`: typed `deploy`, `destroy`, `dev`, and `log` operations that return structured results instead of printing and exiting:
 
 ```ts
+import { fileURLToPath } from 'node:url';
 import { deploy } from '@prisma/composer/control';
+import prismaConfig from './prisma.config.ts';
 
-const result = await deploy({ entry: 'module.ts', stage: 'pr-42' });
+const result = await deploy({
+  environment: 'pr-42',
+  config: {
+    value: prismaConfig.composer,
+    file: fileURLToPath(new URL('./prisma.config.ts', import.meta.url)),
+  },
+});
 if (!result.ok) console.error(result.failure.message);
 ```
+
+Every operation takes a required `config`: the `composer` section of your `prisma.config.ts` and the path of the file that declares it. `deploy`'s `environment` defaults to `production`; `destroy`'s is required.
 
 Operations return `{ ok: true, value }` or `{ ok: false, failure }`. Failures come back as structured errors with a dotted `failure.code` and the same fix-naming `message` the CLI renders. The deploy engine's live output still streams to your process's stdio; the operations do not capture it.
 
@@ -69,4 +79,4 @@ The operations authenticate with `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID
 
 - [`dev`](/cli/dev): run the same application locally, with no credentials.
 - [Getting started](/composer/getting-started): the commands in a working flow.
-- [Deploying](/composer/deploying): stages, CI, and what a deploy prints.
+- [Deploying](/composer/deploying): environments, CI, and what a deploy prints.

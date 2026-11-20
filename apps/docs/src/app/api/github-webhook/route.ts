@@ -3,6 +3,18 @@ import { createHmac, timingSafeEqual } from "crypto";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  // A disabled integration is an unavailable service, not an unsigned webhook.
+  // Fail before reading the payload or making any third-party requests.
+  if (
+    ![
+      "GITHUB_WEBHOOK_SECRET",
+      "BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK",
+      "LINEAR_API_KEY",
+      "LINEAR_TEAM_ID",
+    ].every((name) => process.env[name])
+  ) {
+    return new Response("GitHub/Linear integration is not configured", { status: 503 });
+  }
   const delivery = req.headers.get("x-github-delivery") ?? "unknown";
   const payload = await req.text();
 

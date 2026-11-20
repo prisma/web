@@ -54,7 +54,7 @@ model Post {
   content   String
   kind      String
   authorId  ObjectId
-  createdAt Date
+  createdAt DateTime
   author    User @relation(fields: [authorId], references: [id])
   @@discriminator(kind)
   @@index([authorId])
@@ -119,7 +119,7 @@ import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 const contract = contractFromJson<Contract>(contractJson);
-const db = mongo({ contract, url: process.env.MONGODB_URL!, dbName: 'app' });
+const db = mongo({ contract, url: process.env.DATABASE_URL!, dbName: 'app' });
 const runtime = await db.runtime();
 
 const plan = db.query.from('posts').build();
@@ -135,6 +135,7 @@ const posts = await runtime.query(plan);
 - On MongoDB, `db.runtime()` returns a promise, so you must await it: `const runtime = await db.runtime()`. Hold it in a variable and reuse it.
 - `await` that call for an array of documents, or write `for await (const doc of runtime.query(plan)) { ... }` to take one document at a time.
 - There is no `db.execute` on the MongoDB client.
+- To build a pipeline once and run it many times with different values, prepare it with `db.prepare(declaration, callback)`, as [Prepared statements (MongoDB)](/orm/reference/transactions-and-runtime#prepared-statements-mongodb) shows. A parameter can go wherever a value goes, and in `skip(...)` and `limit(...)`.
 - The pipeline builder works on documents as they are stored, so it names fields by their stored names. A field declared `id ObjectId @id @map("_id")` is `f._id` in a stage and `_id` in the rows, while the [ORM client](/orm/reference/orm-client) calls the same field `id`. To pass a pipeline row to code that expects an ORM row, rename the field: `({ _id, ...rest }) => ({ ...rest, id: _id })`.
 - **Read results are decoded.** If every stage in your pipeline is one of `match()`, `sort()`, `limit()`, `skip()`, `sample()`, `project()`, `addFields()`, and `vectorSearch()`, `_id` comes back as a hex string. If any stage is not in that list, including `lookup()` and `group()`, every document comes back raw, with each value as MongoDB stores it. An `_id` that MongoDB generated is then an `ObjectId` object from the `mongodb` package, the MongoDB driver Prisma ORM uses. Compare those ids as strings, as [`lookup()`](#lookup) shows. A `DateTime` field comes back as a JavaScript `Date` either way.
 

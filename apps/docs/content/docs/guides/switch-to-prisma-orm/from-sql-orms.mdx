@@ -24,23 +24,6 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 - A Sequelize or TypeORM project that already connects to a PostgreSQL database
 - A TypeScript project. The scripts in this guide are written for an app that runs as ES modules, and steps 2 and 5 say what to change in a CommonJS app
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Add Prisma ORM to this Sequelize or TypeORM project so I can migrate queries incrementally.
-
-1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Before you run `orm init`, note whether package.json has "type": "module". If it does not, and the code uses `require` or compiles to `require` calls, the app is CommonJS: after `orm init`, apply the changes under "In a CommonJS project" in https://www.prisma.io/docs/cli/orm-init.md. Make sure `.env` contains the DATABASE_URL the app already uses.
-2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the existing tables into a contract. Open the file and keep the `@@map` attributes so model names stay clean while table names stay as they are.
-3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. Do not run `db init` or `db update`; the tables already exist.
-4. Following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-sql-orms.md, rewrite the read queries first, then the writes, importing `db` from `src/prisma/db.ts`. Run each rewritten query with `node <script>.ts` and show me the output. In a CommonJS project, import `db` from `./prisma/db` without the `.ts` extension, put the `await` calls inside an `async` function, and run the script with `npx tsx <script>.ts` instead. Leave the old ORM in place for queries you have not rewritten yet, but turn off its schema sync (`synchronize` in TypeORM, `sequelize.sync()` in Sequelize).
-```
-
-</AgentPrompt>
-
 ## 1. The starting point
 
 The app has two TypeORM entities. `synchronize: true` in the data source created the `user` and `post` tables in PostgreSQL, and a script inserted two users and a post through TypeORM repositories.
@@ -128,7 +111,7 @@ installed
 ├─ dotenv
 ├─ prisma@latest (dev)
 ├─ @types/node (dev)
-└─ @prisma/cli-engine@0.9.0 (dev)
+└─ @prisma/cli-engine@0.10.0 (dev)
 ```
 
 You will use these files during the migration:
@@ -142,7 +125,7 @@ You will use these files during the migration:
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
 import { contractFromJson } from '@prisma/orm-postgres/static';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.d.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -153,7 +136,7 @@ export const db = postgres({
 });
 ```
 
-There is no `prisma generate` and no driver adapter in Prisma ORM: the runtime reads `contract.json`, which `contract emit` writes, and connects with the `url` you pass. `orm init` also changes `tsconfig.json`: it sets `"module": "preserve"`, `"moduleResolution": "bundler"`, and `"resolveJsonModule": true`, and it keeps `experimentalDecorators` and `emitDecoratorMetadata` in place for TypeORM. In `package.json`, it adds `"type": "module"` if the file has no `"type"` field. If your app is CommonJS, those changes stop it from starting, so follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you run the app again.
+There is no `prisma generate` and no driver adapter in Prisma ORM: the runtime reads `contract.json`, which `contract emit` writes, and connects with the `url` you pass. `orm init` also edits `tsconfig.json`. It adds `"resolveJsonModule": true`, keeps your `module` and `moduleResolution` when they can already load the `db.ts` it writes (such as `esnext` with `bundler`, or `nodenext` in a package with `"type": "module"`), replaces them with `"module": "preserve"` and `"moduleResolution": "bundler"` otherwise, and leaves `experimentalDecorators` and `emitDecoratorMetadata` in place for TypeORM. It does not add `"type": "module"` to the `package.json` of an app that already has dependencies: when the field is missing, it prints a warning and leaves the file as it is. If your app is CommonJS, the `tsconfig.json` change can stop it from starting, so follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you run the app again.
 
 ## 3. Infer the contract from your database
 
@@ -163,36 +146,38 @@ Read the live schema into the contract:
 npx prisma contract infer --output ./src/prisma/contract.prisma
 ```
 
-```json no-copy
-"summary": "Contract inferred successfully",
-"target": { "familyId": "sql", "id": "postgres" },
-"psl": { "path": "src/prisma/contract.prisma" }
+```text no-copy
+Overwriting existing file: src/prisma/contract.prisma
+│  database:  postgres://****:****@localhost:5432/mydb
+
+✔ Contract written to src/prisma/contract.prisma
 ```
 
 The inferred contract mirrors what TypeORM created, down to the constraint names and the `CASCADE` on the foreign key. Model names are PascalCase; `@@map` keeps the physical table names, so no table is renamed:
 
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
+// Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
 
 model User {
-  id        Int               @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
-  email     VarChar           @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22")
-  name      VarChar?
-  active    Boolean           @default(true)
-  createdAt DateTime(precision: 6) @default(now())
+  id        Int                       @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
+  email     String(storage: varchar)  @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22")
+  name      String(storage: varchar)?
+  active    Boolean                   @default(true)
+  createdAt DateTime(precision: 6)    @default(now())
   posts     Post[]
 
   @@map("user")
 }
 
 model Post {
-  id        Int               @id(map: "PK_be5fda3aac270b134ff9c21cdee") @default(autoincrement())
-  title     VarChar
+  id        Int                      @id(map: "PK_be5fda3aac270b134ff9c21cdee") @default(autoincrement())
+  title     String(storage: varchar)
   content   String?
-  published Boolean           @default(false)
-  createdAt DateTime(precision: 6) @default(now())
+  published Boolean                  @default(false)
+  createdAt DateTime(precision: 6)   @default(now())
   authorId  Int
-  author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "FK_c6fb082a3114f35d0cc27c518e0", index: false)
+  author    User                     @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "FK_c6fb082a3114f35d0cc27c518e0", index: false)
 
   @@map("post")
 }
@@ -210,8 +195,11 @@ Turn the reviewed contract into the artifacts the runtime and CLI use:
 npx prisma contract emit
 ```
 
-```json no-copy
-"files": { "json": "src/prisma/contract.json", "dts": "src/prisma/contract.d.ts" }
+```text no-copy
+│  contract:  src/prisma/contract.json
+│  types:     src/prisma/contract.d.ts
+
+✔ Emitted contract.json and contract.d.ts
 ```
 
 Then record that the live database matches the contract:
@@ -220,23 +208,24 @@ Then record that the live database matches the contract:
 npx prisma db sign
 ```
 
-```json no-copy
-"summary": "Database signed (marker created)",
-"target": { "expected": "postgres", "actual": "postgres" },
-"marker": { "created": true, "updated": false }
+```text no-copy
+✔ app: signed 21267492d0c0f2feca45102e88d82528e280a724db10bc8732ee8d8a888a7ce6 (no marker before)
+
+✔ Database signed
+✔ Advanced ref "db" → 21267492d0c0f2feca45102e88d82528e280a724db10bc8732ee8d8a888a7ce6
 ```
 
-`db sign` verifies the schema first and refuses to sign if the database does not satisfy the contract. It replaces the baseline migration from Prisma ORM 7 (`migrate diff` plus `migrate resolve`): the database is not touched, only marked. Check it at any time with:
+`db sign` verifies the schema first and refuses to sign if the database does not satisfy the contract. It replaces the baseline migration from Prisma ORM 7 (`migrate diff` plus `migrate resolve`): the database is not touched, only marked. It also points a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named `db` at the contract and writes it, with a copy of the contract, to a new `migrations/` folder. Commit that folder: the first `migration plan` starts from the `db` ref. Check the database at any time with:
 
 ```npm
 npx prisma db verify
 ```
 
-```json no-copy
-"summary": "Database marker and schema match contract"
+```text no-copy
+✔ Database marker and schema match contract
 ```
 
-If you edit the contract again later, run `contract emit` and then `db sign` again; `db verify` reports `Hash mismatch` until you do.
+If you change the contract later without changing the database, such as removing a model you do not use yet, run `contract emit` and then `db sign` again; `db verify` reports `Hash mismatch` until you do. A change that needs the database to change, such as a new column, goes through `db update` or `migration plan` instead, as [Next steps](#next-steps) describes.
 
 ## 5. Replace queries
 
@@ -338,22 +327,84 @@ node src/prisma-queries.ts
 In a CommonJS project this command fails, because the script uses top-level `await` and imports a file by its `.ts` name. Change the script as follows: import `db` from `"./prisma/db"`, move every line below the imports into an `async function main()`, and call `main()` on the last line. Then run it with `npx tsx src/prisma-queries.ts`, or compile it with the rest of your app and run the compiled file with `node`.
 
 ```text no-copy
-created { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Carol' }
+created {
+  active: true,
+  createdAt: 2026-11-20T10:22:25.241Z,
+  email: 'carol@prisma.io',
+  id: 3,
+  name: 'Carol'
+}
 transaction {
-  dave: { active: true, createdAt: '2026-09-10 21:57:22.67978+06', email: 'dave@prisma.io', id: 10, name: 'Dave' },
-  post: { authorId: 10, content: null, createdAt: '2026-09-10 21:57:22.67978+06', id: 4, published: false, title: 'Hello from Prisma 8' }
+  dave: {
+    active: true,
+    createdAt: 2026-11-20T10:22:25.248Z,
+    email: 'dave@prisma.io',
+    id: 4,
+    name: 'Dave'
+  },
+  post: {
+    authorId: 4,
+    content: null,
+    createdAt: 2026-11-20T10:22:25.248Z,
+    id: 2,
+    published: false,
+    title: 'Hello from Prisma 8'
+  }
 }
 users [
-  { active: true, createdAt: '2026-09-10 21:57:22.67978+06', email: 'dave@prisma.io', id: 10, name: 'Dave' },
-  { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Carol' },
-  { active: true, createdAt: '2026-09-10 21:29:00.614611+06', email: 'bob@prisma.io', id: 2, name: 'Bob' }
+  {
+    active: true,
+    createdAt: 2026-11-20T10:22:25.248Z,
+    email: 'dave@prisma.io',
+    id: 4,
+    name: 'Dave'
+  },
+  {
+    active: true,
+    createdAt: 2026-11-20T10:22:25.241Z,
+    email: 'carol@prisma.io',
+    id: 3,
+    name: 'Carol'
+  },
+  {
+    active: true,
+    createdAt: 2026-11-20T10:22:23.509Z,
+    email: 'bob@prisma.io',
+    id: 2,
+    name: 'Bob'
+  }
 ]
 bobWithPosts {
-  active: true, createdAt: '2026-09-10 21:29:00.614611+06', email: 'bob@prisma.io', id: 2, name: 'Bob',
-  posts: [ { authorId: 2, content: null, createdAt: '2026-09-10 21:29:00.614611+06', id: 1, published: false, title: 'Hello from TypeORM' } ]
+  active: true,
+  createdAt: 2026-11-20T10:22:23.509Z,
+  email: 'bob@prisma.io',
+  id: 2,
+  name: 'Bob',
+  posts: [
+    {
+      authorId: 2,
+      content: null,
+      createdAt: 2026-11-20T10:22:23.509Z,
+      id: 1,
+      published: false,
+      title: 'Hello from TypeORM'
+    }
+  ]
 }
-updated { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Caroline' }
-deleted { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Caroline' }
+updated {
+  active: true,
+  createdAt: 2026-11-20T10:22:25.241Z,
+  email: 'carol@prisma.io',
+  id: 3,
+  name: 'Caroline'
+}
+deleted {
+  active: true,
+  createdAt: 2026-11-20T10:22:25.241Z,
+  email: 'carol@prisma.io',
+  id: 3,
+  name: 'Caroline'
+}
 totals { users: 2 }
 ```
 
@@ -409,13 +460,28 @@ Turn off schema synchronization in the ORM you are leaving once the database is 
 
 - `.update()` and `.delete()` change exactly one row, even when the filter matches several. Use `updateAll()` or `deleteAll()` for bulk changes; this is the opposite default from TypeORM's `repo.update(criteria, ...)`, which updates every match.
 - `contract infer` writes `DateTime(precision: 6)` for `timestamptz` columns, so their values are `Date` objects with milliseconds.
-- If `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. If it has no `"type"` field, `orm init` adds `"type": "module"`. Either way, a CommonJS app needs the changes in [In a CommonJS project](/cli/orm-init#in-a-commonjs-project).
+- If `package.json` declares `"type": "commonjs"`, or has no `"type"` field, `orm init` keeps it as it is and prints a warning. A CommonJS app still needs the changes in [In a CommonJS project](/cli/orm-init#in-a-commonjs-project), because of what `orm init` does to `tsconfig.json`.
 - Do not run `db init` or `db update` on the existing database. `db sign` is the step for a database that already has the tables; `db update` and `migration plan` come later, when you change the contract yourself.
 - Do not call `db.close()` in a request handler. The pool is shared across requests; close it only when a script or the process ends.
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Add Prisma ORM to this Sequelize or TypeORM project so I can migrate queries incrementally.
+
+1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Before you run `orm init`, note whether package.json has "type": "module". If it does not, and the code uses `require` or compiles to `require` calls, the app is CommonJS: after `orm init`, apply the changes under "In a CommonJS project" in https://www.prisma.io/docs/cli/orm-init.md. Make sure `.env` contains the DATABASE_URL the app already uses.
+2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the existing tables into a contract. Open the file and keep the `@@map` attributes so model names stay clean while table names stay as they are.
+3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. Do not run `db init` or `db update`; the tables already exist.
+4. Following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-sql-orms.md, rewrite the read queries first, then the writes, importing `db` from `src/prisma/db.ts`. Run each rewritten query with `node <script>.ts` and show me the output. In a CommonJS project, import `db` from `./prisma/db` without the `.ts` extension, put the `await` calls inside an `async` function, and run the script with `npx tsx <script>.ts` instead. Leave the old ORM in place for queries you have not rewritten yet, but turn off its schema sync (`synchronize` in TypeORM, `sequelize.sync()` in Sequelize).
+```
+
+</AgentPrompt>
+
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, rewrite every TypeORM read in `src/services/users.ts` as a Prisma ORM query and leave the writes on TypeORM."
 - "Translate the Sequelize `include` in the posts list to a Prisma ORM `.include()` with only `id` and `title` selected."

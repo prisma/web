@@ -78,7 +78,7 @@ export const computeContent: ProductPageContent = {
       {
         label: "Connect",
         caption:
-          "Deploy from your machine with npx prisma deploy module.ts, or connect the GitHub repo and add the deploy workflow to deploy on every push.",
+          "Deploy from your machine with npx prisma deploy, or connect the GitHub repo and add the deploy workflow to deploy on every push.",
         illustration: "repoConnect",
       },
       {
@@ -170,7 +170,7 @@ export const computeContent: ProductPageContent = {
     {
       question: "Can I host my existing GitHub repo with a TypeScript frontend and Node API here?",
       answer:
-        "Yes, when the frontend and the API are TypeScript services built for Node.js, Bun or Next.js. Add a Composer declaration around the server code you already have (a service.ts per service and one module.ts); the porting guide in the docs has a prompt your coding agent can write it from. Run your build, then deploy with npx prisma deploy module.ts. For deploy on push, connect the repository and add the prisma/cloud-deploy-action workflow; from then on every feature branch gets a preview with its own declared databases. For the same workflow on other hosts, see [how to host a test version of your app without replacing production](/blog/host-a-test-version-without-replacing-production).",
+        "Yes, when the frontend and the API are TypeScript services built for Node.js, Bun or Next.js. Add a Composer declaration around the server code you already have (a service.ts per service and one module.ts, named as the entry in the composer section of prisma.config.ts); the porting guide in the docs has a prompt your coding agent can write it from. Run your build, then deploy with npx prisma deploy. For deploy on push, connect the repository and add the prisma/cloud-deploy-action workflow; from then on every feature branch gets a preview with its own declared databases. For the same workflow on other hosts, see [how to host a test version of your app without replacing production](/blog/host-a-test-version-without-replacing-production).",
     },
     {
       question: "What does Prisma Compute not do?",

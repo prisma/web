@@ -17,6 +17,8 @@ Every command, route, and response below was run end to end against a live Prism
 - [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended), or [Bun](https://bun.sh/) (this guide uses Bun for speed; npm works the same)
 - A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
 
+To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. A deploy does not create a MongoDB database for you. Export `MONGODB_URL` with your connection string in the shell you deploy from: the first deploy stores it on the project, and the app reads it from there.
+
 ## 1. Scaffold the project
 
 ```bash
@@ -29,7 +31,7 @@ Answer the prompts for contract authoring style, package manager, and agent skil
 cd my-hono-api
 ```
 
-Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL; claim it with a free Prisma account to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
+Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`, which prints a connection string and a claim URL. Claim the database with a free Prisma account if you want to keep it. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
 
 ```bash
 export DATABASE_URL="<your connection string>"
@@ -42,10 +44,18 @@ bun run db:init
 ```
 
 ```text no-copy
-"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+✔ Applied 5 operation(s) across 1 contract space
+
+App space
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
 ```
 
-If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat: when there is nothing left to do, it prints `✔ Database already matches contract across 1 contract space`.
 
 ## 3. Run the server
 
@@ -61,13 +71,15 @@ curl http://localhost:3000/users
 
 ```json no-copy
 [
-  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-07-06T23:37:32.440Z" },
-  { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-07-06T23:37:32.474Z" },
-  { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-07-06T23:37:32.507Z" }
+  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-11-20T10:18:03.670Z" },
+  { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-11-20T10:18:03.742Z" },
+  { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-11-20T10:18:03.749Z" }
 ]
 ```
 
 The route handler is ordinary Hono code calling an ordinary Prisma ORM query; there is no framework adapter in between.
+
+To run the app the way Prisma Compute runs it, with no `DATABASE_URL` to set, run `bun run dev:composer` instead. It builds the app, starts a local Prisma Postgres database, applies the committed migrations to it, and prints the app's local URL.
 
 ## 4. Add a POST route
 
@@ -94,7 +106,7 @@ curl -X POST http://localhost:3000/users \
 ```
 
 ```json no-copy
-{ "createdAt": "2026-07-06T23:37:56.184Z", "email": "dev@prisma.io", "id": 4, "name": "Dev", "username": null }
+{"createdAt":"2026-11-20T10:18:03.789Z","email":"dev@prisma.io","id":4,"name":"Dev","updatedAt":"2026-11-20T10:18:03.789Z","username":null}
 ```
 
 `.create(...)` returns the full inserted record, database defaults included, so the response needs no second query.
@@ -103,15 +115,15 @@ curl -X POST http://localhost:3000/users \
 
 Hono is supported on [Prisma Compute](/compute). The scaffold already declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, so deploying is building and handing that declaration to the CLI. Sign in once (it opens a browser):
 
-```npm
-npx prisma auth login
+```bash
+bunx prisma auth login
 ```
 
 Then build and deploy from the project directory:
 
-```npm
-npm run build
-npx prisma deploy
+```bash
+bun run build
+bunx prisma deploy
 ```
 
 ```text no-copy
@@ -128,6 +140,45 @@ curl https://xyz.ewr.prisma.build/users
 ```
 
 For previews per Git branch and deploy on push, see [Deploy on push](/compute/deploy-on-push).
+
+## Change the schema
+
+The scaffold also writes a first migration to the `migrations/` directory. A deploy changes the hosted database only by applying the migrations in that directory, so every schema change needs a migration of its own.
+
+`migration:plan` writes each new migration as a step after the migration that `migrations/app/refs/db.json` names. That file is the `db` ref, and `db:init` creates it. If you have not run `db:init` in this checkout, for example because you only use `bun run dev:composer`, point the `db` ref at the first migration once. Pass the directory name only, without `migrations/app/` in front: `ls migrations/app` lists it, and its name ends in `_init`, such as `20261120T1011_init`. A path such as `migrations/app/20261120T1011_init` fails with `MIGRATION.REF_NOT_FOUND`.
+
+```bash
+bunx prisma migration ref set db <your init directory>
+```
+
+After you edit `src/prisma/contract.prisma`, for example to add a `bio String?` field to `User`, run:
+
+```bash
+bun run contract:emit
+bun run migration:plan --name add-user-bio
+```
+
+`contract:emit` updates the files your queries are type-checked against, and `migration:plan` writes the change as a new migration in `migrations/app/`. Then apply the migration to your local database, and point the `db` ref at it so that your next `migration:plan` starts from this migration. Without the ref step, the next plan would include this change a second time.
+
+If your development database is in `DATABASE_URL`, one command does both:
+
+```bash
+bun run migrate --advance-ref db
+```
+
+If you use `bun run dev:composer`, restart it: it applies new migrations when it starts. It does not update the `db` ref, so once it is running, set the ref yourself. Pass the last part of the path that `migration:plan` printed on its `app space:` line: for `migrations/app/20261120T1124_add_user_bio`, that is `bunx prisma migration ref set db 20261120T1124_add_user_bio`.
+
+```bash
+bunx prisma migration ref set db <new migration directory>
+```
+
+Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `bun run build` and `bunx prisma deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
+
+If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Pass the newest migration with `--from`: it is the first migration name in the graph that `bunx prisma migration list` prints, such as `20261120T1124_add_user_bio`. Then apply the migration as above:
+
+```bash
+bun run migration:plan --from <your newest migration directory> --name add-user-bio
+```
 
 ## Common gotchas
 
@@ -146,20 +197,20 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Create a new Hono API with Prisma ORM, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `npm create prisma@latest -- my-hono-api --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-hono-api` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
-2. In `my-hono-api`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
-3. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
+1. Scaffold: `bun create prisma@latest my-hono-api --template hono --provider postgres --yes`. The scaffold installs the Prisma agent skills; use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
+2. In `my-hono-api`, run `bun run db:init` with `DATABASE_URL` exported. The app seeds sample users on its first query, from `src/prisma/seed.ts`; there is no seed command to run.
+3. Start `bun run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
 4. Add a POST /users route that creates a user from the request body, following https://www.prisma.io/docs/guides/frameworks/hono.md, restart the dev server, and verify it with curl.
-5. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Then run `npm run build` followed by `npx prisma deploy` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
+5. Deploy: check `bunx prisma auth whoami`; if I am not signed in, stop and ask me to run `bunx prisma auth login`. Then run `bun run build` followed by `bunx prisma deploy` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
 ```
 
 </AgentPrompt>
 
-The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
+The scaffold installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for Claude Code, Cursor, Codex, and Devin when you answer yes to its agent skills prompt. To install them later, run [`bunx prisma@latest init`](/cli/init) in the project. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add GET /users/:id that returns one user or a 404."
 - "Expose GET /users/:id/posts using the Post model that ships with the starter contract."
-- "Wrap the signup route's writes in a [transaction](/orm/fundamentals/transactions)."
+- "Add a POST /users/:id/posts route that creates a user's first post and updates their name in one [transaction](/orm/fundamentals/transactions)."
 
 ## Next steps
 

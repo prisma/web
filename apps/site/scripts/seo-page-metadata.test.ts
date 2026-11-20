@@ -52,11 +52,13 @@ const PAGES: PageCopy[] = [
   {
     // Restored 2026-10-29. The 2026-10-08 SEO pass pointed this page at
     // "Free Postgres database"; that query now belongs on
-    // /postgres/free-postgresql-hosting.
+    // /postgres/free-postgresql-hosting. Description changed on purpose on
+    // 2026-11-13 to name "cloud PostgreSQL" for the cloud Postgres queries
+    // and fit in 155 characters; the title is unchanged.
     path: "/postgres",
     title: "Prisma Postgres | Serverless PostgreSQL database for TypeScript apps",
     description:
-      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
+      "Prisma Postgres is a serverless cloud PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing.",
     llmsBlock: true,
   },
   {
@@ -97,9 +99,9 @@ const PAGES: PageCopy[] = [
   },
   {
     path: "/studio",
-    title: "Prisma Studio | Visual Database Browser and Editor",
+    title: "Prisma Studio | Free Postgres GUI to View and Edit Data",
     description:
-      "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
+      "Prisma Studio is a free visual editor for PostgreSQL, MySQL and SQLite. Browse and edit rows, run SQL and map your schema, locally or in Prisma Console.",
     llmsBlock: true,
   },
   {

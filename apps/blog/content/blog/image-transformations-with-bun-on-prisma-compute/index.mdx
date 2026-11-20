@@ -145,10 +145,20 @@ app.get("/images/*", async (c) => {
 export default app;
 ```
 
-Deploy it like any other Compute app:
+The Hono app above only exports the router. It doesn't serve anything yet. Deploy it like any other Compute app: follow the [deploy quickstart](https://www.prisma.io/docs/prisma-compute/deploy) to declare the service with [Prisma Composer](https://www.prisma.io/docs/composer) (a `src/service.ts`, a `module.ts` root module, and the `composer` section of `prisma.config.ts`), then replace the quickstart's `src/server.ts` with one that serves this app on the port the service provides:
+
+```ts title="src/server.ts"
+import app from "./index.ts";
+import service from "./service.ts";
+
+Bun.serve({ port: service.port(), hostname: "0.0.0.0", fetch: app.fetch });
+```
+
+`npx prisma deploy` ships what you built and doesn't run the build, so build the self-contained entry first, then deploy:
 
 ```bash title="Deploy"
-bunx @prisma/cli@latest app deploy --framework hono --entry src/index.ts
+bun build --target=bun src/server.ts --outfile dist/server.mjs
+npx prisma deploy
 ```
 
 Then request variants by URL:
@@ -403,7 +413,7 @@ Image transformations show why that matters, because they are not magic. They ar
 Prisma Compute's Free plan includes 1M requests a month, so trying this costs nothing. Sign in once, the one step that needs a human:
 
 ```bash
-bunx @prisma/cli@latest auth login
+npx prisma@latest auth login
 ```
 
 Then point your agent at your project and let it write the route, deploy it, and watch the logs in the same loop it uses for the rest of your app.

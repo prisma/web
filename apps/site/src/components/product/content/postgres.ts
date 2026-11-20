@@ -76,7 +76,7 @@ export const postgresContent: ProductPageContent = {
     ],
   },
   problem: {
-    headline: "A database that ships with the rest of your stack",
+    headline: "Managed Postgres hosting that ships with the rest of your stack",
     // V4 ran two paragraphs here. The review found the first scroll was a wall
     // of prose that mostly restated the hero, so the second paragraph's point
     // now lives in the hero tour's captions and the platform section.
@@ -86,7 +86,7 @@ export const postgresContent: ProductPageContent = {
     outcomes: [
       { icon: "gitBranch", label: "A preview database per feature branch" },
       { icon: "shield", label: "Predictable pricing with spend limits" },
-      { icon: "swap", label: "Per-operation billing with spend limits" },
+      { icon: "bot", label: "Databases your coding agent can create" },
       { icon: "database", label: "Standard Postgres, no lock-in" },
     ],
   },
@@ -117,7 +117,7 @@ export const postgresContent: ProductPageContent = {
       {
         name: "Predictable pricing",
         description:
-          "Operation-based pricing with spend limits you set yourself. A quiet month costs almost nothing, a busy one never surprises you.",
+          "Operation-based pricing with spend limits you set yourself. A quiet month costs almost nothing, and database queries stop when usage charges reach your limit.",
         illustration: "spendLimits",
       },
       {
@@ -166,6 +166,16 @@ export const postgresContent: ProductPageContent = {
         "Yes, Prisma Postgres provides [free PostgreSQL hosting](/postgres/free-postgresql-hosting), needs no credit card and includes 200,000 operations a month across up to 50 databases in a workspace. An operation is one query, read or write, and usage resets at the start of each calendar month. On the [Free plan](/pricing), idle databases cost nothing and you never wake one by hand: the next query does it. Backups and spend limits start on the Starter plan at $10 a month.",
     },
     {
+      question: "Is Prisma Postgres a cloud Postgres database?",
+      answer:
+        "Yes. Prisma Postgres is a fully managed cloud PostgreSQL database: there are no servers to run, databases are provisioned instantly, connection pooling is built in, and the Free plan includes 2 GB of storage. It works with any Postgres client and is built to pair with Prisma ORM for type-safe queries and Prisma Compute for deploying your app next to your database, so you get one cloud platform for the database, the ORM and app hosting.",
+    },
+    {
+      question: "Is Prisma Postgres managed PostgreSQL hosting (Postgres as a service)?",
+      answer:
+        "Yes. Prisma Postgres is fully managed PostgreSQL hosting: it runs, scales and secures the database, with daily [automatic backups](/docs/postgres/database/backups) on paid plans, so you never manage servers or connection pooling. It's built to work with the rest of your stack. Prisma ORM gives you type-safe queries and migrations out of the box, and Prisma Compute lets you deploy your app right next to your database, so your data, your queries and your app all live on one platform. You can start on the free plan, or create a temporary database in seconds with [`npx create-db`](/docs/postgres/npx-create-db), no account needed.",
+    },
+    {
       question: "What happens when I reach the Free plan limit?",
       answer:
         "Your workspace's databases stop accepting queries until the allowance resets at the start of the next month, or until you upgrade, which usually restores access within a minute. If you need time to export your data first, you can [lift the limit for 24 hours](/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) from the Console, once per workspace. Paid plans bill operations beyond the included amount at your plan's rate, up to a spend limit if you set one in the Console.",
@@ -207,7 +217,7 @@ export const postgresContent: ProductPageContent = {
     },
   ],
   cta: {
-    headline: "Postgres that ships with the rest of your stack",
+    headline: "Start with the database. Add the rest when you need it.",
     body: "Prisma Postgres is the data half of a TypeScript platform. Use it on its own with any ORM and any host, or pair it with Compute and your app and database become one deploy and one config, with a preview and its own declared databases for each feature branch.",
     benefits: [
       "Free preview databases that come with your app's previews",

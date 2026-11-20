@@ -1,5 +1,5 @@
 "use client";
-import type { ComponentProps } from "react";
+import { type ComponentProps, Fragment } from "react";
 import { Search } from "lucide-react";
 import { useSearchContext } from "@fumadocs/base-ui/contexts/search";
 import { useTranslations } from "@fuma-translate/react";
@@ -43,6 +43,7 @@ export function SearchToggle({
 export function LargeSearchToggle({
   hideIfDisabled,
   showLabel = true,
+  field,
   ...props
 }: ComponentProps<"button"> & {
   hideIfDisabled?: boolean;
@@ -52,10 +53,55 @@ export function LargeSearchToggle({
    * beside it.
    */
   showLabel?: boolean;
+  /**
+   * Render as the navbar's one field instead of a pill: this placeholder
+   * text, the shortcut as a single quiet chip ("⌘K", not one box per key),
+   * and the field filling the width its container gives it.
+   */
+  field?: { placeholder: string };
 }) {
   const { enabled, hotKey, setOpenSearch } = useSearchContext();
   const t = useTranslations({ note: "search trigger" });
   if (hideIfDisabled && !enabled) return null;
+
+  if (field) {
+    return (
+      <button
+        type="button"
+        data-search-full=""
+        {...props}
+        className={cn(
+          // A field, not a button: hairline edge on the page colour, muted
+          // placeholder, and a hover that only firms the edge.
+          "inline-flex h-9 w-full items-center gap-2.5 rounded-full border border-stroke-neutral bg-fd-background ps-3.5 pe-1.5 text-sm text-fd-muted-foreground transition-colors duration-[120ms] hover:border-fd-foreground/20 hover:duration-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary motion-reduce:transition-none",
+          props.className,
+        )}
+        onClick={() => {
+          setOpenSearch(true);
+        }}
+      >
+        <Search className="size-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 grow truncate text-start">{field.placeholder}</span>
+        <kbd
+          // Sans, not mono: the ⌘ glyph in the mono face renders too small
+          // to read at a glance.
+          className="inline-flex h-6 shrink-0 items-center rounded-full bg-fd-foreground/[0.06] px-2.5 font-sans text-xs font-medium text-fd-foreground/75"
+          aria-hidden="true"
+        >
+          {/* One chip for the whole shortcut: "⌘K" on Mac, "Ctrl+K" where a
+              key is named by a word rather than a glyph. */}
+          {hotKey.map((k, i) => (
+            <Fragment key={i}>
+              {i > 0 &&
+                hotKey.some((key) => typeof key.display === "string" && key.display.length > 1) &&
+                "+"}
+              {k.display}
+            </Fragment>
+          ))}
+        </kbd>
+      </button>
+    );
+  }
 
   return (
     <button
@@ -66,7 +112,7 @@ export function LargeSearchToggle({
       className={cn(
         // The navbar's pill: hairline ring on a paper wash, kbd chips squared
         // off inside it so the shapes read as nested rather than repeated.
-        "inline-flex items-center gap-2 rounded-full border border-stroke-neutral bg-fd-secondary/50 text-sm text-fd-muted-foreground transition-colors duration-300 hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none",
+        "quiet-hover inline-flex items-center gap-2 rounded-full border border-stroke-neutral bg-fd-secondary/50 text-sm",
         // Labelled: a wide field that stretches with its container. Unlabelled:
         // the same 32px pill geometry as the Ask AI button.
         showLabel ? "p-1.5 ps-3" : "h-8 px-3",

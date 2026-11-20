@@ -48,7 +48,7 @@ export function DeployLog() {
         <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/30 p-3 font-mono text-[0.625rem] leading-none">
           <p className="flex items-center gap-2 text-[0.6875rem]">
             <span className="text-prism-cyan-500">$</span>
-            <span className="text-foreground">prisma deploy module.ts</span>
+            <span className="text-foreground">prisma deploy</span>
           </p>
 
           {STEPS.map(({ label, detail, time }) => (

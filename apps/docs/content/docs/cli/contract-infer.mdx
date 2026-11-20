@@ -6,9 +6,11 @@ metaTitle: contract infer | Prisma ORM CLI
 metaDescription: Learn how to infer a Prisma ORM PSL contract from a live database schema.
 ---
 
-`contract infer` inspects a live database and writes a starter PSL contract. An existing file at the output path is overwritten, with a warning.
+`contract infer` inspects a live database and writes a starter PSL contract, the Prisma Schema Language file that replaces Prisma ORM 7's `schema.prisma`. It replaces `prisma db pull`. If a file already exists at the output path, the command overwrites it without asking and prints a warning.
 
 Use it when you are adding Prisma ORM to an existing database and want an initial contract to review and edit.
+
+`contract infer` works only on PostgreSQL: on MongoDB and every other database, it fails with `CONTRACT.INFER_UNSUPPORTED`, so write the contract by hand.
 
 ## Usage
 
@@ -21,15 +23,17 @@ npx prisma contract infer [--db "$DATABASE_URL"]
 | Option | What it does |
 | --- | --- |
 | `--db <url>` | Connects to the database. Optional: without it the command uses `db.connection` from `prisma.config.ts`, and fails only when neither is set. |
-| `--output <path>` | Writes the inferred PSL contract to a specific path. |
+| `--output <path>` | Writes the inferred PSL contract to this path instead of `contract.prisma` next to `contract.json`. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
+
+In a PSL project that `orm init` created, the default path is your contract itself, so running `contract infer` again without `--output` replaces the contract you edited. To keep your edits, write to another file and compare the two, as the second example below does.
 
 ## Examples
 
 ```npm
 npx prisma contract infer --db "$DATABASE_URL"
-npx prisma contract infer --db "$DATABASE_URL" --output ./prisma/contract.prisma
+npx prisma contract infer --db "$DATABASE_URL" --output ./inferred.prisma
 npx prisma contract infer --db "$DATABASE_URL" --json
 ```
 
@@ -58,7 +62,7 @@ In a list column's type, a `?` means something different depending on where it i
 
 A list column that Prisma ORM migrations created cannot hold `NULL` elements, because the migration adds a check that stops it, so it gets no `?` before the brackets. Any other list column gets one.
 
-Each column gets a type such as `VarChar(20)`, `Bit(8)`, `VarBit(16)`, `Xml`, `Money`, or `Duration(precision: 3)`, written with the fewest parameters that describe the column exactly. The types come from Prisma ORM's types for your database and from the extension packs listed under `extensions` in `prisma.config.ts`. An extension pack is the Prisma ORM package for a database extension, such as pgvector.
+Each column gets a type such as `String(storage: varchar, length: 20)`, `Int(storage: int2)`, `Bit(8)`, `Varbit(16)`, `Xml`, `Money`, or `Duration(precision: 3)`, written with the fewest parameters that describe the column exactly. Where a [convenience type](/orm/contract-authoring/psl-syntax#models-and-fields) gives the column's type, the contract writes it with only the arguments that differ from its defaults. The types come from Prisma ORM's types for your database and from the extension packs listed under `extensions` in `prisma.config.ts`. An extension pack is the Prisma ORM package for a database extension, such as pgvector.
 
 When a column has a type that none of these provide, the command writes no file. It fails with `CONTRACT.INFER_COLUMN_TYPE_UNCLAIMED` and lists every such column, such as `public.doc.meta: hstore`. To get past the error, do one of the following for each listed column:
 

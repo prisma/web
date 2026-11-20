@@ -144,7 +144,10 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
     changelogSource.getPages(),
     // The app pages come from the Compute template manifest; an unreachable
     // manifest at build time leaves them out rather than failing the sitemap.
-    loadTemplates(),
+    // Read it once, at build: a revalidating read would make Next rebuild this
+    // sitemap on the server, where there is no git history for the TSX route
+    // dates below.
+    loadTemplates("build"),
   ]);
 
   // TSX routes have no frontmatter date: use the last commit that changed the

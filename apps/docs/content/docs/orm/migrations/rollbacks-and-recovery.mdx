@@ -34,6 +34,9 @@ migrations/app/20260707T1010_rollback_display_name
 
 ⚠ This migration contains destructive operations that may cause data loss.
 
+Statements applied
+└─ delete field "User.displayName" (1 operation)
+
 from:       866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484
 to:         967cb9f63587c1d90f64716780f04eec22b263424e89f07139233fc2c3d710c4
 app space:  migrations/app/20260707T1010_rollback_display_name
@@ -47,12 +50,21 @@ Read the migration before you apply it, because `db migrate` runs destructive op
 
 1. **Save the data, if you need it.** Dropping the column deletes what was stored in it for good, so if you still need that data, copy it somewhere first. To copy it into a table that already exists, add a [`rawSql` operation](/orm/migrations/editing-a-migration#escape-hatch-raw-sql) running an `INSERT ... SELECT` before the `dropColumn` call in `migration.ts`. Then [recompile the migration](/orm/migrations/editing-a-migration) by running `node migrations/app/20260707T1010_rollback_display_name/migration.ts` from your project root, so that your edit reaches the file `db migrate` actually runs.
 2. **Revert the change in your contract.** Your contract describes the database you want, so undoing the change in the database means undoing it in the contract too: remove `displayName` from your contract file, then run `npx prisma contract emit`, the command that replaces `prisma generate` and rewrites `contract.json`. Step 4 depends on this, because `db migrate` applies migrations until the database matches the state recorded in `contract.json`.
-3. **Commit the migration and the contract together.** The two only make sense as a pair, so put them in one commit: the new migration's directory, your contract file, `contract.json`, and `contract.d.ts`. No new directory appears under `migrations/snapshots/`, which is expected, because a rollback ends at a contract state that already has one.
-4. **Apply the rollback.** In CI and production, run `npx prisma db migrate`, the command that replaces [`migrate deploy`](/orm/coming-from-prisma-orm-7). In development, add [`--advance-ref db`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) so that the next `migration plan` starts from what you just applied.
+3. **Commit the migration and the contract together.** The two only make sense as a pair, so put them in one commit: the new migration's directory, your contract file, `contract.json`, and `contract.d.ts`. No new directory appears under `migrations/snapshots/`, which is expected, because a rollback ends at a contract state that already has one. If your pipeline runs `db migrate --to <ref>`, as [Choosing a target](/orm/migrations/applying-a-migration#choosing-a-target) describes, point that ref, the named pointer to a contract state that the pipeline migrates to, at the rollback before you commit. Run `npx prisma migration ref set prod 20260707T1010_rollback_display_name`, where `prod` is your ref's name, and add its file, `migrations/app/refs/prod.json`, to the same commit. The ref then names the state the rollback ends at.
+4. **Apply the rollback.** In CI and production, run the command your pipeline already runs. Plain `npx prisma db migrate`, the command that replaces [`migrate deploy`](/orm/coming-from-prisma-orm-7), applies migrations up to the contract you reverted in step 2, and `npx prisma db migrate --to prod` applies them up to the state you pointed the ref at in step 3. In development, add [`--advance-ref db`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) so that the next `migration plan` starts from what you just applied.
 
 Once you have applied the rollback, `npx prisma db verify` passes, which confirms the database matches your reverted contract. A database that never had `add_display_name` applied needs neither that migration nor its rollback, and it runs neither, because `db migrate` runs the fewest migrations that end at the contract state you asked for.
 
-Undoing several migrations at once works the same way. Plan one migration with `npx prisma migration plan --from <newest-migration-dir> --to "<oldest-migration-to-undo>^" --name rollback_changes`, then follow the same steps. The difference is step 2, where instead of deleting a single field you restore your whole contract file from a commit made before the oldest migration you are undoing, for example with `git checkout <commit> -- src/prisma/contract.prisma`.
+Undoing several migrations at once works the same way. Plan one migration with `npx prisma migration plan --from <last-applied-migration-dir> --to "<oldest-migration-to-undo>^" --name rollback_changes`, then follow the same steps. The difference is step 2, where instead of deleting a single field you restore your whole contract file from a commit made before the oldest migration you are undoing, for example with `git checkout <commit> -- src/prisma/contract.prisma`.
+
+`<last-applied-migration-dir>` is the migration that ends at the state the database is in. To find it, run `npx prisma migration status` against that database and note the short hash of the state labelled `@db`, which is `967cb9f` in the output below. The migration you want is the one whose row ends at that hash, after the `→`. Here that is `20260707T1006_add_user_phone`:
+
+```text
+○   967cb9f  @contract @db
+│↑  20260707T1006_add_user_phone  2d2cec8 → 967cb9f  1 ops  ✓ applied
+```
+
+Do not pick the directory by its date, because the latest one is not always the last one applied. `migration plan` asks about each column or table the rollback drops, so pass one `--delete` for each.
 
 ### One planning caveat after a rollback
 
@@ -62,7 +74,7 @@ The first migration you plan after a rollback prints a warning when you do not p
 ⚠ The default origin ref 'db' points at 967cb9f63587c1d90f64716780f04eec22b263424e89f07139233fc2c3d710c4, which already has a migration leading to 866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484. Planning from it forks the migration graph; pass --from to choose the origin explicitly.
 ```
 
-Without `--from`, `migration plan` starts from the `db` ref, the file in `migrations/app/refs/` naming the contract state you last applied in development. After a rollback that state already has a migration starting from it, because the rollback ends at exactly the state `add_display_name` starts from. The migration is planned anyway, and it starts from the state the rollback ended at, so you can keep it. To plan without the warning, pass `--from` with the rollback's directory name:
+Without `--from`, `migration plan` starts from the `db` ref, the file in `migrations/app/refs/` naming the contract state you last applied in development. After a rollback that state already has a migration starting from it, because the rollback ends at exactly the state `add_display_name` starts from. The warning is expected here: the migration is planned anyway, it starts from the state the rollback ended at, and you can keep it. To plan without the warning, pass `--from` with the rollback's directory name. That names the same state as the `db` ref, so you get the same migration, without the warning:
 
 ```npm
 npx prisma migration plan --from 20260707T1010_rollback_display_name --name add_nickname
@@ -72,18 +84,23 @@ Once you apply this migration with `--advance-ref db`, the `db` ref names a stat
 
 ## Recovery: when a migration fails partway
 
-When a migration fails, `db migrate` stops at the operation that failed rather than carrying on, and it tells you which operation it was and why:
+When a migration fails, `db migrate` stops at the operation that failed rather than carrying on, and it tells you which operation it was and why. Suppose `add_nickname` added `nickname` to `User` as an optional field, three rows were saved without one, and the next migration, `require_nickname`, makes the field required. Applying `require_nickname` fails:
 
 ```text
 ✘ [MIGRATION.PRECHECK_FAILED] 3 rows of "user" hold NULL in "nickname", so it cannot become required.
-  why: Operation alterNullability.setNotNull.user.nickname failed during precheck: ensure no NULL values in "nickname"
-  docs: https://www.prisma.io/docs/orm/reference/error-reference#MIGRATION.PRECHECK_FAILED
+  why: Operation alterNullability.setNotNull.user.nickname failed during precheck: ensure no NULL values in "nickname". The failed apply changed nothing.
+→ Set a value in those 3 rows and re-run `prisma db migrate`
+→ Delete `migrations/app/20260707T1012_require_nickname` (copy any code you wrote in its migration.ts first), plan it again with `prisma migration plan --from 42d23692322547f6a01794ed4db1ea4a2ac8a138e40bd5679e74839656064aa0 --name require_nickname --backfill User.nickname`, adding any other statements you planned it with, fill in the migration.ts it writes, run that migration.ts with the `node` command `migration plan` prints, and run `prisma db migrate`
+→ Keep the field optional: make it optional in the contract source again, delete `migrations/app/20260707T1012_require_nickname` (copy any code you wrote in its migration.ts first), and plan it again with `prisma migration plan --from 42d23692322547f6a01794ed4db1ea4a2ac8a138e40bd5679e74839656064aa0 --name require_nickname`, adding any other statements you planned it with, put back any code you copied, run that migration.ts with the `node` command `migration plan` prints, and apply it with `prisma db migrate`
+  docs: https://docs.prisma.io/docs/orm/v8/reference/error-reference#MIGRATION.PRECHECK_FAILED
 ```
+
+The lines that start with `→` are the ways forward, each with the commands to run. When one of them has you change the contract source, run `npx prisma contract emit` before `migration plan`, because `migration plan` reads the emitted `contract.json`. If the contract then matches the state the plan starts from, as it does here when `nickname` is optional again, `migration plan` prints `No changes detected` and writes no migration, so there is no `migration.ts` to run and nothing left to apply.
 
 How much a failed run leaves behind depends on your database, and [when something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) explains what you are left to clean up on PostgreSQL and on MongoDB before you try again.
 
 1. **Read which check failed.** The error tells you where the run stopped, because it names the operation and the [check](/orm/migrations/how-migrations-work#every-operation-checks-itself) that failed, and a precheck is a check that runs before its operation rather than after. In the example above, the precheck found rows with `NULL` in `nickname`, so the run stopped before setting the column to `NOT NULL`.
-2. **Fix the cause, then run `npx prisma db migrate` again.** Re-running the same command is the whole of recovery, because there is no `migrate resolve` step first, and in development you add `--advance-ref db` as usual. Sometimes the cause is the environment, such as a PostgreSQL extension the server lacks or permissions it is missing. Sometimes it is the migration itself, which is why a migration can pass in development and fail in production, where the data is different. In the example above the data is what stopped the run, so you would edit the migration to [fill in `nickname` for existing rows](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) before the `setNotNull`, recompile as in the rollback's step 1, and apply again.
+2. **Fix the cause, then run `npx prisma db migrate` again.** Re-running the same command is the whole of recovery, because there is no `migrate resolve` step first, and in development you add `--advance-ref db` as usual. Sometimes the cause is the environment, such as a PostgreSQL extension the server lacks or permissions it is missing. Sometimes it is the migration itself, which is why a migration can pass in development and fail in production, where the data is different. In the example above the data is what stopped the run, and there are two ways to fix it. You can set a value in those rows yourself and run `db migrate` again, as the error's first `→` line says. Or, to fill them from the migration, delete the migration's directory and plan it again with `--from` and `--backfill User.nickname`, as the second `→` line gives, then [fill in `nickname` for existing rows](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) in the `migration.ts` it writes, recompile, and apply again.
 
 ### Drift: when the database changed without a migration [#drift-when-the-database-isnt-where-migrations-left-it]
 
@@ -91,7 +108,7 @@ Drift is what you have when your database no longer matches what your migrations
 
 In the first kind, the marker records a contract state that no migration starts or ends at. You get there in one of these ways: [`npx prisma db update`](/cli/db-update) made the database match your contract without a migration, or the database applied a migration that was later deleted or planned again. The second often happens when a branch is deployed to a shared database such as staging and then rebased, because planning its migration again gives it a new contract state. The next `db migrate` fails with an error whose `code` is `MIGRATION.MARKER_MISMATCH` before it runs any operation. [`npx prisma migration status`](/cli/migration-status) can warn about the same situation ahead of time, under a different code, `MIGRATION.MARKER_NOT_IN_HISTORY`. The two commands report one problem, so look for `MIGRATION.MARKER_NOT_IN_HISTORY` in `migration status` output and for `MIGRATION.MARKER_MISMATCH` in `db migrate` output.
 
-The error reads the database's record of applied migrations and says what happened after the last contract state in your history that the database reached. Its next actions give two ways back, and the first one says which databases it is for:
+The error tells you the last contract state in your history that the database reached, and what the database applied after it. Below that, the lines that start with `→` give the ways back, and the first of them says which databases it is for:
 
 ```text
 $ npx prisma db migrate --db "$DATABASE_URL"
@@ -124,10 +141,10 @@ Before you decide what to do about drift, find out which contract state the data
 
 When a change was made by hand, you have to decide whether you want to keep it, and either answer gives you a way out:
 
-- **Undo it.** Change the tables back by hand until `npx prisma db verify --schema-only --strict` passes. The marker never changed, so there is nothing else you need to put right.
+- **Undo it.** Change the tables back by hand until `npx prisma db verify --schema-only --strict` passes. `--strict` makes the check also fail on tables, columns, and other objects that your contract does not declare, so it catches a column you added by hand. The marker never changed, so there is nothing else you need to put right.
 - **Keep it.** Add the change to your contract, run `npx prisma contract emit`, then plan and apply a migration as usual. `db migrate` skips the change you already made there.
 
-[`npx prisma db sign`](/cli/db-sign) fixes neither kind of drift, because it is for [baselining](/orm/migrations/the-migration-graph#baselines) a database that has no marker at all but whose tables already match your contract. For a database that Prisma ORM 7 migrated, follow [step 4 of the upgrade guide](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) instead.
+[`npx prisma db sign`](/cli/db-sign) fixes neither kind of drift, because it is for [baselining](/orm/migrations/the-migration-graph#baselines) a database that has no marker at all but whose tables already match your contract. For a database that Prisma ORM 7 migrated, follow [step 4 of the upgrade guide](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership) instead.
 
 :::note[What's early]
 
@@ -135,7 +152,7 @@ Rolling back, the warnings about destructive operations, and re-running a failed
 
 :::
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for your coding agent. In an existing project, run `npx prisma skills sync`. Ask your agent to:
 

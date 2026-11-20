@@ -13,7 +13,7 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 import { buttonVariants } from "../../ui/button";
 import { Languages, Sidebar as SidebarIcon, X } from "lucide-react";
 import { LanguageToggle } from "../language-toggle";
-import { ThemeToggle } from "../theme-toggle";
+import { ThemeCycleToggle, ThemeToggle } from "../theme-toggle";
 import type * as PageTree from "fumadocs-core/page-tree";
 import {
   LayoutBody,
@@ -30,7 +30,6 @@ import { LinkItem, type ButtonItemType, type LinkItemType } from "../link-item";
 import type { SidebarPageTreeComponents } from "../sidebar/page-tree";
 import { SidebarNav, SidebarNavHeader, SidebarViewProvider } from "./sidebar-nav";
 import { AIChatSidebar } from "@/components/ai-chat-sidebar";
-import { PaperGround } from "@/components/chrome/paper-ground";
 
 /**
  * The eclipse `ink` button, spelled out in classes because the navbar's links go
@@ -38,11 +37,16 @@ import { PaperGround } from "@/components/chrome/paper-ground";
  * Values are the eclipse variant verbatim:
  * `packages/eclipse/src/components/button.tsx`.
  */
+// Login / Sign up pills. Flat (no shadow, no hover grow): hover is a colour
+// step only, landing instantly (`hover:duration-0`) and fading out over
+// 120ms, the same crisp timing as `quiet-hover` on the rest of the header.
 const inkPill =
-  "inline-flex h-8 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap shadow-box-low transition-transform duration-300 hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100";
+  "inline-flex h-8 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors duration-[120ms] ease-out hover:duration-0 motion-reduce:transition-none";
 
 /** Pill hit area for the navbar's icon-sized controls. */
-const navIconPill = "rounded-full text-fd-muted-foreground hover:text-fd-foreground";
+// `quiet-hover` (global.css) supplies the colour and hover tint; the ghost
+// variant's cyan accent hover is cleared so the two don't stack.
+const navIconPill = "quiet-hover rounded-full hover:bg-transparent";
 
 export interface DocsLayoutProps extends BaseLayoutProps {
   tree: PageTree.Root;
@@ -55,7 +59,7 @@ export interface DocsLayoutProps extends BaseLayoutProps {
 
 interface SidebarOptions
   extends
-    ComponentProps<"aside">,
+    ComponentProps<"nav">,
     Pick<ComponentProps<typeof Sidebar>, "defaultOpenLevel" | "prefetch"> {
   components?: Partial<SidebarPageTreeComponents>;
 
@@ -176,9 +180,11 @@ export function DocsLayout(props: DocsLayoutProps) {
                   className={cn(
                     inkPill,
                     "w-full",
+                    // Sign up is the one primary CTA; Login is the bordered,
+                    // quieter pill (the eclipse `default` variant's fill).
                     item.secondary
-                      ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse"
-                      : "bg-fd-primary text-fd-primary-foreground",
+                      ? "border border-stroke-neutral bg-background-default text-foreground-neutral hover:bg-background-neutral"
+                      : "bg-background-neutral-reverse-strong text-foreground-neutral-reverse hover:bg-background-neutral-reverse-strong/85",
                   )}
                 >
                   {item.text}
@@ -243,10 +249,6 @@ export function DocsLayout(props: DocsLayoutProps) {
           <Sidebar defaultOpenLevel={defaultOpenLevel} prefetch={prefetch}>
             <SidebarEnabledFromPageProvider layoutEnabled={sidebarEnabled}>
               <LayoutBody {...props.containerProps}>
-                {/* brand ground: grain over the paper + the prism ray crossing
-                    behind the reading sheet. First child so every painted grid
-                    surface (sheet, header, sidebar pills) stacks above it. */}
-                <PaperGround />
                 <SidebarEnabledGate>{sidebarEnabled ? sidebar() : null}</SidebarEnabledGate>
                 <DocsNavbar {...props} links={links} />
                 {props.children}
@@ -306,9 +308,10 @@ function DocsNavbar({
       )}
     >
       <NavbarMorphContainer>
-        <div data-header-body="" className="flex px-4 gap-4 h-14 md:px-6 justify-between">
+        <div data-header-body="" className="flex px-4 gap-4 h-14 md:px-6 items-center">
           {/* `min-w-0` so the title can be squeezed rather than shoving the
-              controls past the right edge on a phone. */}
+              controls past the right edge on a phone. Left and right both take
+              `flex-1` from md, which centres the search field between them. */}
           <div className="items-center flex min-w-0 flex-1">
             {renderTitleNav(nav, {
               href: nav?.url ?? "/",
@@ -316,26 +319,22 @@ function DocsNavbar({
             })}
             {nav.children}
           </div>
-          <div className="flex shrink-0 items-center justify-end gap-2">
-            {/* The search trigger sits with the other controls rather than in a
-                centred slot of its own, collapsed to icon + shortcut so it
-                matches the Ask AI pill it sits next to. */}
-            {searchToggle.enabled !== false &&
-              (searchToggle.components?.lg ? (
-                <div className="my-auto rounded-full max-md:hidden">
-                  {searchToggle.components.lg}
-                </div>
-              ) : (
-                <LargeSearchToggle hideIfDisabled showLabel={false} className="max-md:hidden" />
-              ))}
-            {/* `display: contents`, so the trigger stays a flex item of this row —
-              this only reaches into a component another owner maintains to give
-              its trigger the navbar's pill hit area. The chat panel itself is
-              portalled to <body> and is untouched by this. */}
-            <div className="contents [&_button]:rounded-full">
-              <AIChatSidebar />
+          {/* "One door": the search field is the header's one large control and
+              also the way into Ask AI ("Search or ask AI…", then Tab or the
+              "Ask AI" row in the dialog). It narrows with the content column. */}
+          {searchToggle.enabled !== false && (
+            <div className="shrink-0 max-md:hidden md:w-52 lg:w-72 xl:w-90">
+              {searchToggle.components?.lg ?? (
+                <LargeSearchToggle hideIfDisabled field={{ placeholder: "Search or ask AI…" }} />
+              )}
             </div>
-            <div className="flex items-center gap-2 max-md:hidden">
+          )}
+          <div className="flex shrink-0 items-center justify-end gap-2 md:flex-1">
+            {/* Mounts the chat panel and its ⌘I shortcut; its own "Ask AI"
+                buttons are off because search is the way in. The panel is
+                portalled to <body>. */}
+            <AIChatSidebar showTrigger={false} />
+            <div className="flex items-center gap-1 max-md:hidden">
               {customLinks.map((item, i) => (
                 <NavbarLinkItem key={i} item={item} />
               ))}
@@ -344,7 +343,7 @@ function DocsNavbar({
               {/*     <Languages className="size-4.5 text-fd-muted-foreground" /> */}
               {/*   </LanguageToggle> */}
               {/* )} */}
-              <div className="flex items-center gap-2 max-md:hidden">
+              <div className="flex items-center gap-1 max-md:hidden">
                 {iconLinks.map((item, i) => (
                   <LinkItem
                     key={i}
@@ -364,9 +363,11 @@ function DocsNavbar({
                     item={item}
                     className={cn(
                       inkPill,
+                      // Sign up is the one filled shape on the right; Log in
+                      // is plain text that underlines on hover.
                       item.secondary
-                        ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse"
-                        : "bg-fd-primary text-fd-primary-foreground",
+                        ? "px-2.5 text-foreground-neutral hover:underline hover:underline-offset-4"
+                        : "ms-1 bg-background-neutral-reverse-strong text-foreground-neutral-reverse hover:bg-background-neutral-reverse-strong/85",
                       item.navbarClassName,
                     )}
                   >
@@ -375,19 +376,17 @@ function DocsNavbar({
                 ))}
               </div>
 
-              {themeSwitch.enabled !== false && (
-                <ThemeToggle mode={themeSwitch.mode ?? "light-dark-system"} />
-              )}
+              {themeSwitch.enabled !== false && <ThemeCycleToggle />}
               <SidebarEnabledGate>
                 {sidebarCollapsible && (
                   <SidebarCollapseTrigger
                     className={cn(
                       buttonVariants({
-                        variant: "secondary",
+                        variant: "ghost",
                         size: "icon-sm",
                       }),
                       navIconPill,
-                      "border-stroke-neutral -me-1.5",
+                      "-me-1.5",
                     )}
                   >
                     <SidebarIcon />

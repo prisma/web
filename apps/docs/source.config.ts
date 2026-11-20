@@ -73,6 +73,10 @@ export const docs = defineDocs({
       // Visually hides the docs sidebar on landing pages; the pages stay in
       // navigation, search, sitemap, and llms.txt.
       hideSidebar: z.boolean().optional(),
+      // A short name for the sidebar (and the page path and previous / next
+      // links) when the title is too long to fit there on one line. The
+      // page's own title, search entry and metadata keep the full title.
+      sidebarTitle: z.string().optional(),
     }),
     postprocess: {
       includeProcessedMarkdown: true,
@@ -122,7 +126,12 @@ export default defineConfig({
       persist: {
         id: "package-manager",
       },
+      // npm first, so it is the default tab: the docs recommend Node.js and
+      // the npm that ships with it, and the .md output uses npm commands.
       packageManagers: [
+        { command: (cmd: string) => convertLine(cmd, "npm"), name: "npm" },
+        { command: (cmd: string) => convertLine(cmd, "pnpm"), name: "pnpm" },
+        { command: (cmd: string) => convertLine(cmd, "yarn"), name: "yarn" },
         {
           command: (cmd: string) => {
             const converted = convertLine(cmd, "bun");
@@ -133,9 +142,6 @@ export default defineConfig({
           },
           name: "bun",
         },
-        { command: (cmd: string) => convertLine(cmd, "pnpm"), name: "pnpm" },
-        { command: (cmd: string) => convertLine(cmd, "yarn"), name: "yarn" },
-        { command: (cmd: string) => convertLine(cmd, "npm"), name: "npm" },
       ],
     },
   },

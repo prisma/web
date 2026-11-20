@@ -106,14 +106,16 @@ test("the lockup images are decorative and keep their alt text", () => {
   }
 });
 
-test("the section breadcrumb is a named link to the section", () => {
+test("the navbar title is the Prisma lockup and the docs wordmark only", () => {
+  // The section now leads the page's own path above the title, so the
+  // navbar no longer repeats it.
   const found = anchors(renderNavTitle("/composer/quickstart", [composerSection]));
 
-  assert.equal(found.length, 3, "expected the lockup, the wordmark, and the section crumb");
-  assert.deepEqual(found.map((a) => [a.href, a.text]).at(-1), ["/composer", "Composer"]);
+  assert.equal(found.length, 2, "expected the lockup and the wordmark, no section crumb");
+  assert.ok(!found.some((a) => a.href === "/composer"));
 });
 
-test("the navbar offers Login and then Sign up, each on its own Console page", () => {
+test("the navbar offers Log in and then Sign up, each on its own Console page", () => {
   const buttons = authLinks.filter((item): item is ButtonItemType => item.type === "button");
 
   assert.deepEqual(
@@ -122,26 +124,32 @@ test("the navbar offers Login and then Sign up, each on its own Console page", (
       return [item.text, `${url.origin}${url.pathname}`];
     }),
     [
-      ["Login", "https://console.prisma.io/login"],
+      ["Log in", "https://console.prisma.io/login"],
       // Not the Console root: signed out, it redirects to /login and drops the query.
       ["Sign up", "https://console.prisma.io/sign-up"],
     ],
   );
+  // No hardcoded UTM parameters: they would override the visitor's own,
+  // which useUtmHref propagates onto these links instead.
   for (const item of buttons) {
     assert.equal(item.on, "nav");
-    assert.equal(
-      item.secondary,
-      true,
-      `${String(item.text)} should use the same ink pill as Login`,
-    );
-    assert.equal(new URL(item.url).searchParams.get("utm_source"), "docs");
+    assert.deepEqual([...new URL(item.url).searchParams.keys()], []);
   }
-  // Login shows at every desktop width; Sign up only from `lg`, where a second
+  // Sign up is the one primary CTA (the ink pill); Log in is the quieter
+  // text link.
+  assert.deepEqual(
+    buttons.map((item) => [item.text, item.secondary === true]),
+    [
+      ["Log in", true],
+      ["Sign up", false],
+    ],
+  );
+  // Log in shows at every desktop width; Sign up only from `lg`, where a second
   // pill clips only the longest section crumbs.
   assert.deepEqual(
     buttons.map((item) => [item.text, item.navbarClassName]),
     [
-      ["Login", undefined],
+      ["Log in", undefined],
       ["Sign up", "max-lg:hidden"],
     ],
   );

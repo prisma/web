@@ -29,7 +29,9 @@ function htmlOf(answer: string): string {
 }
 
 test("every /postgres FAQ answer strips cleanly to plain text", () => {
-  assert.equal(faq.length, 9, "expected the 9-item v2 FAQ");
+  // v2 plus the cloud Postgres entry added 2026-11-13 and the managed
+  // Postgres hosting entry added 2026-11-17.
+  assert.equal(faq.length, 11, "expected the 11-item FAQ");
 
   for (const item of faq) {
     const plain = stripFaqAnswerMarkup(item.answer);

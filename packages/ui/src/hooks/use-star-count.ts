@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const GITHUB_API_URL = "https://api.github.com/repos/prisma/prisma";
+const GITHUB_API_URL = "https://api.github.com/repos/prisma/orm";
 
 type Repo = {
   name: string;

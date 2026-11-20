@@ -49,6 +49,7 @@ the build instead of shipping. The validation lives in `../extensions.ts`.
 | `example`     | no       | https URL of a runnable example.                                                 |
 | `author`      | yes      | `{ name, url }`.                                                                 |
 | `addedAt`     | yes      | ISO date the entry was added.                                                    |
+| `hidden`      | no       | `true` keeps the entry in the file but off the directory, its detail page, the sitemap, and the docs tables. Delete the field to list it again. |
 
 ## Submitting an extension
 

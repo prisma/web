@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 // @ts-expect-error The generator is a plain .mjs script with no type declarations.
-import { TARGETS, transform } from "../apps/docs/scripts/generate-error-reference.mjs";
+import {
+  TARGETS,
+  checkMissingTag,
+  latestReleaseRef,
+  readFlag,
+  recordedRef,
+  run,
+  transform,
+} from "../apps/docs/scripts/generate-error-reference.mjs";
 
 function generate(body: string, target = TARGETS.orm): string {
   return transform(target, `# Error reference\n\n## PSL\n\n${body}\n`).mdx;
@@ -196,3 +204,225 @@ test("links inside code spans and fences keep the origin hosts", () => {
   );
   assert.doesNotMatch(mdx, /\]\(https:\/\/www\.prisma\.io\//);
 });
+
+test("links into the source repo and the generated-from comment use the release ref", () => {
+  const { mdx } = transform(
+    TARGETS.orm,
+    "# Error reference\n\nSee [conventions](./error-conventions.md).\n\n### PSL.INVALID_ATTRIBUTE\n",
+    "v8.0.0-rc.24",
+  );
+  assert.match(mdx, /blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-reference\.md/);
+  assert.match(
+    mdx,
+    /\(https:\/\/github\.com\/prisma\/orm\/blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-conventions\.md\)/,
+  );
+  assert.doesNotMatch(mdx, /blob\/main\//);
+});
+
+function registry(body: unknown, status = 200) {
+  return async (url: string) => {
+    assert.equal(url, "https://registry.npmjs.org/@prisma/orm-postgres/latest");
+    return new Response(JSON.stringify(body), { status });
+  };
+}
+
+const ormRelease = {
+  version: "8.0.0-rc.24",
+  repository: { url: "git+https://github.com/prisma/orm.git" },
+};
+
+test("the release ref is the latest npm version with a v prefix", async () => {
+  assert.equal(await latestReleaseRef(TARGETS.orm, registry(ormRelease)), "v8.0.0-rc.24");
+});
+
+test("a failed registry response stops the lookup", async () => {
+  await assert.rejects(latestReleaseRef(TARGETS.orm, registry({}, 503)), /503/);
+});
+
+test("a registry response without a version stops the lookup", async () => {
+  await assert.rejects(
+    latestReleaseRef(TARGETS.orm, registry({ repository: ormRelease.repository })),
+    /no valid version/,
+  );
+});
+
+test("a latest release from another repository stops the lookup", async () => {
+  await assert.rejects(
+    latestReleaseRef(
+      TARGETS.cli,
+      async () =>
+        new Response(
+          JSON.stringify({
+            version: "7.10.2",
+            repository: { url: "git+https://github.com/prisma/prisma.git" },
+          }),
+        ),
+    ),
+    /not prisma\/prisma-cli/,
+  );
+});
+
+test("a repository whose name only starts with the source repo's name does not match", async () => {
+  await assert.rejects(
+    latestReleaseRef(
+      TARGETS.orm,
+      registry({ ...ormRelease, repository: { url: "https://github.com/prisma/orm-extras.git" } }),
+    ),
+    /not prisma\/orm/,
+  );
+});
+
+for (const argv of [["--ref"], ["--ref", ""], ["--ref", "--source", "x.md"]]) {
+  test(`readFlag rejects ${JSON.stringify(argv)}`, () => {
+    assert.throws(() => readFlag(argv, "--ref"), /--ref requires a value/);
+  });
+}
+
+test("recordedRef reads the tag from a generated page", () => {
+  const { mdx } = transform(
+    TARGETS.cli,
+    "# Error reference\n\n### CLI.NOT_LOGGED_IN\n",
+    "v8.0.0-rc.34",
+  );
+  assert.equal(recordedRef(TARGETS.cli, mdx), "v8.0.0-rc.34");
+  assert.throws(() => recordedRef(TARGETS.orm, mdx), /no ref generated from prisma\/orm/);
+});
+
+test("recordedRef refuses a page generated from main", () => {
+  const { mdx } = transform(TARGETS.orm, "# Error reference\n\n### PSL.INVALID_ATTRIBUTE\n");
+  assert.throws(() => recordedRef(TARGETS.orm, mdx), /not a release tag/);
+});
+
+test("without --ref, the page is generated from the tag of the npm release", async () => {
+  const fetched: string[] = [];
+  const written: string[] = [];
+  await run(["--target", "orm"], {
+    fetchImpl: async (url: string) => {
+      fetched.push(url);
+      return url.startsWith("https://registry.npmjs.org/")
+        ? new Response(JSON.stringify(ormRelease))
+        : new Response("# Error reference\n\n### PSL.INVALID_ATTRIBUTE\n");
+    },
+    writeFile: (_path: string, mdx: string) => written.push(mdx),
+    log: () => {},
+  });
+  assert.equal(
+    fetched[1],
+    "https://raw.githubusercontent.com/prisma/orm/v8.0.0-rc.24/docs/reference/error-reference.md",
+  );
+  assert.match(written[0], /blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-reference\.md/);
+});
+
+test("--print-ref prints the resolved tag and writes nothing", async () => {
+  const logged: string[] = [];
+  await run(["--target", "orm", "--print-ref"], {
+    fetchImpl: registry(ormRelease),
+    writeFile: () => assert.fail("--print-ref must not write"),
+    log: (line: string) => logged.push(line),
+  });
+  assert.deepEqual(logged, ["v8.0.0-rc.24"]);
+});
+
+test("a registry version that is not semver stops the lookup", async () => {
+  for (const version of ["latest", "8.0"]) {
+    await assert.rejects(
+      latestReleaseRef(TARGETS.orm, registry({ ...ormRelease, version })),
+      /no valid version/,
+    );
+  }
+});
+
+const cliPage = transform(
+  TARGETS.cli,
+  "# Error reference\n\n### CLI.NOT_LOGGED_IN\n",
+  "v8.0.0-rc.34",
+).mdx;
+
+function printRef(argv: string[]) {
+  const logged: string[] = [];
+  return run(["--target", "cli", ...argv, "--print-ref"], {
+    fetchImpl: async () => assert.fail("--recorded and --ref must not ask npm"),
+    readFile: (path: string) => {
+      assert.equal(path, TARGETS.cli.output);
+      return cliPage;
+    },
+    writeFile: () => assert.fail("--print-ref must not write"),
+    log: (line: string) => logged.push(line),
+  }).then(() => logged);
+}
+
+test("--recorded prints the tag the committed page records", async () => {
+  assert.deepEqual(await printRef(["--recorded"]), ["v8.0.0-rc.34"]);
+});
+
+test("--ref takes precedence over --recorded", async () => {
+  assert.deepEqual(await printRef(["--recorded", "--ref", "v8.0.0-rc.30"]), ["v8.0.0-rc.30"]);
+});
+
+const HOUR = 3_600_000;
+const published = Date.parse("2026-11-16T16:44:57.127Z");
+
+function publishTimes(time: Record<string, string>) {
+  return async (url: string) => {
+    assert.equal(url, "https://registry.npmjs.org/prisma");
+    return new Response(JSON.stringify({ time }));
+  };
+}
+
+test("a missing tag is only a warning for the first day after publishing", async () => {
+  const warning = await checkMissingTag(TARGETS.cli, "v8.0.0-rc.34", {
+    fetchImpl: publishTimes({ "8.0.0-rc.34": "2026-11-16T16:44:57.127Z" }),
+    now: () => published + 23 * HOUR,
+  });
+  assert.match(warning, /prisma@8\.0\.0-rc\.34 .* no tag v8\.0\.0-rc\.34/);
+  assert.match(warning, /Nothing is generated or published/);
+});
+
+test("a missing tag fails once the release is a day old", async () => {
+  await assert.rejects(
+    checkMissingTag(TARGETS.cli, "v8.0.0-rc.34", {
+      fetchImpl: publishTimes({ "8.0.0-rc.34": "2026-11-16T16:44:57.127Z" }),
+      now: () => published + 25 * HOUR,
+    }),
+    /prisma@8\.0\.0-rc\.34 .*prisma\/prisma-cli has no tag v8\.0\.0-rc\.34/,
+  );
+});
+
+test("a missing tag fails when npm has no publish time for the version", async () => {
+  await assert.rejects(
+    checkMissingTag(TARGETS.cli, "v8.0.0-rc.34", {
+      fetchImpl: publishTimes({}),
+      now: () => published,
+    }),
+    /no publish time/,
+  );
+});
+
+test("--missing-tag reports through the entry point and writes nothing", async () => {
+  const warned: string[] = [];
+  await run(["--target", "cli", "--missing-tag", "v8.0.0-rc.34"], {
+    fetchImpl: publishTimes({ "8.0.0-rc.34": "2026-11-16T16:44:57.127Z" }),
+    now: () => published + HOUR,
+    writeFile: () => assert.fail("--missing-tag must not write"),
+    warn: (line: string) => warned.push(line),
+  });
+  assert.equal(warned.length, 1);
+});
+
+for (const argv of [
+  ["--recorde", "--print-ref"],
+  ["--target", "cli", "extra"],
+  ["--print-ref", "--ref"],
+]) {
+  test(`run refuses ${JSON.stringify(argv)}`, async () => {
+    await assert.rejects(
+      run(argv, {
+        fetchImpl: async () => assert.fail("must not reach npm"),
+        readFile: () => assert.fail("must not read"),
+        writeFile: () => assert.fail("must not write"),
+        log: () => assert.fail("must not print"),
+      }),
+      /Unknown argument|requires a value/,
+    );
+  });
+}

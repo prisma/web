@@ -1,7 +1,7 @@
 import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { getPageImage, source } from "@/lib/source";
 import { getPageTitleText } from "@/lib/page-title";
-import { withDocsBasePath, withMarkdownPath } from "@/lib/urls";
+import { getBaseUrl, withDocsBasePath, withMarkdownPath } from "@/lib/urls";
 import { resolveCanonicalUrl } from "@/lib/canonical";
 import { getPageVersion, withVersionDescription, withVersionTitle } from "@/lib/version-metadata";
 import { Badge } from "@prisma/eclipse";
@@ -9,9 +9,10 @@ import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-import { CopyPromptButton, LLMCopyButton, ViewOptions } from "@/components/page-actions";
+import { CopyPromptButton, PageActions, PageActionsList } from "@/components/page-actions";
 import { getPromptContent } from "@/lib/get-prompt-content";
 import { getPageFooterItems } from "@/lib/page-footer-items";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import {
   DocsBody,
   DocsDescription,
@@ -40,6 +41,11 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
   const hideSidebar = (page.data as { hideSidebar?: boolean }).hideSidebar;
   const pageVersion = getPageVersion(page.url);
 
+  // The landing page sends readers down chosen paths, so it has no
+  // previous / next links.
+  const footerItems = page.slugs.length === 0 ? {} : getPageFooterItems(source.pageTree, page.url);
+  const hasFooterNav = Boolean(footerItems.previous || footerItems.next);
+
   return (
     <>
       {hideSidebar && (
@@ -57,49 +63,102 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
       <TechArticleSchema page={{ ...page, data: content }} />
       <BreadcrumbSchema page={page} />
       <DocsPage
+        // The page's path above the title (section › group › folder), as
+        // quiet links: where the page sits, and a way back up.
+        // Not on the docs home, where the path would only say "Getting
+        // started › Start" above "Get started with Prisma".
+        breadcrumb={{
+          enabled: page.slugs.length > 0,
+          includeRoot: true,
+          includeSeparator: true,
+        }}
         tableOfContent={{
           style: "normal",
+          // Page actions as a quiet list at the top of the right column
+          // (Supabase-style), so the title area stays calm. Below xl that
+          // column is hidden and the pill row under the summary takes over.
+          header: (
+            <div className="mb-5 border-b pb-4" data-markdown-ignore>
+              <PageActionsList
+                markdownUrl={withMarkdownPath(page.url)}
+                absoluteMarkdownUrl={new URL(withMarkdownPath(page.url), getBaseUrl()).toString()}
+                canCopy={!page.url.startsWith("/rest-api/endpoints")}
+                fullPrompt={promptContent?.fullPrompt}
+              />
+            </div>
+          ),
         }}
         toc={content.toc}
         full={page.data.full}
+        // Page actions in the page's top-right corner, on the breadcrumb row,
+        // so the title keeps the full width. From xl the right column's list
+        // takes over, except on full-width pages, which have no right column.
+        actions={
+          <div
+            className={cn(
+              "ms-auto flex flex-row flex-wrap items-center gap-2",
+              !page.data.full && "xl:hidden",
+            )}
+            data-markdown-ignore
+          >
+            {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
+            <PageActions
+              markdownUrl={withMarkdownPath(page.url)}
+              absoluteMarkdownUrl={new URL(withMarkdownPath(page.url), getBaseUrl()).toString()}
+              canCopy={!page.url.startsWith("/rest-api/endpoints")}
+            />
+          </div>
+        }
         // Resolved here rather than in the client footer: it is the only
         // consumer of the page tree's `description`, and keeping it on the
         // client meant shipping every page's description in the RSC payload
         // of every page. Same two cards, same subtitles.
-        footer={{ items: getPageFooterItems(source.pageTree, page.url) }}
-      >
-        <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
-          <div className="flex flex-row flex-wrap items-center gap-3">
-            <DocsTitle>{page.data.title}</DocsTitle>
-            {/* Versioned trees (`/orm/v6`, `/cli/v7`, ...) repeat the title of
-                their twin in every other tree, so the page carries the version
-                as a visible signal next to — never inside — the <h1>. */}
-            {pageVersion && (
-              <Badge
-                color="neutral"
-                label={pageVersion.label}
-                size="md"
-                // `rounded-full!`: the eclipse badge ships `rounded-square`,
-                // which tailwind-merge cannot collapse without the important
-                // flag. Same pattern as the sidebar badges.
-                className="shrink-0 rounded-full!"
-                data-markdown-ignore
+        //
+        // The landing page sends readers down chosen paths, so it has no
+        // previous / next links (its "next" would just be the next sidebar
+        // entry). Every page closes with one quiet line: edit link and date.
+        footer={{
+          items: footerItems,
+          children: (
+            <div
+              // One hairline, not two: under previous / next the links' own
+              // top rules already close the article, so the line only draws
+              // its rule when there are none (the landing page).
+              className={cn(
+                "mt-6 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2",
+                !hasFooterNav && "border-t pt-5",
+              )}
+              data-markdown-ignore
+            >
+              <EditOnGitHub
+                href={`https://github.com/prisma/docs/edit/main/apps/docs/content/docs/${page.path}`}
               />
-            )}
-          </div>
-          <div className="flex flex-row gap-2 items-center" data-markdown-ignore>
-            {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
-            {!page.url.startsWith("/rest-api/endpoints") && (
-              <LLMCopyButton markdownUrl={withMarkdownPath(page.url)} />
-            )}
-
-            <ViewOptions
-              markdownUrl={withMarkdownPath(page.url)}
-              githubUrl={`https://github.com/prisma/docs/blob/main/apps/docs/content/docs/${page.path}`}
+              {lastModified && <PageLastUpdate date={lastModified} />}
+            </div>
+          ),
+        }}
+      >
+        <div className="flex flex-row flex-wrap items-center gap-3 pt-2">
+          <DocsTitle>{page.data.title}</DocsTitle>
+          {/* Versioned trees (`/orm/v6`, `/cli/v7`, ...) repeat the title of
+              their twin in every other tree, so the page carries the version
+              as a visible signal next to — never inside — the <h1>. */}
+          {pageVersion && (
+            <Badge
+              color="neutral"
+              label={pageVersion.label}
+              size="md"
+              // `rounded-full!`: the eclipse badge ships `rounded-square`,
+              // which tailwind-merge cannot collapse without the important
+              // flag. Same pattern as the sidebar badges.
+              className="shrink-0 rounded-full!"
+              data-markdown-ignore
             />
-          </div>
+          )}
         </div>
-        <DocsDescription>{page.data.description}</DocsDescription>
+        <DocsDescription className={cn("mb-0", !page.data.full && "xl:mb-3")}>
+          {page.data.description}
+        </DocsDescription>
         <DocsBody>
           <MDX
             components={getMDXComponents({
@@ -107,15 +166,6 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             })}
           />
         </DocsBody>
-        <div
-          className="flex flex-row flex-wrap items-center justify-between gap-4 border-t pt-6 text-sm"
-          data-markdown-ignore
-        >
-          <EditOnGitHub
-            href={`https://github.com/prisma/docs/edit/main/apps/docs/content/docs/${page.path}`}
-          />
-          {lastModified && <PageLastUpdate date={lastModified} />}
-        </div>
       </DocsPage>
     </>
   );

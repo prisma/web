@@ -6,9 +6,9 @@ metaTitle: db update | Prisma ORM CLI
 metaDescription: Learn how to reconcile a database with the current Prisma ORM contract.
 ---
 
-`db update` compares the live database with the emitted contract and applies the changes that close the gap, whether or not the database was bootstrapped with `db init`.
+`db update` compares the live database with the emitted contract and applies the changes that make the database match it, whether or not the database was set up with `db init`. After it applies the changes, it signs the database, as [`db sign`](/cli/db-sign) does: it records there which contract the database now matches.
 
-Use it for direct reconciliation when you do not need a checked-in migration package.
+Like Prisma ORM 7's `db push`, use it when you want a database to match your contract and do not need a migration file for the change, for example on your development database while you try out a contract change.
 
 ## Usage
 
@@ -22,23 +22,26 @@ npx prisma db update --db "$DATABASE_URL"
 | --- | --- |
 | `--db <url>` | Connects to the database. |
 | `--dry-run` | Shows planned operations without applying them. |
-| `--to <contract>` | Updates to a specific contract state. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). It refuses `@contract`, `@db`, and `@empty` with the error code `MIGRATION.REF_WRONG_GRAMMAR`. To update to the contract in `contract.json`, leave out `--to`. |
-| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. On PostgreSQL and SQLite, also renames an enum value in the rows that hold it, as in `--rename Status.ARCHIVED:Status.RETIRED`. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
-| `--delete <subject>` | Lets the update lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed. Repeatable. |
+| `--to <contract>` | Updates to a specific contract state. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). It refuses `@contract`, `@db`, and `@empty` with the error code `MIGRATION.REF_WRONG_GRAMMAR`. To update to the contract in `contract.json`, leave out `--to`. |
+| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. On PostgreSQL and SQLite, also renames an enum value in the rows that hold it, as in `--rename Status.ARCHIVED:Status.RETIRED`, a field of a value object, as in `--rename GeoPoint.lat:GeoPoint.latitude`, and a variant. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
+| `--delete <subject>` | Lets the update lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed, a field of a value object, or the rows of a variant. Repeatable. |
+| `--convert <Variant>` | On PostgreSQL and SQLite, rewrites the stored discriminator value of a variant whose value changed. Repeatable. |
 | `--allow <Model>` | Lets one operation change who can read or write the model's data. Repeatable. |
-| `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-command contract hash. Without it, `db update` advances `db` when `--db` is omitted, and advances nothing when `--db` is passed. |
+| `--advance-ref <name>` | After the update, points the named [ref](/cli/migration-ref) at the contract state the database now matches. Without it, `db update` points the `db` ref there when you leave out `--db`, and changes no ref when you pass `--db`. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
+The [global flags](/cli/global-flags), such as `--no-interactive` and `--confirm`, apply too.
+
 ### Contract references [#contract-references]
 
-A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
+A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. [Contract references each command accepts](/cli/migration-ref#contract-reference-forms) lists the forms for every command.
 
-## How the db ref moves
+## What happens to the db ref [#how-the-db-ref-moves]
 
-Run without `--db`, `db update` takes the connection from `db.connection` in `prisma.config.ts` and advances the [ref](/cli/migration-ref) named `db` to the contract it just applied. Pass `--db` and that advancement is suppressed, even when the URL is the same one the config holds. Pass `--advance-ref db` alongside `--db` to get it back.
+The [ref](/cli/migration-ref) named `db` records which contract state your development database is at, which is the database `db.connection` in `prisma.config.ts` connects to. So when you run `db update` without `--db`, it uses that connection and points the `db` ref at the contract it just applied. When you pass `--db`, `db update` treats the URL as some other database and leaves the `db` ref alone, even when the URL is the same one the config holds. Pass `--advance-ref db` alongside `--db` to update the ref anyway.
 
-The `db` ref is what [`migration plan`](/cli/migration-plan) uses as its starting point when you do not pass `--from`. Passing `--db` only suppresses the advancement; it never removes a `db` ref that already exists. So a loop that always passes `--db` without `--advance-ref db` leaves the ref wherever it was last set, and the next `migration plan` starts from that stale contract. If the ref was never created, `migration plan` plans from an empty database while `migrations/app/` is empty, and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist on disk.
+The `db` ref is what [`migration plan`](/cli/migration-plan) uses as its starting point when you do not pass `--from`. Passing `--db` only leaves the ref unchanged; it never removes a `db` ref that already exists. So if you always pass `--db` without `--advance-ref db`, the ref keeps naming the state it was last set to, and the next `migration plan` starts from that out-of-date contract. If the ref was never created, `migration plan` plans from an empty database while `migrations/app/` is empty, and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist on disk.
 
 ## Renames and data loss [#renames-and-data-loss]
 
@@ -53,7 +56,7 @@ It also asks before each operation that changes who can read or write a model's 
 npx prisma db update --db "$DATABASE_URL" --advance-ref db --no-interactive --delete Legacy --rename User.name:User.fullName
 ```
 
-In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with [`CLI.CONSENT_REQUIRED`](/cli/error-reference#CLI.CONSENT_REQUIRED) instead. The error lists each question still unanswered, and its next actions give the flags to add. A `--delete` or `--allow` that answers no question fails the run with `CLI.CONSENT_UNUSED`. To list the questions without applying anything, run with `--dry-run --json` and read `dataLoss` and `accessChanges`. `--confirm` does not answer them: only `--rename`, `--delete`, `--allow` or your answers in a terminal do.
+In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with [`CLI.CONSENT_REQUIRED`](/cli/error-reference#CLI.CONSENT_REQUIRED) instead. The error lists each question still unanswered, and its next actions give the flags to add. A `--delete` or `--allow` that answers no question fails the run with `CLI.CONSENT_UNUSED`. To list the questions without applying anything, run with `--dry-run --json` and read `dataLoss` and `accessChanges`. The global `--confirm` flag does not answer these questions: only `--rename`, `--delete`, `--allow` or your answers in a terminal do.
 
 Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type loses no data, so the update asks nothing about it.
 
@@ -80,6 +83,25 @@ A member you rename while keeping its stored value, such as `RETIRED = "archived
 
 Native PostgreSQL enums (`pg.enum(...)`) are not affected. Before `8.0.0-rc.21`, PostgreSQL failed at apply when a row held the removed value, and SQLite planned nothing.
 
+On PostgreSQL and SQLite, a field of a [value object](/orm/contract-authoring/psl-syntax#value-objects) is asked about too when the contract renames it, removes it, or makes it required. Name the field through its value object, such as `GeoPoint.lat`, not through a model. Each statement acts on every column that holds the value object, including lists of it and value objects nested in another:
+
+- `--rename GeoPoint.lat:GeoPoint.latitude` renames the key in every stored object.
+- `--delete GeoPoint.lng` removes the key from every stored object.
+- An enum value inside a value object is asked about as the enum value. `--rename Status.ARCHIVED:Status.RETIRED` rewrites it wherever it is stored, and `--delete Status.DRAFT` sets an optional field that holds it to JSON `null` and takes it out of a list.
+- A field that becomes required gets a temporary value, such as `""`, `0`, `false` or `[]`, in every stored object that lacks the key or holds JSON `null` there, when the field's type takes one. A stored object that already holds a value keeps it. A field whose type takes none of them, such as a `DateTime`, is refused. To fill it with a value of your own, plan the change with [`migration plan --backfill`](/cli/migration-plan#renames-and-data-loss) instead.
+
+A [variant](/orm/contract-authoring/psl-syntax#base-models-and-variants) whose discriminator value changes, or that the contract removes, is asked about as a model:
+
+- `--convert Bug` rewrites the old value to the new one in the base table's discriminator column.
+- `--rename Bug:Defect` of a variant whose value also changed rewrites the value in the same way.
+- `--delete Bug` deletes the rows that hold the old value, then drops a removed variant's own table or the columns only it used.
+
+On MongoDB, `--rename` of a value object field or of a variant whose discriminator value changes is refused, and so is `--convert` of a variant.
+
+On MongoDB, a field type change that can lose values is asked about, as on SQL. Answer with `--delete` and the field, as in `--delete User.age`, which keeps the field and casts its stored values with `$convert`. To write the conversion yourself, use `migration plan --convert` instead, because `db update` writes no migration for you to edit.
+
+A new required field on MongoDB is filled with a temporary value in the documents that lack it. The exception is a new required field that a unique index covers: it gets no temporary value, because every document would get the same one, so on a collection that has documents the apply stops. Plan that change with `migration plan --backfill` instead, as the error says. A change to a collection's validator checks the documents first and stops with `MIGRATION.PRECHECK_FAILED` while one does not fit; fix those documents, then run `db update` again. See [how migrations work](/orm/migrations/how-migrations-work#the-same-model-for-sql-and-mongodb). This paragraph and the one before it apply since `8.0.0-rc.24`.
+
 On MongoDB, a model rename renames its collection and keeps its documents, indexes and validator, and a field rename renames the field in every document that holds it. `--rename` and `--delete` name fields by their names in the schema, not by the names they are stored under. Removing a field from a model removes it from every document that holds it, so the update asks about it: answer with `--delete <Model>.<field>`, or with `--rename`. Without a stored contract, the field is named by its collection, as in `--delete profiles.nickname`.
 
 On PostgreSQL and SQLite, a type change that can lose values is answered with `--delete <Model.field>`, which lets the database's own cast run; it may cut or round values, and a value it cannot cast fails the update. To write the conversion yourself, use [`migration plan --convert`](/cli/migration-plan#type-changes-and-required-fields) instead.
@@ -102,6 +124,8 @@ Use `--dry-run` before applying changes in shared environments.
 ```bash
 npx prisma db update --db "$DATABASE_URL" --dry-run --json | jq 'select(.kind == "result") | .envelope.result.dataLoss'
 ```
+
+Warnings about the planned change are in the result's `plannerWarnings`, a list of objects with `kind`, `summary` and `why`, as in `migration plan --json`. Before `8.0.0-rc.24`, `db update` and `db init` listed them under `warnings`.
 
 [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the data lines of the other commands.
 

@@ -8,14 +8,14 @@ metaDescription: 'Reference for what a Prisma ORM migration.ts can call: the Mig
 
 Each migration is its own folder inside `migrations/app/`, and the file you edit in it is `migration.ts`. `app` is the fixed name of the folder that holds your project's migrations; extension packages that ship their own migrations get folders of their own next to it.
 
-In Prisma ORM 8, `schema.prisma` is now `contract.prisma`, your contract: the same language and the same models. `npx prisma migration plan` writes `migration.ts` from a change to the contract, and saves a frozen copy of the contract for the migration to point at; when this page says a migration's start or end contract, it means one of those copies. You edit `migration.ts`, then run it with Node.js, and it writes `ops.json`, the SQL that will run, next to itself. [`npx prisma db migrate`](/cli/db-migrate) applies `ops.json` to the database.
+In Prisma ORM 8, `schema.prisma` is now `contract.prisma`, your contract: the same language and the same models. `npx prisma migration plan` writes `migration.ts` from a change to the contract. It also saves a copy of the contract in `migrations/snapshots/` for each contract state a migration starts or ends at, and later edits to your contract do not change those copies. When this page says a migration's start or end contract, it means one of those copies. You edit `migration.ts`, then run it with Node.js, and it writes `ops.json` next to itself. `ops.json` holds the operations that will run: SQL statements on PostgreSQL, and MongoDB commands on MongoDB. [`npx prisma db migrate`](/cli/db-migrate) applies `ops.json` to the database.
 
 This page lists everything `migration.ts` can call. For the editing workflow, with a worked backfill, read [Editing a migration](/orm/migrations/editing-a-migration).
 
 On PostgreSQL, everything comes from one module:
 
 ```ts
-import { Migration, MigrationCLI, col, primaryKey, unique, foreignKey, checkExpression, lit, fn, rawSql, createExtension, placeholder } from '@prisma/orm-postgres/migration';
+import { Migration, MigrationCLI, col, primaryKey, unique, foreignKey, checkExpression, lit, fn, sql, rawSql, placeholder } from '@prisma/orm-postgres/migration';
 ```
 
 `migration plan` writes the import line with only the names the migration needs. When you add a call by hand, add its name to the import line. Where a migration holds SQL from your contract, such as a default, a check or an index expression, `migration plan` writes it as a `sql` value, as in ``fn(sql`clock_timestamp()`)``, imported from the same module. Every call that takes SQL accepts either a `sql` value or a plain string. A string is used exactly as written, while a `sql` value has its shared indentation and the blank lines at its start and end removed, so leave the strings in a migration you already applied as they are. On MongoDB the module is `@prisma/orm-mongo/target/migration`; the path really does contain `target`, and it is not a placeholder. See [MongoDB operations](#mongodb-operations).
@@ -88,7 +88,7 @@ Every operation carries an `operationClass`, which says what kind of change it m
 | Class | Meaning | Example |
 | --- | --- | --- |
 | `additive` | Adds something new | Add a column, create an index |
-| `widening` | Loosens a rule, or renames something without losing anything | Drop `NOT NULL`, rename an index |
+| `widening` | Loosens a rule, removes something that holds no rows or values, or renames something, without losing data | Drop `NOT NULL`, drop an index, rename an index |
 | `destructive` | Removes or changes something that exists, and can lose data | Drop a column, change a column's type |
 | `data` | Changes rows, not tables | A `dataTransform` |
 
@@ -111,7 +111,7 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | --- | --- | --- | --- |
 | `createSchema` | `schema` | `CREATE SCHEMA IF NOT EXISTS "app"` | additive |
 | `createTable` | `schema`, `table`, `columns`, `constraints?` | `CREATE TABLE "public"."post" (...)` | additive |
-| `renameTable` | `schema?`, `table`, `to` | `ALTER TABLE "public"."userProfile" RENAME TO "UserProfile"` | widening |
+| `renameTable` | `schema?`, `table`, `to` | `ALTER TABLE "public"."Profile" RENAME TO "UserProfile"` | widening |
 | `dropTable` | `schema`, `table` | `DROP TABLE "public"."post"` | destructive |
 | `renameSchema` | `schema`, `to` | `ALTER SCHEMA "billing" RENAME TO "finance"` | widening |
 | `setTableSchema` | `schema?`, `table`, `to` | `ALTER TABLE "public"."invoice" SET SCHEMA "billing"` | widening |
@@ -119,7 +119,7 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 
 `columns` is a list of [`col(...)`](#column-and-constraint-helpers) calls and `constraints` a list of `primaryKey(...)`, `unique(...)`, `foreignKey(...)`, and `checkExpression(...)` calls, all rendered inside the `CREATE TABLE` statement. That section shows a full `createTable` call and the SQL it produces.
 
-`renameTable` renames a table and keeps its rows. It also renames each primary key, unique constraint, foreign key, index and check whose name `migration plan` derived from the old table name, so it returns a list of operations: spread it into the list, as in `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. It reads the names from the migration's start and end contracts. Change the table name in your contract (the model name, or its `@@map`), and run `prisma contract emit`. `migration plan` plans the change as a dropped table and a new one: replace that pair with the `renameTable` call, or write the call in an empty migration from [`prisma migration new`](/cli/migration-new). Pass `schema` only when more than one schema has a table of that name. When the start contract has no such table, or the end contract has no table named `to`, it fails with [`MIGRATION.TABLE_RENAME_UNMATCHED`](/orm/reference/error-reference#MIGRATION.TABLE_RENAME_UNMATCHED). On SQLite, `renameTable` takes `table` and `to`.
+`renameTable` renames a table and keeps its rows. It also renames each primary key, unique constraint, foreign key, index and check whose name `migration plan` derived from the old table name, so it returns a list of operations: spread it into the list, as in `...this.renameTable({ schema: 'public', table: 'Profile', to: 'UserProfile' })`. It reads the names from the migration's start and end contracts. Change the table name in your contract (the model name, or its `@@map`), run `prisma contract emit`, and plan with `--rename`, as in `--rename Profile:UserProfile`, and `migration plan` writes the `renameTable` call. You can also write the call yourself in an empty migration from [`prisma migration new`](/cli/migration-new). Pass `schema` only when more than one schema has a table of that name. When the start contract has no such table, or the end contract has no table named `to`, it fails with [`MIGRATION.TABLE_RENAME_UNMATCHED`](/orm/reference/error-reference#MIGRATION.TABLE_RENAME_UNMATCHED). On SQLite, `renameTable` takes `table` and `to`.
 
 `renameSchema` renames a schema, and everything in it stays in it. `setTableSchema` moves a table to the schema `to`, with its rows, constraints, indexes and policies; foreign keys from other tables keep pointing at it. Leave out `schema` for a table that is in no schema. Later `renameTable` and `renameColumn` calls in the same migration find the table under its new schema or schema name. `dropSchema` drops a schema without `CASCADE`, so drop or move its tables first: its precheck fails while the schema still holds a table, view, sequence, type or function. [`migration plan`](/cli/migration-plan#renames-and-data-loss) writes these calls when you pass `--rename billing:finance`, `--rename public.Invoice:billing.Invoice` or `--delete billing`. They are PostgreSQL only.
 
@@ -128,6 +128,9 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | Method | Options | Runs | Class |
 | --- | --- | --- | --- |
 | `addColumn` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ADD COLUMN "bio" text` | additive |
+| `addColumnWithTemporaryDefault` | `schema`, `table`, `column`, `type`, `temporaryDefault` | `ALTER TABLE "public"."user" ADD COLUMN "age" int4 DEFAULT (0) NOT NULL`, then `ALTER TABLE "public"."user" ALTER COLUMN "age" DROP DEFAULT` | additive |
+| `addRequiredColumnToEmptyTable` | `schema`, `table`, `column`, `type` | `ALTER TABLE "public"."post" ADD COLUMN "slug" text NOT NULL` | additive |
+| `renameColumn` | `schema?`, `table`, `column`, `to` | `ALTER TABLE "public"."user" RENAME COLUMN "name" TO "fullName"` | widening |
 | `dropColumn` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" DROP COLUMN "bio"` | destructive |
 | `alterColumnType` | `schema`, `table`, `column`, `type`, `using?`, `raw?`, `operationClass?` | `ALTER TABLE "public"."post" ALTER COLUMN "views" TYPE bigint` | destructive, or data with `using` |
 | `setNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" SET NOT NULL` | widening |
@@ -136,6 +139,16 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | `dropDefault` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ALTER COLUMN "name" DROP DEFAULT` | widening |
 
 `addColumn` and `setDefault` take a `col(...)` call as `column`. The other methods take the column's name as a string.
+
+`migration plan` writes `addColumnWithTemporaryDefault` for a new required field when you plan without `--backfill`. It adds the column with `temporaryDefault` as its default, so every existing row gets that value, and then drops the default. `type` is the column's type as SQL, and `temporaryDefault` is SQL too, written as a `sql` value such as ``sql`0` `` or as a string such as `"''"`. To give the existing rows another value, change `temporaryDefault` and run `node migration.ts`:
+
+```ts
+this.addColumnWithTemporaryDefault({ schema: 'public', table: 'user', column: 'age', type: 'int4', temporaryDefault: sql`0` }),
+```
+
+`addRequiredColumnToEmptyTable` adds a required column without a default. Its precheck fails while the table has a row, so applying it to a table with rows stops before anything changes. `migration plan` writes it for a new required field that cannot take one temporary value, as [Data](#data) describes.
+
+`renameColumn` renames a column and keeps its values. Like `renameTable`, it also renames each unique constraint, foreign key and index on the column whose name `migration plan` derived from the old column name, so it returns a list: spread it, as in `...this.renameColumn({ schema: 'public', table: 'user', column: 'name', to: 'fullName' })`. `migration plan` writes it when you pass `--rename User.name:User.fullName`. Pass `schema` only when more than one schema has a table of that name. It reads the column names from the migration's start and end contracts, and fails with [`MIGRATION.COLUMN_RENAME_UNMATCHED`](/orm/reference/error-reference#MIGRATION.COLUMN_RENAME_UNMATCHED) when the start contract has no such column, the table already has the new one, or the end contract lacks it.
 
 `alterColumnType` takes the new type in `type`, written the way a migration writes it, such as `'int8'`, `'varchar(255)'`, or `'"Mood"'` for an enum. Prisma ORM recognizes the PostgreSQL types it supports and the types of the extension packages in your configuration, and after the change `db migrate` checks that the column has the type you wrote. A type it does not recognize fails with `MIGRATION.COLUMN_TYPE_UNREADABLE`. If that type comes from an extension package, add the package to your configuration. For any other type, set `raw: true` and pass the type exactly as PostgreSQL prints it, because `db migrate` then compares the column's type with that text.
 
@@ -166,11 +179,11 @@ A `migration.ts` written before `8.0.0-rc.18` passed an `options` object with `q
 | `addPrimaryKey` | `schema`, `table`, `constraint`, `columns` | `ALTER TABLE "public"."tag" ADD CONSTRAINT "tag_pkey" PRIMARY KEY ("id")` | additive |
 | `addUnique` | `schema`, `table`, `constraint`, `columns` | `ALTER TABLE "public"."user" ADD CONSTRAINT "user_name_key" UNIQUE ("name")` | additive |
 | `addForeignKey` | `schema`, `table`, `foreignKey` | `ALTER TABLE "public"."comment" ADD CONSTRAINT "comment_post_fkey" FOREIGN KEY ("postId") REFERENCES "public"."post" ("id") ON DELETE CASCADE` | additive |
-| `dropConstraint` | `schema`, `table`, `constraint`, `kind?` | `ALTER TABLE "public"."user" DROP CONSTRAINT "user_name_key"` | destructive |
+| `dropConstraint` | `schema`, `table`, `constraint`, `kind?` | `ALTER TABLE "public"."user" DROP CONSTRAINT "user_name_key"` | widening |
 | `addCheckConstraint` | `schema`, `table`, `constraint`, `expression` | `ALTER TABLE "public"."post" ADD CONSTRAINT "post_title_len" CHECK (length("title") > 0)` | additive |
 | `renameCheckConstraint` | `schema`, `table`, `from`, `to` | `ALTER TABLE "public"."post" RENAME CONSTRAINT "post_title_len" TO "post_title_nonempty"` | widening |
 | `renameConstraint` | `schema?`, `table`, `kind`, `from`, `to` | `ALTER TABLE "public"."user" RENAME CONSTRAINT "user_pkey" TO "account_pkey"` | widening |
-| `dropCheckConstraint` | `schema`, `table`, `constraint` | `ALTER TABLE "public"."post" DROP CONSTRAINT "post_title_nonempty"` | destructive |
+| `dropCheckConstraint` | `schema`, `table`, `constraint` | `ALTER TABLE "public"."post" DROP CONSTRAINT "post_title_nonempty"` | widening |
 
 In these calls, `constraint` is the name to give the constraint, or the name of the one to drop, and `columns` is the list of column names it covers:
 
@@ -199,7 +212,7 @@ this.addForeignKey({
 
 `addCheckConstraint` adds a check to a table that already exists; `checkExpression(...)`, listed under [helpers](#column-and-constraint-helpers), is the same thing inside a `createTable`. In both, `expression` is SQL and goes into the statement as you wrote it, so quote column names yourself: `'length("title") > 0'`.
 
-There is no method that renames a column. [Raw SQL](#raw-sql) shows a column rename. To rename a table, use [`renameTable`](#schemas-and-tables).
+To rename a column, use [`renameColumn`](#columns), and to rename a table, use [`renameTable`](#schemas-and-tables).
 
 ### Indexes
 
@@ -207,7 +220,7 @@ There is no method that renames a column. [Raw SQL](#raw-sql) shows a column ren
 | --- | --- | --- | --- |
 | `createIndex` | `schema`, `table`, `index`, `columns` or `expression`, `extras?` | `CREATE INDEX "post_author_idx" ON "public"."post" ("authorId")` | additive |
 | `renameIndex` | `schema`, `table`, `from`, `to` | `ALTER INDEX "public"."post_author_idx" RENAME TO "post_author_id_idx"` | widening |
-| `dropIndex` | `schema`, `table`, `index` | `DROP INDEX "public"."post_author_id_idx"` | destructive |
+| `dropIndex` | `schema`, `table`, `index` | `DROP INDEX "public"."post_author_id_idx"` | widening |
 
 `createIndex` takes either `columns`, a list of column names, or `expression`, one SQL string that becomes everything between the parentheses, such as `'lower("title")'`. Everything else goes in `extras`:
 
@@ -238,7 +251,7 @@ There is no `CONCURRENTLY` option, because one `npx prisma db migrate` run is [o
 | --- | --- | --- | --- |
 | `createNativeEnumType` | `schema`, `typeName`, `members` | `CREATE TYPE "public"."role" AS ENUM ('admin', 'member')` | additive |
 | `addNativeEnumValue` | `schema`, `typeName`, `value` | `ALTER TYPE "public"."role" ADD VALUE 'guest'` | additive |
-| `dropNativeEnumType` | `schema`, `typeName` | `DROP TYPE "public"."role"` | destructive |
+| `dropNativeEnumType` | `schema`, `typeName` | `DROP TYPE "public"."role"` | widening |
 
 `members` and `value` are the enum's values as strings, and `addNativeEnumValue` adds one value per call, so call it once for each value you add:
 
@@ -251,10 +264,12 @@ this.addNativeEnumValue({ schema: 'public', typeName: 'role', value: 'guest' }),
 
 | Method | Options | Runs | Class |
 | --- | --- | --- | --- |
-| `replaceStoredValue` | `schema?`, `table`, `column`, `from`, `to`, `many?`, `codecRef?` | `UPDATE "public"."task" SET "state" = $2 WHERE "state" = $1` | widening |
-| `removeStoredValue` | `schema?`, `table`, `column`, `value`, `many?`, `codecRef?`, `enumValue?` | `UPDATE "public"."task" SET "state" = NULL WHERE "state" = $1` | destructive |
+| `replaceStoredValue` | `schema?`, `table`, `column`, `from`, `to`, `many?`, `codecRef?`, `path?` | `UPDATE "public"."task" SET "state" = $2 WHERE "state" = $1` | widening |
+| `removeStoredValue` | `schema?`, `table`, `column`, `value`, `many?`, `codecRef?`, `enumValue?`, `path?`, `nullable?` | `UPDATE "public"."task" SET "state" = NULL WHERE "state" = $1` | destructive |
 
-`migration plan` writes these calls when a member of an `enum` block stores a new value or is removed and no other member stores its value, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes. `replaceStoredValue` changes the stored value `from` to `to` in every row that holds it. `removeStoredValue` sets the column to `NULL` in every row that holds `value`; on a required column, its precheck fails while any row holds the value. With `many: true`, the column is a list, and the value is replaced in or removed from every list that holds it. Values are passed as parameters, in the form the column stores them. `codecRef` names the column's codec, and `enumValue` names the enum member, so that a failed check names it; `migration plan` fills in both.
+`migration plan` writes these calls when a member of an `enum` block stores a new value or is removed and no other member stores its value, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes. `replaceStoredValue` changes the stored value `from` to `to` in every row that holds it. `removeStoredValue` sets the column to `NULL` in every row that holds `value`; on a required column, its precheck fails while any row holds the value. With `many: true`, the column is a list, and the value is replaced in or removed from every list that holds it. Values are passed as parameters, in the form the column stores them. `codecRef` names how the column's values are stored and read, and `enumValue` names the enum member, so that a failed check names it; `migration plan` fills in both.
+
+When the enum field is inside a [value object](/orm/contract-authoring/psl-syntax#value-objects), the column holds JSON, and `path` says where the value is inside it, written as for [`renameStoredKey`](#value-object-fields). `migration plan` writes it for you. With a `path` that ends at `[*]` or `.*`, `removeStoredValue` takes the value out of the list, or removes the member from the object; with any other `path`, it sets the field to JSON `null`. With `path`, leave out `many` and `codecRef`. Without `nullable: true`, a `path` that ends at a member name is treated as a field that takes no `null`, so the precheck fails while a row holds the value; a `path` that ends at a wildcard has no such precheck. `migration plan` writes `nullable: true` for an optional field.
 
 To keep the rows when a member stores a new value, replace the planned `removeStoredValue` with a `replaceStoredValue` to the new value, then run `node migration.ts`:
 
@@ -262,15 +277,43 @@ To keep the rows when a member stores a new value, replace the planned `removeSt
 this.replaceStoredValue({ schema: 'public', table: 'task', column: 'state', from: 'archived', to: 'retired' }),
 ```
 
+### Value object fields [#value-object-fields]
+
+| Method | Options | Runs | Class |
+| --- | --- | --- | --- |
+| `renameStoredKey` | `schema?`, `table`, `column`, `path`, `to` | `UPDATE "public"."place" SET "location" = ... WHERE ...`, renaming the key in each stored object | widening |
+| `removeStoredKey` | `schema?`, `table`, `column`, `path` | `UPDATE "public"."place" SET "location" = ... WHERE ...`, removing the key from each stored object | destructive |
+| `fillStoredKey` | `schema?`, `table`, `column`, `path`, `value`, `field?` | `UPDATE "public"."place" SET "location" = ... WHERE ...`, setting the key where it is missing or `null` | widening |
+
+A [value object](/orm/contract-authoring/psl-syntax#value-objects) is stored as JSON in one column, so renaming, removing or filling one of its fields changes a key inside that JSON in every row. `migration plan` writes these calls for `--rename GeoPoint.lat:GeoPoint.latitude`, `--delete GeoPoint.lng` and `--backfill GeoPoint.country`, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes.
+
+`path` is a JSONPath that starts at the column's value, `$`, and ends at the key: `'$.lat'` is the key `lat` of the object in the column, and `'$[*].lat'` is the key `lat` of each object in a list. `[*]` and `.*` match every element of a list and every member value of an object. `renameStoredKey` and `removeStoredKey` write only the rows that hold the key; `fillStoredKey` writes the rows with an object that lacks the key or holds `null` there.
+
+- `renameStoredKey` renames the key to `to`. Its precheck fails, and nothing changes, while an object holds both the old key and the new one.
+- `removeStoredKey` removes the key.
+- `fillStoredKey` sets the key to `value`, a JSON value written as JavaScript, such as `'DE'` or `0`, in each object that lacks it or holds `null` there. `field` names the value object field, such as `'GeoPoint.country'`, and with it `node migration.ts` refuses a `value` the field does not take. With `--backfill`, `migration plan` writes `value: placeholder('GeoPoint.country:value')`: replace it with one JSON value, then run `node migration.ts`.
+
+```ts
+this.fillStoredKey({ schema: 'public', table: 'place', column: 'location', path: '$.country', value: 'DE', field: 'GeoPoint.country' }),
+```
+
+### Variant rows
+
+| Method | Options | Runs | Class |
+| --- | --- | --- | --- |
+| `deleteRows` | `schema?`, `table`, `column`, `value`, `codecRef?` | `DELETE FROM "public"."task" WHERE "state" = $1` | destructive |
+
+`deleteRows` deletes every row whose `column` holds `value`, passed as a parameter in the form the column stores it. Foreign keys that point at those rows act as they do for any `DELETE`. `migration plan` writes it for `--delete Bug`, where `Bug` is a [variant](/orm/contract-authoring/psl-syntax#base-models-and-variants): it deletes the rows whose discriminator column holds the variant's value. For `--convert Bug`, it writes a `replaceStoredValue` on the discriminator column instead, which changes the variant's old value to its new one, so the rows stay and belong to the variant under its new value.
+
 ### Row-level security
 
 | Method | Options | Runs | Class |
 | --- | --- | --- | --- |
 | `enableRowLevelSecurity` | `schema`, `table` | `ALTER TABLE "public"."post" ENABLE ROW LEVEL SECURITY` | additive |
-| `disableRowLevelSecurity` | `schema`, `table` | `ALTER TABLE "public"."post" DISABLE ROW LEVEL SECURITY` | destructive |
+| `disableRowLevelSecurity` | `schema`, `table` | `ALTER TABLE "public"."post" DISABLE ROW LEVEL SECURITY` | widening |
 | `createRlsPolicy` | `schema`, `table`, `policy` | `CREATE POLICY "post_read_all" ON "public"."post" AS PERMISSIVE FOR SELECT TO public USING (true)` | additive |
 | `renameRlsPolicy` | `schema`, `table`, `from`, `to` | `ALTER POLICY "post_read_all" ON "public"."post" RENAME TO "post_read_any"` | widening |
-| `dropRlsPolicy` | `schema`, `table`, `policy` | `DROP POLICY "post_read_any" ON "public"."post"` | destructive |
+| `dropRlsPolicy` | `schema`, `table`, `policy` | `DROP POLICY "post_read_any" ON "public"."post"` | widening |
 
 `policy` describes the policy in full:
 
@@ -296,21 +339,27 @@ this.createRlsPolicy({
 
 | Call | Options | Runs | Class |
 | --- | --- | --- | --- |
-| `createExtension(name)` | the extension's name | `CREATE EXTENSION IF NOT EXISTS "pgcrypto"` | additive |
+| `this.createExtension` | `extension`, `schema?` | `CREATE EXTENSION "pgcrypto"` | additive |
+| `this.dropExtension` | `extension`, `schema?` | `DROP EXTENSION "pgcrypto"` | destructive |
+| `this.setExtensionSchema` | `extension`, `schema` | `ALTER EXTENSION "citext" SET SCHEMA "extensions"` | widening |
 | `this.installExtension` | `extensionName`, `invariantId`, `id`, `label?` | `CREATE EXTENSION IF NOT EXISTS citext` | additive |
 
-Usually you declare an extension in the contract instead, with `extension pgcrypto {}`, and `migration plan` writes the `createExtension` call for you; [PostgreSQL extensions](/orm/contract-authoring/psl-syntax#postgresql-extensions) explains it. `createExtension` is a plain function, not a method, for a migration you write by hand. It goes in the `operations` list like any other call:
+Usually you declare an extension in the contract instead, with `extension pgcrypto {}`, and `migration plan` writes the `this.createExtension` call for you; [PostgreSQL extensions](/orm/contract-authoring/psl-syntax#postgresql-extensions) explains it. In a migration you write by hand, it goes in the `operations` list like any other call:
 
 ```ts
 override get operations() {
   return [
-    createExtension('pgcrypto'),
+    this.createExtension({ extension: 'pgcrypto' }),
     this.addColumn({ schema: 'public', table: 'user', column: col('token', 'text') }),
   ];
 }
 ```
 
-It has no precheck or postcheck, so if a `db migrate` run stops partway and you run it again, this operation runs again, which is harmless because of `IF NOT EXISTS`.
+Without `schema`, the extension goes into the connection's current schema, unless the extension's control file names one. Its precheck checks that the extension is absent and its postcheck that it is present, so a run that finds the extension already installed skips the operation.
+
+`migration plan` writes `this.dropExtension` when you remove an `extension` block from the contract, and `this.setExtensionSchema` when you change the schema the block puts the extension in. `dropExtension` runs without `CASCADE`, so it fails while a column or other object still uses the extension. `setExtensionSchema` moves an installed extension, with its types and functions, to the schema `schema`.
+
+Before `8.0.0-rc.24`, `@prisma/orm-postgres/migration` also exported `createExtension` and `dataTransform` as plain functions. Neither could be called correctly from a `migration.ts`, and both are removed: an import of either now fails with `does not provide an export named`. Replace `createExtension('pgcrypto')` with `this.createExtension({ extension: 'pgcrypto' })`, and `dataTransform(...)` with `this.dataTransform(...)`. A migration's `ops.json` does not change, so there is no need to run `node migration.ts` again.
 
 `installExtension` is for the older migrations of an [extension package](/orm/extensions) that ships its own migrations, and there `extensionName`, `invariantId`, and `id` are all required. A new package declares its PostgreSQL extension in its contract instead, because `db sign` refuses, with `MIGRATION.SIGN_INVARIANTS_MISSING`, a contract space whose head needs an invariant the database has not recorded. `id` names the operation in error messages, `label` is the text the CLI prints, and `invariantId` is a name other migrations in that package can refer to the install by. Only extension packages use `invariantId`; the optional `invariantId` on `dataTransform` and `rawSql` is for them too, so leave it out.
 
@@ -318,43 +367,26 @@ It has no precheck or postcheck, so if a `db migrate` run stops partway and you 
 
 | Call | Arguments | Class |
 | --- | --- | --- |
-| `this.dataTransform(contract, name, options)` | `endContract`, the contract object built below; a name for the operation; and `options` with `run`, `check?`, and `invariantId?` | data |
+| `this.dataTransform(contract, name, options)` | the contract object built below; a name for the operation; and `options` with `run`, `check?`, `backfillsColumn?`, and `invariantId?` | data |
 
 `run` is a callback that returns an update built with the [SQL query builder](/orm/reference/sql-query-builder), or a list of such callbacks that run in order. `check` is a callback that returns a query for the rows still needing the change. You write that one query; the precheck passes while it finds rows, and the postcheck passes once it finds none.
 
-Both callbacks build their queries with `db`, a query builder, and `db` needs a contract object built from the end snapshot's JSON. `migration plan` does not write those lines; you add them whenever a migration has a `dataTransform`. Pass the same contract object as the `contract` argument (not `this.endContract`, which is only a view for looking names up). The planned file already uses the name `endContract` for the JSON import, so first rename the import to free the name:
+The planned file passes the JSON import `endContract` as the first argument of `dataTransform`, and you change it to `contract`, the contract object built below. Both callbacks build their queries with `db`, a query builder, which also needs that contract object. `migration plan` does not write those lines; you add them whenever a migration has a `dataTransform`. Add these imports and this line above the class. `postgres(...)` is given no connection string here, so it never connects to a database:
 
 ```ts
-import endContract from '../../snapshots/<end hash>/contract.json' with { type: 'json' }; // [!code --]
-import endContractJson from '../../snapshots/<end hash>/contract.json' with { type: 'json' }; // [!code ++]
+import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
+
+const { sql: db, contract } = postgres({ contract: contractFromJson<End>(endContract) });
 ```
 
-```ts
-  override readonly endContractJson = endContract; // [!code --]
-  override readonly endContractJson = endContractJson; // [!code ++]
-```
-
-Then add these lines above the class, copied as they are; they build `db` and never connect to a database:
-
-```ts
-import postgresAdapter from '@prisma/orm-postgres/adapter/runtime';
-import { sql } from '@prisma/orm-postgres/builder/runtime';
-import { createExecutionContext, createSqlExecutionStack } from '@prisma/orm-postgres/family-runtime';
-import postgresTarget, { PostgresContractSerializer } from '@prisma/orm-postgres/target/runtime';
-
-const endContract = new PostgresContractSerializer().deserializeContract<End>(endContractJson);
-const stack = createSqlExecutionStack({ target: postgresTarget, adapter: postgresAdapter });
-
-const db = sql<End>({
-  context: createExecutionContext({ contract: endContract, stack }),
-  rawCodecInferer: stack.adapter.rawCodecInferer,
-});
-```
+`endContract` is the end snapshot's JSON, which the planned file already imports, and `End` is its type. When your contract uses an extension package, such as pgvector, pass its runtime export in `extensions`, as `db.ts` does: `postgres({ contract: contractFromJson<End>(endContract), extensions: [pgvector] })`, with `import pgvector from '@prisma/orm-extension-pgvector/runtime'`. Without it, `postgres(...)` fails with `RUNTIME.MISSING_EXTENSION_PACK`. `sql: db` names the query builder `db`, so it cannot clash with the `sql` that a planned file may import from `@prisma/orm-postgres/migration`. Pass `contract`, the object `postgres(...)` returns, because `db` was built from it; the JSON fails once the placeholders are replaced.
 
 Then the operation itself, from the worked example on Editing a migration. Inside each `where`, `f` holds the table's columns and `fns` the comparison functions:
 
 ```ts
-this.dataTransform(endContract, 'backfill-user-displayName', {
+this.dataTransform(contract, 'backfill-user-displayName', {
+  backfillsColumn: { schema: 'public', table: 'user', column: 'displayName' },
   check: () =>
     db.public.user
       .select('id')
@@ -367,7 +399,9 @@ this.dataTransform(endContract, 'backfill-user-displayName', {
 }),
 ```
 
-`migration plan` writes a `dataTransform` with `placeholder('<name>:check')` and `placeholder('<name>:run')` in the two positions for each field you name with `--backfill <Model.field>`, and an `alterColumnType` with `using: placeholder('<Model.field>:convert')` for each field you name with `--convert`; you replace each `placeholder(...)` call with a query or a conversion. Without those flags it writes no placeholders: a new required field gets a temporary value in the existing rows, and an optional field made required is tightened directly. A new required field that cannot take one temporary value is the exception: one in the primary key, a unique constraint or a foreign key, one limited to a fixed set of values, such as an enum, or one whose type has no temporary value. `migration plan` adds it for an empty table only, so applying the migration fails when the table has rows; name the field with `--backfill` to fill those rows yourself. See [`migration plan`](/cli/migration-plan). [Editing a migration](/orm/migrations/editing-a-migration) shows the whole file, and what to do when the backfill reads a column the migration removes.
+`backfillsColumn` names the column the backfill fills, and `migration plan` writes it for you. Keep it: when rows still hold `NULL` after `run`, the error then counts them and says how to fix the backfill.
+
+`migration plan` writes a `dataTransform` with `placeholder('<Model.field>:check')` and `placeholder('<Model.field>:run')` in the two positions for each field you name with `--backfill <Model.field>`, such as `placeholder('User.displayName:check')`, and an `alterColumnType` with `using: placeholder('<Model.field>:convert')` for each field you name with `--convert`; you replace each `placeholder(...)` call with a query or a conversion. Without those flags it writes no placeholders: a new required field gets a temporary value in the existing rows, such as `''` for text or `0` for a number, and an optional field made required gets a `setNotNull` with no backfill, which fails while a row holds `NULL`. A new required field that cannot take one temporary value is the exception: one in the primary key, a unique constraint or a foreign key, one limited to a fixed set of values, such as an enum, or one whose type has no temporary value. For such a field, `migration plan` writes `addRequiredColumnToEmptyTable`, which fails when the table has rows; name the field with `--backfill` to fill those rows yourself. See [`migration plan`](/cli/migration-plan). [Editing a migration](/orm/migrations/editing-a-migration) shows the whole file, and what to do when the backfill reads a column the migration removes.
 
 ### Raw SQL
 
@@ -375,7 +409,7 @@ this.dataTransform(endContract, 'backfill-user-displayName', {
 | --- | --- | --- |
 | `rawSql(operation)` | an operation object you write in full | the `operationClass` you set |
 
-`rawSql` is not a method: import it from `@prisma/orm-postgres/migration` and call it without `this.`, as the example below does. Use it for a statement that has no method on this page, such as a column rename or `COMMENT ON`. `db migrate` checks the database against the end contract after applying a migration, so a raw change has to match a change in your contract: to rename a column, rename the field in `contract.prisma`, run `migration plan`, and replace the `dropColumn` and `addColumn` it writes with one `rawSql`. Pass it an object with these fields:
+`rawSql` is not a method: import it from `@prisma/orm-postgres/migration` and call it without `this.`, as the example below does. Use it for a statement that has no method on this page, such as `COMMENT ON`. `db migrate` checks the database against the end contract after applying a migration, so a raw change that the contract describes, such as a new column, has to match a change in your contract. A raw change the contract does not describe, such as a comment, is best added to the migration that creates what it changes, such as the migration that adds the column. For something that already exists, such as a column an earlier migration added, add the `rawSql` to the next migration you plan. A migration that changes no schema, such as one from `migration new --from`, must contain a `dataTransform` or another `data` operation, so a `rawSql` comment whose class is `additive` cannot go in one alone: `migration check` refuses it with `MIGRATION.CHECK_NOOP_SELF_EDGE`, and `db migrate` with `MIGRATION.CONTRACT_SPACE_VIOLATION`. Pass `rawSql` an object with these fields:
 
 | Field | What it is |
 | --- | --- |
@@ -389,9 +423,9 @@ this.dataTransform(endContract, 'backfill-user-displayName', {
 
 ```ts
 rawSql({
-  id: 'rename.user.bio',
-  label: 'Rename column "bio" to "biography" on "user"',
-  operationClass: 'widening',
+  id: 'comment.user.bio',
+  label: 'Comment on column "bio" of "user"',
+  operationClass: 'additive',
   target: { id: 'postgres' },
   precheck: [
     {
@@ -399,11 +433,11 @@ rawSql({
       sql: `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'bio')`,
     },
   ],
-  execute: [{ description: 'rename', sql: `ALTER TABLE "public"."user" RENAME COLUMN "bio" TO "biography"` }],
+  execute: [{ description: 'set the comment', sql: `COMMENT ON COLUMN "public"."user"."bio" IS 'Shown on the profile page'` }],
   postcheck: [
     {
-      description: 'column "biography" exists',
-      sql: `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'biography')`,
+      description: 'column "bio" has the comment',
+      sql: `SELECT col_description('"public"."user"'::regclass, (SELECT attnum FROM pg_attribute WHERE attrelid = '"public"."user"'::regclass AND attname = 'bio')) IS NOT DISTINCT FROM 'Shown on the profile page'`,
     },
   ],
 }),
@@ -413,16 +447,16 @@ rawSql({
 
 A step's `sql` can use `$1`, `$2`, and so on, with the values in `params`. A check passes when its query returns `true` in the first column of its first row. It fails when the query returns `false` or no rows.
 
-Write the precheck so that `true` means "go ahead", as in "column `bio` exists" above. Write the postcheck so that `true` means "the change is there", as in "column `biography` exists". Remember the [order](#operation-classes-and-checks): the postcheck runs first, and if it already passes the operation is skipped. An empty `precheck` always lets the statements run. An empty `postcheck` never passes beforehand, so the operation runs on every `db migrate` that reaches it, including a second run after a failure.
+Write the precheck so that `true` means "go ahead", as in "column `bio` exists" above. Write the postcheck so that `true` means "the change is there", as in "column `bio` has the comment". Remember the [order](#operation-classes-and-checks): the postcheck runs first, and if it already passes the operation is skipped. An empty `precheck` always lets the statements run. An empty `postcheck` never passes beforehand, so the operation runs on every `db migrate` that reaches it, including a second run after a failure.
 
-A check that asks whether one object exists can say so in `expectation`: `{ expects: 'absent' | 'present', object }`, where `object` names the object as a reader would, such as `'column "biography" on "user"'`. When the check fails, the error then says what the database already has or lacks, such as `the database already has column "biography" on "user"`, in place of `That check failed on this database.` `object` is only display text. Leave `expectation` out of a check about data or about several objects at once, such as a check that a column holds no `NULL` values. Add it only to a migration no database has applied yet. Then run `node migration.ts` again, which rewrites `ops.json` and `migration.json`.
+A check that asks whether one object exists can say so in `expectation`: `{ expects: 'absent' | 'present', object }`, where `object` names the object as a reader would, such as `'column "bio" on "user"'`. When the check fails, the error then says what the database has or lacks, such as `the database has no column "bio" on "user"`, in place of `That check failed on this database.` `object` is only display text. Leave `expectation` out of a check about data or about several objects at once, such as a check that a column holds no `NULL` values. Add it only to a migration no database has applied yet. Then run `node migration.ts` again, which rewrites `ops.json` and `migration.json`.
 
 ```ts
-postcheck: [
+precheck: [
   {
-    description: 'column "biography" exists',
-    sql: `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'biography')`,
-    expectation: { expects: 'present', object: 'column "biography" on "user"' },
+    description: 'column "bio" exists',
+    sql: `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'bio')`,
+    expectation: { expects: 'present', object: 'column "bio" on "user"' },
   },
 ],
 ```
@@ -485,80 +519,92 @@ CREATE TABLE "public"."post" (
 A MongoDB `migration.ts` has the same shape, and everything comes from one module:
 
 ```ts
-import { Migration, MigrationCLI, placeholder, createCollection, dropCollection, createIndex, dropIndex, setValidation, collMod, validatedCollection, dataTransform } from '@prisma/orm-mongo/target/migration';
+import { Migration, MigrationCLI, placeholder, createCollection, dropCollection, renameCollection, createIndex, dropIndex, setValidation, collMod, validatedCollection, renameField, unsetField, castField, fillField, dataTransform, rawAggregate, rawUpdateMany } from '@prisma/orm-mongo/target/migration';
 ```
 
 The operations are plain functions rather than methods, so `operations` returns calls such as `createCollection('products')`, not `this.createCollection(...)`. `this.endContract.collection.products` is the `products` collection in the end contract, with its `validator`.
 
-A data transform's `run` callback returns a query object with three fields: the `collection`, a `command` such as `RawUpdateManyCommand`, and `meta`, which carries `storageHash`, the hash of the end contract. The check's `source` returns the same kind of object with an `AggregateCommand`. In this example both helpers are in the same `migration.ts` as the migration. The first helper is the query for the check, and it finds one document that has no `status`. The second helper sets `status` to `'active'` on every document that has none. `RawUpdateManyCommand` takes the collection name, a filter, and an update:
-
-```ts
-import {
-  AggregateCommand,
-  MongoExistsExpr,
-  MongoLimitStage,
-  MongoMatchStage,
-  type MongoQueryPlan,
-  RawUpdateManyCommand,
-} from '@prisma/orm-mongo/query-ast/execution';
-
-function existingProductsWithoutStatus(storageHash: string): MongoQueryPlan {
-  return {
-    collection: 'products',
-    command: new AggregateCommand('products', [
-      new MongoMatchStage(new MongoExistsExpr('status', false)),
-      new MongoLimitStage(1),
-    ]),
-    meta: { target: 'mongo', storageHash, lane: 'mongo-pipeline' },
-  };
-}
-
-function backfillRun(storageHash: string): MongoQueryPlan {
-  return {
-    collection: 'products',
-    command: new RawUpdateManyCommand(
-      'products',
-      { status: { $exists: false } },
-      { $set: { status: 'active' } },
-    ),
-    meta: { target: 'mongo', storageHash, lane: 'mongo-raw' },
-  };
-}
-```
-
-The migration's `operations` then uses both, alongside `setValidation` from `@prisma/orm-mongo/target/migration`:
+A data transform changes documents: its `check` finds the documents that still need the change, and its `run` changes them. `rawAggregate(collection, pipeline)` builds the query for the check, an aggregation pipeline such as `[{ $match: ... }, { $limit: 1 }]`. `rawUpdateMany(collection, filter, update, options?)` builds the update for the run: `filter` selects the documents, and `update` is an update document such as `{ $set: { status: 'active' } }`, or an aggregation pipeline such as `[{ $set: { age: { $toInt: '$age' } } }]`, which can read the document's own values. Pass `{ bypassDocumentValidation: true }` when the transform runs before a validator change that adds a field: until that change runs, the collection still has the old validator, which does not allow the new field, so it would refuse the update. This migration gives every product without a `status` the status `'active'`, then sets the validator from the end contract, which requires the field:
 
 ```ts
 override get operations() {
-  const storageHash = this.endContract.storage.storageHash;
   const productsValidator = this.endContract.collection.products.validator;
   return [
+    dataTransform('backfill-product-status', {
+      check: { source: () => rawAggregate('products', [{ $match: { status: { $exists: false } } }, { $limit: 1 }]) },
+      run: () =>
+        rawUpdateMany('products', { status: { $exists: false } }, { $set: { status: 'active' } }, { bypassDocumentValidation: true }),
+    }),
     setValidation('products', productsValidator.jsonSchema, {
       validationLevel: productsValidator.validationLevel,
       validationAction: productsValidator.validationAction,
     }),
-    dataTransform('backfill-product-status', {
-      check: { source: () => existingProductsWithoutStatus(storageHash) },
-      run: () => backfillRun(storageHash),
-    }),
   ];
 }
+```
+
+With `--backfill Product.status`, `migration plan` writes the `dataTransform` for you, with `placeholder('Product.status:update')` in place of the update. Its filter finds the documents where `status` is missing or `null`, which is wider than the `$exists: false` above. `--convert` writes the same shape, with a filter for the documents whose value still has the old type. Replace the placeholder with your update document or pipeline, then run `node migration.ts`:
+
+```ts title="migration.ts (as planned, excerpt)"
+dataTransform('Product.status', {
+  check: {
+    source: () =>
+      rawAggregate('products', [
+        { $match: { $expr: { $in: [{ $type: '$status' }, ['missing', 'null']] } } },
+        { $limit: 1 },
+      ]),
+  },
+  run: () =>
+    rawUpdateMany(
+      'products',
+      { $expr: { $in: [{ $type: '$status' }, ['missing', 'null']] } },
+      placeholder('Product.status:update'),
+      { bypassDocumentValidation: true },
+    ),
+}),
 ```
 
 | Function | Arguments | Class |
 | --- | --- | --- |
 | `createCollection(name, options?)` | `options`: `validator`, `validationLevel`, `validationAction`, `capped`, `size`, `max`, `timeseries`, `collation`, `changeStreamPreAndPostImages`, `clusteredIndex` | additive |
 | `dropCollection(name)` | | destructive |
+| `renameCollection(from, to)` | the old and the new collection name | widening |
 | `createIndex(collection, keys, options?)` | `keys`: a list of `{ field, direction }`; `options`: `unique`, `sparse`, `name`, `expireAfterSeconds`, `partialFilterExpression`, `collation`, `weights`, `default_language`, `language_override`, `wildcardProjection` | additive |
-| `dropIndex(collection, keys)` | the same `keys` the index was created with | destructive |
-| `setValidation(collection, schema, options?)` | `schema`: a JSON Schema object; `options`: `validationLevel` (`'strict'` or `'moderate'`) and `validationAction` (`'error'` or `'warn'`) | destructive |
-| `collMod(collection, options, meta?)` | `options`: `validator`, `validationLevel`, `validationAction`, `changeStreamPreAndPostImages: { enabled }`; `meta`: `id`, `label`, `operationClass` | destructive, unless you pass `meta: { operationClass: 'additive' }` |
+| `dropIndex(collection, keys, options?)` | the same `keys` the index was created with; `options`: the index's `name` and every other option it has | widening |
+| `setValidation(collection, schema, options?)` | `schema`: a JSON Schema object; `options`: `validationLevel` (`'strict'` or `'moderate'`), `validationAction` (`'error'` or `'warn'`), and `checkDocuments`, described below the table | widening |
+| `collMod(collection, options, meta?)` | `options`: `validator`, `validationLevel`, `validationAction`, `changeStreamPreAndPostImages: { enabled }`; `meta`: `id`, `label`, `operationClass`, `checkDocuments`, described below the table | widening, unless `meta.operationClass` says otherwise |
 | `validatedCollection(name, schema, indexes)` | creates the collection with `schema` as its validator and one index per `{ keys, unique? }` entry, with `keys` as in `createIndex`. Returns a list of operations, so spread it: `...validatedCollection(...)` | additive |
+| `renameField(collection, from, to, options?)` | the field's old and new stored name; `options`: `filter`, a filter that limits which documents change | widening |
+| `unsetField(collection, field, options?)` | the field's stored name; `options`: `filter` | destructive |
+| `castField(options)` | `options`: `collection`, `field`, `from` (the BSON types the field held, such as `['int']`), `to` (the BSON type to cast to, such as `'long'`), `list?`, `filter?` | widening when every type in `from` casts to `to` without changing the value, destructive otherwise |
+| `fillField(options)` | `options`: `collection`, `field`, `value`, `filter?` | widening |
 | `dataTransform(name, options)` | `options`: `run`, `check?`, `invariantId?` | data |
+| `rawAggregate(collection, pipeline)` | an aggregation pipeline; returns a query for a data transform's `check` | |
+| `rawUpdateMany(collection, filter, update, options?)` | a filter, an update document or pipeline, and `options`: `bypassDocumentValidation`; returns an update for a data transform's `run` | |
 
 `direction` is `1`, `-1`, `'text'`, `'2dsphere'`, `'2d'`, or `'hashed'`.
 
-`dataTransform` on MongoDB takes no contract argument, and its `check` is an object whose `source` is a callback returning a query for the documents that still need the change. Its other two fields, `filter` and `expect`, are optional and you can leave them out. [Editing a migration](/orm/migrations/editing-a-migration#the-same-pattern-on-mongodb) shows a filled-in example.
+`migration plan` writes `renameCollection` and `renameField` for `--rename`, `unsetField` when a field is removed, `castField` for a type change, and `fillField` for a new required field, which it fills with a temporary value in the documents that lack it or hold `null`. The last four update documents with `bypassDocumentValidation`, and write only the documents they change. `renameField` and `unsetField` take the field's stored name, and they refuse `_id`, a name that contains `.`, and a name that starts with `$`. `castField` casts with `$convert`, and a value `$convert` cannot cast stops the run. `fillField` takes `value` as an aggregation expression, so `{ $toLong: 0 }` stores a long, and a string that starts with `$` has to be wrapped, as in `{ $literal: '$5' }`, because MongoDB reads such a string as a field name. For a change that renames a model and one of its fields, changes a field from `Int` to `Int64`, and removes a field, `migration plan` writes:
+
+```ts title="migration.ts (as planned, excerpt)"
+renameCollection('products', 'items'),
+renameField('items', 'name', 'title'),
+castField({ collection: 'items', field: 'stock', from: ['int'], to: 'long' }),
+unsetField('items', 'status'),
+```
+
+The optional `meta` of `collMod` describes the operation rather than the change. `id` names the operation in error messages, `label` is the text the CLI prints for it, and `operationClass` replaces its class, which is `'widening'` by default. `checkDocuments: true`, on `collMod`'s `meta` or in `setValidation`'s `options`, makes the operation first check that every document in the collection fits the new validator, and stop if one does not. `collMod` refuses `checkDocuments: true` when it sets no validator.
+
+`migration plan` writes each index's name into `createIndex` and `dropIndex`, and MongoDB creates and drops the index by that name:
+
+```ts title="migration.ts (excerpt)"
+createIndex('users', [{ field: 'email', direction: 1 }], { name: 'email_1', unique: true }),
+dropIndex('users', [{ field: 'legacy', direction: 1 }], { name: 'legacy_1', unique: true }),
+```
+
+A call without `name` uses the name after the keys and their directions, such as `email_1`, so a `migration.ts` written before index names were recorded keeps working. Before it runs, `dropIndex` checks that the collection has an index with that name, those keys, and exactly the options you pass, so list every option the index has, as `migration plan` writes them: `dropIndex('users', keys, { name: 'legacy_1' })` fails for a unique index. A `dropIndex` without options checks the keys and the name after them, such as `email_1`, and no other option. To drop an index with another name, pass its `name` and every other option it has. The id of an index operation names the index, as in `index.users.create(email_1)`.
+
+`dataTransform` on MongoDB takes no contract argument, and its `check` is an object whose `source` is a callback returning a query for the documents that still need the change. Its other fields are optional, and you can leave them out. `expect` says what the check looks for before the transform runs. With `'exists'`, the default, it expects `source` to find documents that still need the change, and after the run it expects none. With `'notExists'`, it expects `source` to find no documents before the run, and at least one after it. `filter` is a filter expression from `@prisma/orm-mongo/query-ast/execution`, such as `new MongoExistsExpr('status', false)`, that limits which of the documents `source` returns count; by default every document counts. Leave out `invariantId` too, because only extension packages use it. [Editing a migration](/orm/migrations/editing-a-migration#the-same-pattern-on-mongodb) shows a filled-in example.
 
 ## See also
 

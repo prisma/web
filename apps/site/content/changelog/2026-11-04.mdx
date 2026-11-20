@@ -1,0 +1,95 @@
+---
+title: "Build and deploy a Prisma app from one ChatGPT prompt with the official Prisma plugin"
+date: "2026-11-04"
+version: "2026-11-04"
+slug: "2026-11-04"
+headline: "Build and deploy a Prisma app from one ChatGPT prompt with the official Prisma plugin"
+tags:
+  - "Prisma"
+  - "Prisma Compute"
+  - "Prisma Postgres"
+  - "Prisma ORM"
+  - "Prisma MCP server"
+canonical: "/changelog#log2026-11-04"
+metaDescription: "The official Prisma plugin for ChatGPT connects ChatGPT and Codex to Prisma ORM, Prisma Postgres, and Prisma Compute, so one prompt can build an app, set up its database, and deploy it. Also new: prisma deploy --environment replaces --stage, and prisma dev can run a second local copy of your app."
+share:
+  active: true
+  content: "Look at this page: "
+---
+**The official Prisma plugin for ChatGPT is out. It connects ChatGPT and Codex to Prisma ORM, Prisma Postgres, and Prisma Compute, so one prompt can build an app, create and connect its database, and deploy it.** Prisma ORM 8 is still a release candidate, and `prisma@8.0.0-rc.30`, released on November 3, is its command-line tool, which also deploys apps to Prisma Compute. Prisma Composer is the `composer` section of `prisma.config.ts` that describes a Prisma Compute app's services and databases. In this release, the place a Composer app runs is called an environment: `prisma deploy --environment staging` replaces `--stage`, and `prisma dev --environment test` runs a second, separate copy of your app on your machine. Cloning a Prisma Postgres database no longer blocks connections to the source while the clone runs.
+
+If your `package.json` pins `prisma@7`, nothing in this entry changes your commands, but a script that installs `prisma@latest` gets Prisma 8. If you run `prisma deploy` yourself with `--stage`, replace it, as described under "What you need to do". Accelerate is retired on **December 1, 2026**, and if your connection string does not contain `accelerate.prisma-data.net`, that does not affect you.
+
+## Ask ChatGPT to build, connect, and deploy your app
+
+Until now, building an app with ChatGPT meant switching between the chat, a database dashboard, and a terminal to connect the pieces. The [Prisma plugin for ChatGPT](https://pris.ly/gpt-plugin) gives ChatGPT and Codex the context they need to write the data layer with Prisma ORM, create a Prisma Postgres database and connect the app to it, and deploy the result to Prisma Compute, from one conversation.
+
+To try it, install the plugin in ChatGPT, then ask ChatGPT, or [Codex](https://chatgpt.com/codex), OpenAI's coding agent, which the plugin also connects:
+
+```text title="Prompt"
+Build me a workout tracker using Prisma ORM and Prisma Postgres, then deploy it to Prisma Compute.
+```
+
+If you already connect ChatGPT to Prisma through the [Prisma MCP server](https://www.prisma.io/docs/ai/tools/mcp-server) by hand, that setup keeps working, and the [ChatGPT guide](https://www.prisma.io/docs/ai/tools/chatgpt) still describes it.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://pris.ly/gpt-plugin" ctaLocation="changelog-chatgpt-plugin">Install the Prisma plugin</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/blog/one-chatgpt-plugin-to-deploy-it-all" ctaLocation="changelog-chatgpt-plugin">Read the launch post</PrismButtonOutline>
+</div>
+
+## Run a second local copy of your app with prisma dev --environment
+
+In the Prisma 8 command-line tool, `prisma dev` runs your whole [Prisma Composer](https://www.prisma.io/docs/composer) app on your machine, services and databases included, with no Prisma account. The Prisma ORM 7 command of the same name, which starts a local Prisma Postgres database, is unchanged in version 7. Until now you could run only one local copy of an app, so a test that needed a clean database meant wiping the copy you work in with `--fresh`. Since `prisma@8.0.0-rc.30`, each environment name gets its own complete local copy, with its own database, storage, and ports, and the copy you get by default is named `dev`. The commands below act on whichever copy you name, while `dev` keeps running. `--fresh` wipes the copy you name before starting it and leaves the other copies alone. ([composer#392](https://github.com/prisma/composer/pull/392))
+
+```bash title="Terminal"
+npx prisma dev --detach                              # the environment dev
+npx prisma dev --environment test --fresh --detach   # a second, clean copy beside it
+npx prisma dev url shop.api --environment test
+npx prisma dev stop --environment test
+```
+
+The same word now names a deployed environment too. `prisma deploy --environment staging` deploys there, `prisma deploy` on its own deploys production, and `prisma deploy list --environment staging` lists what is deployed. If a script of yours tears down an environment with Composer's `destroy()` function, it must now name the environment, and a call without a name fails instead of destroying production. ([composer#390](https://github.com/prisma/composer/pull/390))
+
+`prisma dev` also no longer makes up a value for a secret you have not set. Before, an unset secret such as an API key got a placeholder string, so a service could not tell whether it had a real key. Now a secret comes only from the shell you run `prisma dev` in, or from a `.env` file that `prisma.config.ts` loads. If a secret the service requires is missing, `prisma dev` stops and the error names the variable and the service. If the service's input declares the secret optional, as in `'apiKey?': secretString()`, it is left unset, so a feature that depends on it stays off. The [service input](https://www.prisma.io/docs/composer/service-input) page explains that an unset variable leaves its field out of the input, and the service's schema decides whether that is allowed. ([composer#382](https://github.com/prisma/composer/pull/382))
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/docs/composer/local-development" ctaLocation="changelog-dev-environment">Read about local development</PrismButton>
+  <PrismButtonOutline href="https://github.com/prisma/composer/releases/tag/v0.36.0" ctaLocation="changelog-dev-environment">See the Composer 0.36.0 release notes</PrismButtonOutline>
+</div>
+
+## What you need to do
+
+- **If you run `prisma deploy --stage` in a script or a workflow**, change it to `prisma deploy --environment` when you move to `prisma@8.0.0-rc.30`. On that version, `--stage` fails with `CLI.COMMAND_MOVED` and names the replacement. Upgrade `@prisma/composer-prisma-cloud` to 0.36.0 in the same step: `prisma@8.0.0-rc.30` ships Composer 0.36.0, and the extension and the tool that runs the deploy must be the same Composer version, or `prisma deploy`, `destroy()`, and `prisma dev` refuse with `DEPS.EXTENSION_INCOMPATIBLE` before they change anything. A workflow that the Console set up for you pins its `prisma` version, and for now keep that pin below rc.30: the workflow deploys through `prisma/cloud-deploy-action`, which still passes `--stage` for every branch other than the default one, so raising the pin breaks preview and staging deploys until the action sends `--environment`. A production deploy from the default branch passes no flag and is not affected. In a script that calls Composer's `destroy()`, `destroy({ target: { kind: 'stage', stage: 'staging' }, config })` becomes `destroy({ environment: 'staging', config })`, and production is `destroy({ environment: 'production', config })`. Such a script imports `destroy()` from the project's own `@prisma/composer`, so upgrade that package to 0.36.0 with the extension, whether or not the script used `--stage`. One install problem is open: `@prisma/composer-prisma-cloud@0.36.0` still declares a peer dependency on `@prisma/orm-postgres@8.0.0-rc.20`, so with npm an install beside `8.0.0-rc.22` stops with `ERESOLVE` until you pass `--legacy-peer-deps` ([composer#413](https://github.com/prisma/composer/issues/413)). ([composer#390](https://github.com/prisma/composer/pull/390))
+- **If `prisma dev` worked for you without every secret set**, set each secret before you upgrade, either by exporting it in the shell you run `prisma dev` from, or by installing `dotenv` and adding `import "dotenv/config";` at the top of `prisma.config.ts` so it loads your `.env` file. The error names each missing variable and the service that needs it. `prisma deploy` reads the same `prisma.config.ts`, so a value in that `.env` file reaches a deploy too, and the first deploy to a new environment copies any secret the environment does not have yet from the shell the deploy runs in, as the [deploy guide](https://www.prisma.io/docs/composer/deploying) explains. Keep a development-only value, such as a test API key, out of the `.env` file that `prisma.config.ts` loads, or set it in the shell only, because a deploy run from that folder would seed it into the environment. ([composer#382](https://github.com/prisma/composer/pull/382))
+- **If you are on Prisma ORM 7**, nothing in this entry needs a change in your app. The `prisma@8.0.0-rc.30` release is the Prisma 8 command-line tool; your project stays on version 7 as long as its `package.json` asks for it. Check any script or CI job that installs `prisma@latest` and change it to `prisma@7`, because `latest` is Prisma ORM 8.
+- **Accelerate is retired on December 1, 2026.** If your app connects through a URL that starts with `prisma+postgres://accelerate.prisma-data.net`, [switch to a pooled connection or to the serverless driver](https://www.prisma.io/docs/postgres/database/switch-from-accelerate) before then. If you use Accelerate with your own database, [keep your database and connect to it without Accelerate](https://www.prisma.io/docs/accelerate/keep-your-database).
+
+## Prisma Compute
+
+The Console can now open its setup pull request on a repository that uses Vite 7 or a non-beta release of drizzle-kit. Before, the setup stopped on an npm dependency conflict and no pull request was opened.
+
+The Console's setup steps are now right for the version of Prisma ORM a repository uses. A Prisma ORM 7 repository no longer reads that it must move to Prisma ORM 8, because Prisma Compute runs Prisma ORM 7 apps. Instead it gets the steps from the [side-by-side guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql): the Prisma 8 command-line tool is installed as `prisma` to run deploys, your Prisma ORM 7 client keeps running as it is, and its own tool becomes `prisma7`. This is the intended path for a Prisma ORM 7 app on Prisma Compute. A Prisma ORM 8 repository is no longer told to run `prisma migrate dev`, which is a Prisma ORM 7 command.
+
+A GitHub deploy no longer shows **Deploying** forever when the workflow finished green but never deployed anything. The build is now marked failed with the reason, for example that the workflow's `permissions` block lacks `id-token: write`, which the deploy action needs to get its credential. A copy of a template that was stuck on **Deploying** after its first CI run now recovers when you re-run the workflow.
+
+## Prisma Postgres
+
+Cloning a database no longer blocks connections to the database you clone from. Before, the source refused new connections for the few minutes the clone took.
+
+## Prisma Console
+
+The page that asks you to allow an app to use your Prisma account, at `auth.prisma.io/authorize`, now matches the sign-in page. It shows the app's icon, which account you are signed in as, with a way to switch, one row per permission with a plain explanation, and the workspace the app will use.
+
+## Docs and website
+
+- Every Prisma Compute app template now has its own page under [/apps](/apps), with the running app in a browser frame, what it does, the three deploy steps, and a **Deploy on Prisma** button, so you can share a template by link. The first is [Room Booking](/apps/room-booking-prisma-template), a community template.
+- The [Prisma Postgres overview](https://www.prisma.io/docs/postgres) gains a path for a project that already has a Prisma schema: create a database with `npx create-db@latest --env .env` and apply the schema you have.
+- The [Prisma Postgres guides](/postgres/guides) directory gains a page on high availability.
+
+## Guides and articles
+
+- [One ChatGPT plugin to deploy it all](https://www.prisma.io/blog/one-chatgpt-plugin-to-deploy-it-all): the official Prisma plugin for ChatGPT connects ChatGPT and Codex to Prisma ORM, Prisma Postgres, and Prisma Compute, so you can build, set up the database, and deploy from one prompt.
+
+---
+
+*Need help applying these changes in production? [Prisma Enterprise Support](/enterprise) can help with schema design, performance, security, and compliance.*

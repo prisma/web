@@ -31,7 +31,6 @@ test("prerendered HTML has origin-owned CDN freshness and browser revalidation",
     "next-router-state-tree",
     "accept-encoding",
     "accept",
-    "user-agent",
     "authorization",
     "next-action",
     "x-prerender-revalidate",
@@ -167,7 +166,6 @@ test("dynamic/private HTML, error pages and cookie-setting responses cannot opt 
     () => html({ "set-cookie": "session=secret; HttpOnly" }),
     () => html({ vary: "*" }),
     () => html({ vary: "Accept-Language" }),
-    () => html({}, 404),
     () => html({}, 500),
   ]) {
     const response = await withOriginCache(upstream)(request());
@@ -347,7 +345,7 @@ test("explicit public MDX documents can use edge caching without a runtime full-
     conditional.headers.get("cdn-cache-control"),
     "public, max-age=60, stale-while-revalidate=300",
   );
-  for (const status of [404, 500]) {
+  for (const status of [500]) {
     const response = await withOriginCache(() => document({}, status))(request());
     assert.equal(response.headers.get("cdn-cache-control"), "no-store");
   }

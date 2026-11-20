@@ -168,10 +168,11 @@ export function PrismButton({
         {/* prismatic burst — erupts from the centre via an expanding radial reveal */}
         <BurstFill on={burstOn} />
 
-        {/* inline-flex keeps a label icon on the label's line: the preflight
-            makes svg block, which would stack it above the text and stretch
-            the pill past its size's height. */}
-        <span className="relative z-10 inline-flex items-center gap-2 whitespace-nowrap font-semibold leading-[1.5] text-white">
+        {/* inline-flex nowrap keeps a label icon on the label's line. Preflight
+            sets svg { display: block }, which stacks the icon above the text
+            whenever this span is not a flex box, so the icon is forced back
+            to an inline-block that cannot grow the pill past its size. */}
+        <span className="relative z-10 inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-white [&_svg]:inline-block [&_svg]:shrink-0">
           {children}
         </span>
       </MotionComp>
@@ -209,8 +210,8 @@ export function PrismButtonOutline({
         className,
       )}
     >
-      {/* Same inline-flex treatment as the filled pill's label. */}
-      <span className="inline-flex items-center gap-2 whitespace-nowrap font-semibold leading-[1.5] text-foreground">
+      {/* Same row treatment as the filled pill's label. */}
+      <span className="inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-foreground [&_svg]:inline-block [&_svg]:shrink-0">
         {children}
       </span>
     </Comp>

@@ -79,32 +79,32 @@ The response contains the starter users:
 }
 ```
 
-The first request runs `src/prisma/seed.ts` through the generated query helper. Seeding is idempotent, so later requests read the same rows without creating duplicates. There is no separate seed command.
+The first request runs `src/prisma/seed.ts` through the generated query helper. The seed is safe to run more than once, so later requests read the same rows without creating duplicates. There is no separate seed command.
 
 ## 4. Understand the generated query
 
-The generated `src/prisma/users.ts` connects the database, seeds on the first query, and reads from the PostgreSQL `public` namespace:
+The generated `src/prisma/users.ts` seeds the starter users on the first query and reads from the PostgreSQL `public` schema. It also re-exports `db`, and its `StarterUser` type describes one returned user:
 
 ```ts title="src/prisma/users.ts"
 import { db } from "./db.ts";
 import { seed } from "./seed.ts";
 
+export { db };
+
 export async function listUsers(limit = 10) {
   await seed();
-
-  const users = await db.orm.public.User
-    .select("id", "email", "username", "name", "createdAt")
-    .limit(limit)
-    .all();
+  const users = await db.orm.public.User.select("id", "email", "username", "name", "createdAt").limit(limit).all();
 
   return users.map((user) => ({
     id: String(user.id),
     email: user.email,
     username: user.username ?? null,
     name: user.name ?? null,
-    createdAt: user.createdAt,
+    createdAt: user.createdAt?.toISOString() ?? null,
   }));
 }
+
+export type StarterUser = Awaited<ReturnType<typeof listUsers>>[number];
 ```
 
 Deno requires the `.ts` extension on these relative imports. The generated files already include it.

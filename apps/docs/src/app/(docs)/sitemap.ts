@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
+import { redirectedDocsPages } from "@/lib/sitemap-policy";
 
 export const revalidate = 3600;
 
@@ -31,6 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     source
       .getPages()
       .filter((page) => !(page.data as { noindex?: boolean }).noindex)
+      .filter((page) => !redirectedDocsPages.has(withDocsBasePath(page.url)))
       .map(async (page) => {
         const lastModified = (await pageContent(page.data)).lastModified;
 

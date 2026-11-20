@@ -11,7 +11,11 @@ export type ChangelogEntry = {
   date: string;
   title: string;
   description: string;
+  /** The area that colours the entry: the first of `categories`. */
   category: ChangelogCategory;
+  /** Every product area the entry's tags name. An entry about a Compute feature
+   *  backed by Prisma Postgres is in both, so both filters list it. */
+  categories: ChangelogCategory[];
   /** Short labels shown as pills under the entry. */
   tags: string[];
   /** Big launches get a featured treatment (larger card, accent). */
@@ -69,17 +73,29 @@ export const CATEGORY_ORDER: ChangelogCategory[] = [
   "platform",
 ];
 
-// Derive a product area from an entry's tags. Entries carry free-form tags
-// (e.g. "Prisma ORM", "Prisma Postgres", "Pulse"), not a single category, so we
-// map the most specific product match first and fall back to platform-wide.
-// Pulse/Accelerate are data-platform products, grouped under Postgres.
+// Derive product areas from an entry's tags. Entries carry free-form tags
+// (e.g. "Prisma ORM", "Prisma Postgres", "Pulse"), not a single category, and
+// one entry often spans several products, so every area a tag names is kept.
+// Pulse/Accelerate are data-platform products, grouped under Postgres. The
+// result is ordered most specific first, and that first area colours the entry.
+// An entry whose tags name no product is platform-wide.
+const AREA_PATTERNS: [ChangelogCategory, RegExp][] = [
+  ["studio", /studio/],
+  ["compute", /compute|composer/],
+  ["postgres", /postgres|accelerate|pulse|data platform/],
+  ["orm", /\borm\b|client|migrate|schema/],
+];
+
+export function categoriesForTags(tags: string[] = []): ChangelogCategory[] {
+  const areas = AREA_PATTERNS.filter(([, pattern]) =>
+    tags.some((tag) => pattern.test(tag.toLowerCase())),
+  ).map(([area]) => area);
+  return areas.length > 0 ? areas : ["platform"];
+}
+
+/** The one area that colours an entry: the most specific of its areas. */
 export function categoryForTags(tags: string[] = []): ChangelogCategory {
-  const haystack = tags.join(" ").toLowerCase();
-  if (/studio/.test(haystack)) return "studio";
-  if (/compute/.test(haystack)) return "compute";
-  if (/postgres|accelerate|pulse|data platform/.test(haystack)) return "postgres";
-  if (/orm|client|migrate|schema/.test(haystack)) return "orm";
-  return "platform";
+  return categoriesForTags(tags)[0];
 }
 
 // Big launches get the featured treatment — reserved for genuine GA / beta /
