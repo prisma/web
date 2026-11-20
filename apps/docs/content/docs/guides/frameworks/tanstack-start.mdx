@@ -112,7 +112,7 @@ On PostgreSQL, you reach a model through the database schema it is in: `db.orm.p
 
 The scaffold also writes a first migration to the `migrations/` directory. A deploy changes the hosted database only by applying the migrations in that directory, so every schema change needs a migration of its own.
 
-`migration:plan` writes each new migration as a step after the migration that `migrations/app/refs/db.json` names. That file is the `db` ref, and `db:init` creates it. If you have not run `db:init` in this checkout, for example because you only use `npm run dev:composer`, point the `db` ref at the first migration once. `ls migrations/app` lists its directory, whose name ends in `_init`:
+`migration:plan` writes each new migration as a step after the migration that `migrations/app/refs/db.json` names. That file is the `db` ref, and `db:init` creates it. If you have not run `db:init` in this checkout, for example because you only use `npm run dev:composer`, point the `db` ref at the first migration once. Pass the directory name only, without `migrations/app/` in front: `ls migrations/app` lists it, and its name ends in `_init`, such as `20261120T1011_init`. A path such as `migrations/app/20261120T1011_init` fails with `MIGRATION.REF_NOT_FOUND`.
 
 ```npm
 npx prisma migration ref set db <your init directory>
@@ -133,7 +133,7 @@ If your development database is in `DATABASE_URL`, one command does both:
 npm run migrate -- --advance-ref db
 ```
 
-If you use `npm run dev:composer`, restart it: it applies new migrations when it starts. It does not update the `db` ref, so once it is running, set the ref yourself to the directory that `migration:plan` printed, such as `migrations/app/20261120T1104_add_user_bio`:
+If you use `npm run dev:composer`, restart it: it applies new migrations when it starts. It does not update the `db` ref, so once it is running, set the ref yourself. Pass the last part of the path that `migration:plan` printed on its `app space:` line: for `migrations/app/20261120T1124_add_user_bio`, that is `npx prisma migration ref set db 20261120T1124_add_user_bio`.
 
 ```npm
 npx prisma migration ref set db <new migration directory>
@@ -143,7 +143,7 @@ TanStack Start builds on Vite, so the [Vite plugin](/cli/contract-emit#run-it-au
 
 Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `npm run build` and `npx prisma deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
 
-If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Name the newest directory that `ls migrations/app` lists, then apply the migration as above:
+If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Pass the newest migration with `--from`: it is the first migration name in the graph that `npx prisma migration list` prints, such as `20261120T1124_add_user_bio`. Then apply the migration as above:
 
 ```npm
 npm run migration:plan -- --from <your newest migration directory> --name add-user-bio

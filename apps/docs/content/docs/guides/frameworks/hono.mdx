@@ -115,15 +115,15 @@ curl -X POST http://localhost:3000/users \
 
 Hono is supported on [Prisma Compute](/compute). The scaffold already declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, so deploying is building and handing that declaration to the CLI. Sign in once (it opens a browser):
 
-```npm
-npx prisma auth login
+```bash
+bunx prisma auth login
 ```
 
 Then build and deploy from the project directory:
 
-```npm
-npm run build
-npx prisma deploy
+```bash
+bun run build
+bunx prisma deploy
 ```
 
 ```text no-copy
@@ -145,39 +145,39 @@ For previews per Git branch and deploy on push, see [Deploy on push](/compute/de
 
 The scaffold also writes a first migration to the `migrations/` directory. A deploy changes the hosted database only by applying the migrations in that directory, so every schema change needs a migration of its own.
 
-`migration:plan` writes each new migration as a step after the migration that `migrations/app/refs/db.json` names. That file is the `db` ref, and `db:init` creates it. If you have not run `db:init` in this checkout, for example because you only use `npm run dev:composer`, point the `db` ref at the first migration once. `ls migrations/app` lists its directory, whose name ends in `_init`:
+`migration:plan` writes each new migration as a step after the migration that `migrations/app/refs/db.json` names. That file is the `db` ref, and `db:init` creates it. If you have not run `db:init` in this checkout, for example because you only use `bun run dev:composer`, point the `db` ref at the first migration once. Pass the directory name only, without `migrations/app/` in front: `ls migrations/app` lists it, and its name ends in `_init`, such as `20261120T1011_init`. A path such as `migrations/app/20261120T1011_init` fails with `MIGRATION.REF_NOT_FOUND`.
 
-```npm
-npx prisma migration ref set db <your init directory>
+```bash
+bunx prisma migration ref set db <your init directory>
 ```
 
 After you edit `src/prisma/contract.prisma`, for example to add a `bio String?` field to `User`, run:
 
-```npm
-npm run contract:emit
-npm run migration:plan -- --name add-user-bio
+```bash
+bun run contract:emit
+bun run migration:plan --name add-user-bio
 ```
 
 `contract:emit` updates the files your queries are type-checked against, and `migration:plan` writes the change as a new migration in `migrations/app/`. Then apply the migration to your local database, and point the `db` ref at it so that your next `migration:plan` starts from this migration. Without the ref step, the next plan would include this change a second time.
 
 If your development database is in `DATABASE_URL`, one command does both:
 
-```npm
-npm run migrate -- --advance-ref db
+```bash
+bun run migrate --advance-ref db
 ```
 
-If you use `npm run dev:composer`, restart it: it applies new migrations when it starts. It does not update the `db` ref, so once it is running, set the ref yourself to the directory that `migration:plan` printed, such as `migrations/app/20261120T1104_add_user_bio`:
+If you use `bun run dev:composer`, restart it: it applies new migrations when it starts. It does not update the `db` ref, so once it is running, set the ref yourself. Pass the last part of the path that `migration:plan` printed on its `app space:` line: for `migrations/app/20261120T1124_add_user_bio`, that is `bunx prisma migration ref set db 20261120T1124_add_user_bio`.
 
-```npm
-npx prisma migration ref set db <new migration directory>
+```bash
+bunx prisma migration ref set db <new migration directory>
 ```
 
-Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `npm run build` and `npx prisma deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
+Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `bun run build` and `bunx prisma deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
 
-If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Name the newest directory that `ls migrations/app` lists, then apply the migration as above:
+If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Pass the newest migration with `--from`: it is the first migration name in the graph that `bunx prisma migration list` prints, such as `20261120T1124_add_user_bio`. Then apply the migration as above:
 
-```npm
-npm run migration:plan -- --from <your newest migration directory> --name add-user-bio
+```bash
+bun run migration:plan --from <your newest migration directory> --name add-user-bio
 ```
 
 ## Common gotchas
@@ -197,16 +197,16 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Create a new Hono API with Prisma ORM, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `npm create prisma@latest -- my-hono-api --template hono --provider postgres --yes`. The scaffold installs the Prisma agent skills; use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
-2. In `my-hono-api`, run `npm run db:init` with `DATABASE_URL` exported. The app seeds sample users on its first query, from `src/prisma/seed.ts`; there is no seed command to run.
-3. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
+1. Scaffold: `bun create prisma@latest my-hono-api --template hono --provider postgres --yes`. The scaffold installs the Prisma agent skills; use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
+2. In `my-hono-api`, run `bun run db:init` with `DATABASE_URL` exported. The app seeds sample users on its first query, from `src/prisma/seed.ts`; there is no seed command to run.
+3. Start `bun run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
 4. Add a POST /users route that creates a user from the request body, following https://www.prisma.io/docs/guides/frameworks/hono.md, restart the dev server, and verify it with curl.
-5. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Then run `npm run build` followed by `npx prisma deploy` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
+5. Deploy: check `bunx prisma auth whoami`; if I am not signed in, stop and ask me to run `bunx prisma auth login`. Then run `bun run build` followed by `bunx prisma deploy` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
 ```
 
 </AgentPrompt>
 
-The scaffold installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for the coding agents you pick at its prompt. To install them later, run [`npx prisma@latest init`](/cli/init) in the project. Prompts you can give your agent after this guide:
+The scaffold installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for the coding agents you pick at its prompt. To install them later, run [`bunx prisma@latest init`](/cli/init) in the project. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add GET /users/:id that returns one user or a 404."
 - "Expose GET /users/:id/posts using the Post model that ships with the starter contract."
