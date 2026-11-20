@@ -286,13 +286,19 @@ Each slice is one pull request. Fix every finding in the named file, including i
 | --- | --- | --- |
 | F1 migrations | prisma/web#8881 | Open, reviewed twice |
 | F2 getting-started pages | prisma/web#8880 | Open, reviewed twice |
-| F3 framework guides | not opened | Reviewed twice; waits on a decision about a real SvelteKit deploy |
+| F3 framework guides | prisma/web#8888 | Open, reviewed twice |
 | F4 deployment guides | prisma/web#8885 | Open, reviewed twice |
 | F5 upgrade and switch guides | prisma/web#8883 | Open, reviewed twice |
 | F6 contract pages | prisma/web#8882 | Open, reviewed twice |
-| F7 client and builder pages | not opened | Third review round |
+| F7 client and builder pages | prisma/web#8886 | Open, reviewed three times |
 | F8 CLI and error references | prisma/web#8884 | Open, reviewed twice |
 | F9 pages that do not exist | not started | Needs the shape of each page decided first |
+
+### Open: does Prisma Compute deploy SvelteKit?
+
+The SvelteKit guide covers local use only, and the docs root says "SvelteKit and Deno stop at a local run for now". The sources suggest SvelteKit can be deployed, but nobody ran a real deploy, so the guide makes no claim. One real deploy settles it; if it works, the guide gets a deploy section and three lines on `(index)/index.mdx` and `(index)/prisma-orm/index.mdx` change.
+
+The evidence, from `create-prisma` 0.14.8 and Composer 0.38.0 and 0.39.0: the `svelte` template's `service.ts` declares a `node()` service on `./build/index.js`; its `module.ts` provisions Prisma Postgres; its `vite.config.ts` uses `@sveltejs/adapter-node`; the `deploy` and `dev:composer` scripts are generated for every template except Deno; `--deploy` is refused only for Deno (`src/tasks/prisma-setup/context.ts`); Composer's `lowering/src/compute/artifact.ts` has a fix written for SvelteKit. Locally, `npm run build` wrote `build/index.js`, and `npm run dev:composer` ran the app in the Compute emulator and served the seeded users.
 
 ### Found while fixing the slices, for other repositories
 
@@ -319,6 +325,8 @@ None of these is fixed. Each was reproduced by an implementer or a reviewer on `
 - `@onCreate(nanoid())` and `@onCreate(uuid())` are refused on a MongoDB `String` field.
 - The TypeScript starter that `orm init` writes has a `belongsTo` with no foreign key, so `prisma contract print` refuses it. `orm init` also writes `contract.ts` into a `"type": "commonjs"` project, where the first `contract emit` fails.
 - `contract infer` without `--output` overwrites the contract source in a PSL project with only a warning.
+- A valid Prisma 6 MongoDB self-relation cannot be read through `prisma6Schema` without removing its relation fields: Prisma 6 requires `onDelete: NoAction` and `onUpdate: NoAction` there, and Prisma 8 refuses any referential action.
+- The `MIGRATION.PRECHECK_FAILED` advice to keep a field optional leaves out `contract emit` before `migration plan`. Error `docs:` links are printed in two forms, `#CODE` for some codes and `/CODE` for others.
 - The `prisma6Schema` README says a document written without an optional field reads with the field absent; at rc.24 it reads as `null`. The side-by-side steps `orm init` prints do not say that a fresh install stops generating the Prisma 6 client.
 - `docs/reference/error-reference.md` at `v8.0.0-rc.24` has entries for three codes nothing raises: `CLI.INIT_REINIT_NEEDS_FORCE`, `RUNTIME.EXECUTION_RESULT_MISSING`, `RUNTIME.MIDDLEWARE_RESULT_MISMATCH`.
 - The Vite plugin prints `Failed to load config module graph root` at startup on TanStack Start, and still emits the contract.
