@@ -1,14 +1,14 @@
 ---
 title: SvelteKit
-description: 'Set up Prisma ORM in a SvelteKit app with create-prisma, from scaffold to rendered data.'
+description: 'Set up Prisma ORM in a SvelteKit app with create-prisma, from scaffold to rendered data, and deploy it to Prisma Compute.'
 url: /guides/frameworks/sveltekit
 metaTitle: How to use Prisma ORM with SvelteKit
-metaDescription: 'Scaffold a SvelteKit project with Prisma ORM and Prisma Postgres, initialize the database, seed it, and see your data, with tested commands.'
+metaDescription: 'Scaffold a SvelteKit app with Prisma ORM and Prisma Postgres, initialize the database, render your data, and deploy to Prisma Compute.'
 ---
 
 ## Introduction
 
-This guide shows you how to use Prisma ORM in a SvelteKit app. You scaffold a project where a server load function queries your database, initialize the schema, and see your data render. This guide covers running the app locally.
+This guide shows you how to use Prisma ORM in a SvelteKit app. You scaffold a project where a server load function queries your database, initialize the schema, see your data render, and deploy the app to [Prisma Compute](/compute).
 
 Every command below was run end to end against a live [Prisma Postgres](/postgres) database.
 
@@ -27,7 +27,7 @@ Answer the prompts, then export `DATABASE_URL` in your shell before running the 
 - [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended)
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a Prisma Postgres database for you
 
-To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. `npm run dev:composer` does not create a MongoDB database for you: export `MONGODB_URL` with your connection string before you run it.
+To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. Neither `npm run dev:composer` (the local run in step 3) nor a deploy creates a MongoDB database for you, so export `MONGODB_URL` with your connection string before you run either. The first deploy copies the value to your project on Prisma Compute, and the deployed app reads it from there. Later deploys keep that stored value even if you export a different one. To change it, export the new connection string as `MONGODB_URL` and run `npx prisma project env update MONGODB_URL --project my-app --role production`, which copies the exported value to the project (see [`prisma project`](/cli/project)); the app gets the new value on its next deploy. If you renamed the module or deployed with `--name`, pass that name to `--project`.
 
 ## 1. Scaffold and enter the project
 
@@ -38,7 +38,7 @@ cd my-app
 
 The scaffold generates the SvelteKit app with Prisma ORM wired in, installs dependencies, and emits the contract your queries are type-checked against.
 
-Next, set the database connection: use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`, which prints a connection string and a claim URL. Claim the database with a free Prisma account if you want to keep it. Export the variable in the shell you work in, because the generated scripts read the environment variable, not `.env`:
+Next, set the database connection for the local steps: use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`, which prints a connection string and a claim URL. Claim the database with a free Prisma account if you want to keep it. Export the variable in the shell you work in, because the generated scripts read the environment variable, not `.env`:
 
 ```bash
 export DATABASE_URL="<your connection string>"
@@ -74,7 +74,7 @@ npm run dev
 
 When you open [http://localhost:5173](http://localhost:5173), the page lists the seeded users, which the `+page.server.ts` load function reads on the server.
 
-To run the built app with its own local Prisma Postgres database instead, with no `DATABASE_URL` to set, run `npm run dev:composer`. It builds the app, starts the local database, applies the committed migrations to it, and prints the app's local URL.
+To run the app the way Prisma Compute runs it, with no `DATABASE_URL` to set, run `npm run dev:composer` instead. It builds the app, starts a local Prisma Postgres database, applies the committed migrations to it, and prints the app's local URL.
 
 ## Where things live
 
@@ -85,9 +85,49 @@ To run the built app with its own local Prisma Postgres database instead, with n
 
 On PostgreSQL, you reach a model through the database schema it is in: `db.orm.public.User` is the `User` model in the `public` schema. The [Prisma ORM overview](/orm) explains the contract that defines your models.
 
+## 4. Deploy to Prisma Compute
+
+SvelteKit is supported on [Prisma Compute](/compute), and the scaffold has already set the app up for it. The app builds with `@sveltejs/adapter-node`, which writes a Node.js server to the `build/` directory. `service.ts` and `module.ts`, in the project root, describe that server and its database for [Prisma Composer](/composer), and `npx prisma deploy` reads them. Sign in once (it opens a browser):
+
+```npm
+npx prisma auth login
+```
+
+Then build and deploy from the project directory:
+
+```npm
+npm run build
+npx prisma deploy
+```
+
+```text no-copy
+my-app
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
+```
+
+The first deploy creates a project in your workspace named after your module, which is the first argument to `module()` in `module.ts` (`my-app` here). The project gets its own Prisma Postgres database, declared in `module.ts`. The deploy does not use the `DATABASE_URL` from your local steps, and the deployed database seeds on the app's first query. Running `npx prisma deploy` again updates that same project.
+
+The deploy finds the project by that name, so a deploy from any app whose module has the same name, such as two apps both scaffolded as `my-app`, goes to that same project. Give each app its own name in `module.ts`. If a project with that name exists but the CLI cannot identify or verify its stored state (one deployed by an older version of Composer, for example), the deploy stops with `HostedStateBootstrapError`: rename the module in `module.ts`, or deploy under another name with `--name <unique-name>` and pass the same `--name` on every later deploy.
+
+Open the URL to verify the live app: the page lists the seeded users. For the first few seconds after the first deploy, the URL can answer `There is no service on this URL`; wait a moment and load it again. To check from the command line, fetch the page and look for the seeded email addresses:
+
+```bash
+curl -s https://xyz.ewr.prisma.build | grep -o '[a-z]*@prisma.io' | sort -u
+```
+
+```text no-copy
+alice@prisma.io
+bob@prisma.io
+carol@prisma.io
+```
+
+For previews per Git branch and deploy on push, see [Deploy on push](/compute/deploy-on-push).
+
 ## Change the schema
 
-The scaffold also writes a first migration to the `migrations/` directory, and `npm run dev:composer` changes its local database only by applying the migrations in that directory. So record every schema change as a migration of its own, rather than changing the database with `db:update`.
+The scaffold also writes a first migration to the `migrations/` directory. A deploy changes the hosted database only by applying the migrations in that directory, and so does `npm run dev:composer` for its local database, so every schema change needs a migration of its own.
 
 `migration:plan` writes each new migration as a step after the migration that `migrations/app/refs/db.json` names. That file is the `db` ref, and `db:init` creates it. If you have not run `db:init` in this checkout, for example because you only use `npm run dev:composer`, point the `db` ref at the first migration once. Pass the directory name only, without `migrations/app/` in front: `ls migrations/app` lists it, and its name ends in `_init`, such as `20261120T1011_init`. A path such as `migrations/app/20261120T1011_init` fails with `MIGRATION.REF_NOT_FOUND`.
 
@@ -129,7 +169,7 @@ export default defineConfig({
 });
 ```
 
-Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`. If you skip `migration:plan`, `npm run dev:composer` stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
+Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `npm run build` and `npx prisma deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
 
 If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Pass the newest migration with `--from`: it is the first migration name in the graph that `npx prisma migration list` prints, such as `20261120T1124_add_user_bio`. Then apply the migration as above:
 
@@ -144,11 +184,14 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Create a new SvelteKit app with Prisma ORM, seed it, and verify the page renders.
+Create a new SvelteKit app with Prisma ORM, seed it, and deploy it to Prisma Compute.
 
 1. Scaffold: `npm create prisma@latest -- my-app --template svelte --provider postgres --yes`. The scaffold installs the Prisma agent skills. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-app`, run `npm run db:init` with `DATABASE_URL` exported. The app seeds sample users on its first query, from `src/prisma/seed.ts`; there is no seed command to run.
-3. Start `npm run dev` in the background, wait until it reports ready, verify http://localhost:5173 lists the three seeded users, then stop the dev server, following https://www.prisma.io/docs/guides/frameworks/sveltekit.md.
+3. Start `npm run dev` in the background, wait until it reports ready, verify http://localhost:5173 lists the three seeded users, then stop the dev server.
+4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Then run `npm run build` followed by `npx prisma deploy` and verify that the page at the live URL lists the seeded users (`curl -s <url> | grep -o '[a-z]*@prisma.io'`); if it answers `There is no service on this URL` right after the first deploy, wait a few seconds and retry. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
+
+Follow https://www.prisma.io/docs/guides/frameworks/sveltekit.md.
 
 Use the installed Prisma ORM skills.
 ```
