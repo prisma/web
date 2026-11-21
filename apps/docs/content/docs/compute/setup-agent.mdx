@@ -1,0 +1,50 @@
+---
+title: Setup agent
+description: An AI coding agent that changes a repository so it deploys on Prisma Compute, runs in an isolated sandbox, and opens a pull request for you to review.
+url: /compute/setup-agent
+metaTitle: Setup agent | Prisma Compute
+metaDescription: How the Console setup agent changes a repository so it deploys on Prisma Compute, what it checks, where it runs, and which providers process your code.
+---
+
+When you [connect a repository](/compute/github#connect-a-repo) in the [Console](https://pris.ly/pdp), Console opens a pull request that adds a [Prisma Composer](/composer) setup and the deploy workflow. Some repositories need code changes before they can deploy, for example an app on Prisma ORM 6 or 7, which has to move to Prisma 8. For those, Console offers the setup agent, which makes the changes in a sandbox and opens a pull request that you review and merge.
+
+## When Console offers the agent
+
+The agent starts only when you click one of these buttons in Console:
+
+- **Fix and set up deploys** appears when Console can't set up the repository as it is.
+- **Fix with agent** appears when a setup without the agent fails.
+- **Fix with agent** appears when the preview deploy of the setup pull request fails. In this case the agent pushes its fix to that pull request's branch instead of opening a new one.
+
+Each workspace can start up to 5 agent runs a day.
+
+## What the agent does
+
+Each run starts a new sandbox with a copy of your repository:
+
+1. Prisma runs the checks before the agent changes anything: whether Console can set up the repository, your repository's install, type check, build and tests, and whether the app starts with `prisma dev`.
+2. The agent reads the code, adds a Composer setup, and changes the code where the deploy needs it. It runs commands in the sandbox, such as installs and builds, to test its changes.
+3. Prisma runs the checks again. The run passes when Console can set up the repository with the agent's changes, every check that passed before still passes, and the app starts with `prisma dev`. For an app on Prisma 8, the migrations must also produce the schema on an empty database.
+4. Prisma commits the changes and opens a pull request. If a check still fails, the pull request is a draft and lists the failing checks with the end of their output.
+
+A run stops after 25 minutes. Merging the pull request deploys production through the deploy workflow.
+
+## Where the agent runs
+
+The agent runs in a sandbox that Prisma starts for that run on [E2B](https://e2b.dev). The sandbox has internet access, so installs and builds work as they do in your CI. E2B shuts the sandbox down at most 40 minutes after it starts.
+
+The sandbox gets a copy of the repository and nothing else from your project. It has no access to your databases, or to the environment variables and secrets you set in Console. Files committed to the repository, such as a `.env` file, are part of the copy. The start check runs the app with `prisma dev`, which uses a local database, and gives each secret your Composer module declares a throwaway value.
+
+The agent has no GitHub credentials. Prisma reads the changes from the sandbox, and the Prisma GitHub App creates the commit and the pull request.
+
+## Which providers process your code
+
+Two providers receive your repository's code during a run:
+
+- [E2B](https://e2b.dev) hosts the sandbox, which holds the full copy of the repository. Prisma shuts the sandbox down when the run ends, and [E2B destroys a sandbox when it shuts down](https://e2b.dev/security).
+- [Fireworks AI](https://fireworks.ai) runs the model. Each model request contains the files and command output the agent has read so far. Fireworks AI [doesn't store prompts or responses](https://docs.fireworks.ai/guides/security_compliance/data_handling) for the open models the agent uses, and [doesn't train on them](https://fireworks.ai/privacy-policy). It keeps them in memory while it answers a request, and for a few minutes when it caches a prompt.
+
+## Next steps
+
+- [GitHub](/compute/github): connect a repository and see what the connection does.
+- [Deploy on push](/compute/deploy-on-push): preview every pushed branch and deploy production from the default branch.
