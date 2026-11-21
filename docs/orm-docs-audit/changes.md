@@ -309,7 +309,7 @@ Three pull requests: the databases (1 to 3), the upgrade page (4), and the langu
 
 ### Settled: Prisma Compute deploys SvelteKit
 
-Will approved a real deploy on 2026-11-21. With `create-prisma` 0.14.8 the `svelte` template deployed in 1m 13s, the URL served the three seeded users, and a schema change with a redeploy applied the new migration before the new version started. The guide's deploy section and the three corrected statements are prisma/web#8892.
+Will approved a real deploy on 2026-11-21. With `create-prisma` 0.14.8 the `svelte` template deployed in 1m 13s, the URL served the three seeded users, and a schema change with a redeploy applied the new migration before the new version started. The guide's deploy section and the three corrected statements are prisma/web#8892, merged 2026-11-21.
 
 Found during the deploy, for other repositories:
 
