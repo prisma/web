@@ -294,7 +294,9 @@ Each slice is one pull request. Fix every finding in the named file, including i
 | F8 CLI and error references | prisma/web#8884 | Merged 2026-11-20 |
 | F9 pages that do not exist | not started | Needs the shape of each page decided first |
 
-### Proposed shape of the pages that do not exist, 2026-11-21 (waiting for Will)
+### Proposed shape of the pages that do not exist, 2026-11-21
+
+Will, 2026-11-21, on items 1 and 2: "we do not want SQLite or MySQL quickstarts. they are both PoCs." Items 1 to 3 are dropped: the SQLite and MySQL libraries are proofs of concept, so the docs do not give them getting-started pages or a place in the support table that would present them as something to build on. The phrase "without a quickstart yet" on `orm/supported-databases.mdx` promises one and comes out with the next pull request that touches that page. Items 4 to 6 go ahead as two pull requests: the upgrade page (4), and the language server with the MongoDB deploy guide (5 and 6).
 
 Checked against main on 2026-11-21: the merged slices already cover the `turborepo` template (`guides/deployment/turborepo.mdx`) and the guides overview. Five pages are still missing.
 
