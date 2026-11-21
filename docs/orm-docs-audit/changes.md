@@ -296,7 +296,7 @@ Each slice is one pull request. Fix every finding in the named file, including i
 
 ### Proposed shape of the pages that do not exist, 2026-11-21
 
-Will, 2026-11-21, on items 1 and 2: "we do not want SQLite or MySQL quickstarts. they are both PoCs." Items 1 to 3 are dropped: the SQLite and MySQL libraries are proofs of concept, so the docs do not give them getting-started pages or a place in the support table that would present them as something to build on. The phrase "without a quickstart yet" on `orm/supported-databases.mdx` promises one and comes out with the next pull request that touches that page. Items 4 to 6 go ahead as two pull requests: the upgrade page (4), and the language server with the MongoDB deploy guide (5 and 6).
+Will, 2026-11-21, on items 1 and 2: "we do not want SQLite or MySQL quickstarts. they are both PoCs." Items 1 to 3 are dropped: the SQLite and MySQL libraries are proofs of concept, so the docs do not give them getting-started pages or a place in the support table that would present them as something to build on. The phrase "without a quickstart yet" on `orm/supported-databases.mdx` promises one and comes out with the next pull request that touches that page. Will, later the same day, on all six: "I dont' want those 6 items right now - some of them at all". Items 4 to 6 are shelved, not started. He has not said which of them he never wants; ask before proposing any of them again.
 
 Checked against main on 2026-11-21: the merged slices already cover the `turborepo` template (`guides/deployment/turborepo.mdx`) and the guides overview. Five pages are still missing.
 
