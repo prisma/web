@@ -36,5 +36,5 @@ Every code sample must be executed against the published `@prisma/orm-*` package
 ## Naming and claims
 
 - The product is "Prisma 8", not "Prisma 8 ORM". The high-level query lane is "the ORM API"; the low-level lanes are "the SQL query builder" and "the pipeline builder".
-- No em dashes. Be honest about Release Candidate status; state limitations in user-facing language ("X is not supported yet. For now, do Y") and show the tested workaround.
+- No em dashes. Be honest about Release Candidate status; state a feature that does not exist yet in user-facing language ("X is not supported yet"). A defect in a Prisma tool is different: never write a workaround for it; see "A defect in a Prisma tool is never worked around in the docs" in `apps/docs/AGENTS.md`.
 - Validate with `pnpm --filter docs types:check`, `pnpm lint:links`, `pnpm exec cspell --no-progress "content/docs/orm/**/*.mdx"` (use placeholder ids in result blocks; random cuid fragments fail cspell), and a dev-server smoke test.
