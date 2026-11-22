@@ -6,6 +6,17 @@ The local `/Users/wmadden/Projects/prisma/orm` checkout is from 2026-08-26 (rc.8
 
 Section 1 lists passages that make the reader do something extra, avoid something, or expect a failure because a Prisma tool is wrong. Section 2 lists sentences about missing features with temporary wording ("yet", "for now", "until"), which must change when the feature ships. Section 3 lists notes about earlier release candidates, which should go at general availability. Section 4 is the "Unsure" list.
 
+## Progress on the tool fixes
+
+Will, 2026-11-22: the docs must never work around a defect in a Prisma tool; the tool gets fixed. The rule is in `apps/docs/AGENTS.md` since prisma/web#8893 (merged 2026-11-22). Each docs passage below is removed when a release contains its fix.
+
+| Entry | Fix | State on 2026-11-22 |
+| --- | --- | --- |
+| O1, and most of O2, O11, P3 | prisma/orm#31169: `db migrate` advances the `db` ref when the connection comes from the config and CI is not detected | open, waiting for Will's approval |
+| O3, O4, parts of O8 and O13 | prisma/orm#31174: every `migration plan` the CLI prints is one that runs (after #31130 fixed the first case) | open, waiting for Will's approval |
+
+Not started: every other entry. Before starting one in prisma/orm, check current `main`: other sessions are fixing defects there too. Waiting for Will: whether the Prisma ORM 8 CLI gets a `studio` command (C1), and how to route the 67 entries outside prisma/orm. Follow-up noted during review: ADR 267 line 77 in prisma/orm tells readers to migrate "each existing database" with `--advance-ref db`, which conflicts with the rule that the `db` ref follows only the development database.
+
 ## 1. Workarounds, by the repository that owns the fix
 
 ### prisma/orm (ORM packages, `orm init` and the migration commands, extensions, Vite plugin)
