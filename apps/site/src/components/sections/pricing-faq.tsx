@@ -13,7 +13,18 @@ const PRICING_FAQS: FaqItem[] = [
   {
     question: "What counts as an operation?",
     answer:
-      "An operation is a single action against your Prisma Postgres database — a create, read, update, or delete. A simple write and a complex query with multiple joins each count as one operation.",
+      "An operation is a single action against your Prisma Postgres database: a create, read, update, or delete. A simple write and a complex query with multiple joins each count as one operation.",
+  },
+  {
+    // Moved here from the Free plan card (client, 2026-11-22), where "Or skip
+    // sign-up" read as a property of the Free plan. Facts from docs
+    // postgres/npx-create-db: no account or card, deleted after 24 hours
+    // unless claimed, a claimed database stays on Free, database only.
+    // Absolute docs URL: /docs is another zone, so it must render as a plain
+    // link, not a client-side next/link.
+    question: "Can I try Prisma Postgres without signing up?",
+    answer:
+      "Yes. Run `npx create-db` and you get a Postgres database in seconds, with no account and no credit card. It's temporary: it's deleted after 24 hours unless you sign in and claim it, and a claimed database stays on the Free plan. It's a database only; deploying an app to Prisma Compute needs an account. [How create-db works](https://www.prisma.io/docs/postgres/npx-create-db).",
   },
   {
     question: "Is Prisma ORM really free?",
@@ -28,7 +39,7 @@ const PRICING_FAQS: FaqItem[] = [
   {
     question: "Are there egress fees?",
     answer:
-      "Not for your database — unlimited data transfer is included with Prisma Postgres on all plans. Prisma Compute includes 10 GB of outbound bandwidth per month on Free. Paid plans bill outbound bandwidth at $0.025 per GB.",
+      "Not for your database. Unlimited data transfer is included with Prisma Postgres on all plans. Prisma Compute includes 10 GB of outbound bandwidth per month on Free. Paid plans bill outbound bandwidth at $0.025 per GB.",
   },
   {
     question: "Can I change plans later?",
@@ -37,7 +48,7 @@ const PRICING_FAQS: FaqItem[] = [
   {
     question: "What is Prisma Compute?",
     answer:
-      "Prisma Compute is TypeScript app hosting built to run alongside Prisma Postgres — co-located on the same infrastructure so your app and database are always next to each other. It's billed on usage across four meters — requests, provisioned memory, active CPU, and outbound bandwidth — and an idle app scales to zero and costs nothing.",
+      "Prisma Compute is TypeScript app hosting built to run alongside Prisma Postgres. It runs on the same infrastructure, so your app and database are always next to each other. It's billed on usage across four meters (requests, provisioned memory, active CPU, and outbound bandwidth), and an idle app scales to zero and costs nothing.",
   },
   {
     question: "Is there custom pricing for high-volume teams?",

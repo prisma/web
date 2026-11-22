@@ -1,3 +1,4 @@
+import { StaticReveals } from "@/components/motion/reveal";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { CompareLinks } from "@/components/sections/compare-links";
 import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
@@ -37,7 +38,9 @@ export const metadata = createPageMetadata({
 // unanswered rows (Free-tier backups, compliance on Free/Starter, support).
 export default function PricingPage() {
   return (
-    <>
+    // No scroll-in animation on this page: everything is in place when you
+    // get to it (client, 2026-11-22). See StaticReveals in motion/reveal.tsx.
+    <StaticReveals>
       {/* The headline and the plan cards share the hero's wrapped panel, per the
           client (2026-07-30) — the page resumes outside it from how-it-works on. */}
       <PricingHero>
@@ -84,6 +87,6 @@ export default function PricingPage() {
           options. The list is shared with /postgres, the sentence above it
           is this page's own; see sections/compare-links.tsx. */}
       <CompareLinks intro={PRICING_COMPARE_INTRO} />
-    </>
+    </StaticReveals>
   );
 }

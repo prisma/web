@@ -5,7 +5,6 @@ import { ArrowRightLeft, ArrowUpFromLine, Cpu, MemoryStick } from "lucide-react"
 import { CheckBold } from "@/components/icons/forma";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
-import { CopyInline } from "./copy-inline";
 
 // V2 plan cards. Corrections applied on top of V2:
 //  - Gregory (2026-07-24): Business has an overage rate, $0.0010 per 1,000
@@ -195,30 +194,10 @@ export function PricingPlans() {
               <span className="ml-1 text-base font-normal text-muted-foreground">/ month</span>
             </p>
             {plan.note && <p className="mt-2.5 text-sm text-muted-foreground">{plan.note}</p>}
-            {/* No-sign-up start (client, 2026-11-21). PostHog: 88% of plan
-                card clicks are "Start for free", so the people here mostly
-                want to try it now. Facts from docs postgres/npx-create-db:
-                no account or card, a temporary database for 24 hours until
-                claimed, and a claimed one stays on Free. Database only:
-                deploying to Compute needs a signed-in session, so nothing
-                here may suggest otherwise. One quiet line, not a chip: a
-                chip made Free the busiest card and put a second action above
-                "Start for free" (client review, 2026-11-21). The 24-hour and
-                claim details are behind the ↗ link and in the command's own
-                output. Copies are autocaptured ("Copy npx create-db@latest"). */}
-            {plan.name === "Free" && (
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                Or skip sign-up:{" "}
-                <CopyInline command="npx create-db@latest">npx create-db</CopyInline>
-                <a
-                  href="/docs/postgres/npx-create-db"
-                  aria-label="About create-db: a temporary database for 24 hours that you can claim"
-                  className="ml-0.5 rounded-sm text-foreground outline-none hover:text-prism-cyan-700 focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                >
-                  ↗
-                </a>
-              </p>
-            )}
+            {/* `npx create-db` used to sit here ("Or skip sign-up"). Moved to
+                the FAQ (client, 2026-11-22): on the Free card it read as if
+                the Free plan itself needed no account, when it's a separate,
+                temporary, database-only start. */}
             {/* One loop for every group — Compute and Postgres get the exact
                 same treatment by construction (see CARD_GROUPS). */}
             <div className="mt-6">

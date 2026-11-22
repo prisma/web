@@ -2,7 +2,7 @@ import { Users } from "lucide-react";
 import Link from "next/link";
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { Texture } from "@/components/brand/texture";
-import { GitBranch, Rocket, Swap } from "@/components/icons/forma";
+import { CheckBold, GitBranch, Rocket, Swap } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
 import { COST_CONTROLS, NEVER_BILLED, type NeverBilledItem } from "./pricing-ledger";
@@ -243,7 +243,12 @@ function FreeTiles() {
               <Icon aria-hidden className="size-4 shrink-0 text-foreground/45" />
               <span className="truncate">{item.short}</span>
             </span>
-            <span className="shrink-0 text-sm font-medium text-prism-cyan-700">Free</span>
+            {/* The plan cards' tick, cyan on the mark only: cyan text read
+                as off-brand (client, 2026-11-22). */}
+            <span className="flex shrink-0 items-center gap-1.5 text-sm text-foreground">
+              <CheckBold aria-hidden className="size-4 text-prism-cyan-500" />
+              Free
+            </span>
           </li>
         );
       })}
