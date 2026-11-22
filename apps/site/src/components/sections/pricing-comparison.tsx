@@ -1,10 +1,7 @@
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
-import { Marker } from "@/components/brand/marker";
-import { Pattern } from "@/components/brand/pattern";
 import { RoleKicker } from "@/components/brand/role-kicker";
-import { SpectrumRing } from "@/components/brand/spectrum-ring";
 import { Texture } from "@/components/brand/texture";
-import { CheckBold, X } from "@/components/icons/forma";
+import { CheckBold } from "@/components/icons/forma";
 import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
@@ -21,10 +18,16 @@ const SPECTRUM =
 // 10M requests, 10-20M database operations, 40 GB database, database compute
 // of 1-2 CU always on (Supabase Medium-Large), 1-3 developer seats.
 //  - Supabase Pro $95-145 and Prisma Pro $72-90 come from the 2026-07-30
-//    "Recommended website comparison" (fair 50K MAU model). Recomputing Prisma
-//    Pro from prisma.io/pricing on the same basis gives $60-99: $49 plan, ops
-//    over 10M at $2 per million, memory at $0.006 per GB-hour, CPU at $0.064
-//    per vCPU-hour, bandwidth at $0.025 per GB.
+//    "Recommended website comparison" (fair 50K MAU model).
+//  - Rechecked 2026-11-22 against neon.com, supabase.com and vercel.com
+//    pricing: every rate above unchanged. Supabase reproduces exactly: $25
+//    Pro + $60-110 Medium-Large compute - $10 credit + $4 disk (32 GB over at
+//    $0.125) + $16 Edge Function invocations (8M over at $2/M) = $95-145.
+//    Prisma Pro reproduces with this page's own calculator (calc.ts, "API or
+//    web app" profile, 10M requests, 10-20M operations, 40 GB): $49 plan +
+//    $0-20 operations + ~$22 Compute (833 GB-hours, 167 vCPU-hours, 250 GB
+//    out) = $71-91. The card keeps $72-90, which pricing-scale.tsx on the
+//    home page also uses.
 //  - Neon + Vercel $110-270, recomputed from list prices on the same basis.
 //    Neon Launch (neon.com/pricing): 730-1,460 CU-hours at $0.106 plus 40 GB
 //    at $0.35 per GB-month = $91-169; database egress stays inside the 500 GB
@@ -46,6 +49,12 @@ const SPECTRUM =
 //    like-for-like plan, so it was replaced.
 // Re-check these figures whenever any of the four pricing pages change.
 
+// What the three costs assume, shown under the cards. Keep in step with the
+// provenance note above; update the date whenever the figures are rechecked.
+export const COMPARISON_BASIS =
+  "Estimated at list prices for about 50K monthly active users: 10M requests, 10–20M database " +
+  "operations, a 40 GB database and 1–3 developer seats. Prices checked 22 November 2026.";
+
 // Placeholder marker. Anything using PENDING is awaiting figures from the
 // client — never fill these in with estimates.
 //
@@ -62,6 +71,7 @@ export const ALTERNATIVES = [
     id: "neon-vercel",
     name: "Typical stack (Neon + Vercel)",
     shortName: "Neon + Vercel",
+    compareHref: "/compare/vercel-neon-drizzle",
     cost: "$110–270",
     pending: false,
     // Billing and data transfer checked 2026-10-22: Neon added from the Vercel
@@ -79,7 +89,7 @@ export const ALTERNATIVES = [
       },
       {
         label: "Database data transfer",
-        value: "500 GB egress per project included, then $0.10/GB",
+        value: "500 GB egress per project included, then $0.10 per GB",
       },
       {
         label: "Spend limits",
@@ -96,6 +106,7 @@ export const ALTERNATIVES = [
     id: "supabase",
     name: "Supabase Pro",
     shortName: "Supabase",
+    compareHref: "/compare/supabase",
     cost: "$95–145",
     pending: false,
     rows: [
@@ -105,7 +116,7 @@ export const ALTERNATIVES = [
       },
       {
         label: "Database data transfer",
-        value: "250 GB egress included, then $0.09/GB",
+        value: "250 GB egress included, then $0.09 per GB",
       },
       // The "database compute excluded" caveat is the client's own wording and
       // is the point of the row — a spend cap that doesn't cover compute is not
@@ -198,7 +209,7 @@ function PendingBadge() {
 // gets the emphasis rather than sitting in a table cell.
 export function PricingComparison() {
   return (
-    <section className="bg-white px-3 py-16 sm:px-4 sm:py-24">
+    <section id="compare" className="scroll-mt-24 bg-white px-3 py-16 sm:px-4 sm:py-24">
       <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
         {/* spectral bottom — wash plus the three brand beams */}
         <div
@@ -242,20 +253,15 @@ export function PricingComparison() {
                 See how Prisma compares at scale
               </h2>
             </Reveal>
+            {/* One paragraph: the comparison claim. The former first
+                paragraph ("Prisma charges per operation… no surprises")
+                predated Compute and repeated the hero and "Free with every
+                plan" (client review, 2026-11-22). */}
             <Reveal delay={0.1}>
               <p className="mx-auto mt-6 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
-                Prisma charges per operation: each query your app runs against your database counts
-                as one. No seats. No database egress fees. And every paid plan includes a hard spend
-                limit so there are no surprises.
-              </p>
-            </Reveal>
-            <Reveal delay={0.15}>
-              <p className="mx-auto mt-5 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
-                At around 50K monthly active users,{" "}
-                <strong className="font-semibold text-foreground">
-                  Prisma Pro can cost less than half as much as a typical Neon + Vercel setup
-                </strong>
-                , with one bill, included database data transfer, and a hard spend limit you set.
+                At around 50K monthly active users, Prisma Pro can cost less than half as much as a
+                typical Neon + Vercel setup, with one bill, included database data transfer, and a
+                hard spend limit you set.
               </p>
             </Reveal>
 
@@ -274,7 +280,7 @@ export function PricingComparison() {
                     "flex flex-col rounded-[1.25rem] border p-6 backdrop-blur-[2px]",
                     alt.pending
                       ? "border-dashed border-black/15 bg-white/25"
-                      : "border-black/[0.05] bg-white/45",
+                      : "border-black/[0.08] bg-white",
                   )}
                 >
                   <RoleKicker color="bg-foreground/20">{alt.name}</RoleKicker>
@@ -286,9 +292,11 @@ export function PricingComparison() {
                       <PendingBadge />
                     </p>
                   ) : (
-                    <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-muted-foreground">
+                    <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
                       <CountUp value={alt.cost} />
-                      <span className="ml-1.5 align-baseline text-base font-normal">/month</span>
+                      <span className="ml-1.5 align-baseline text-base font-normal text-muted-foreground">
+                        /month
+                      </span>
                     </p>
                   )}
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -305,15 +313,19 @@ export function PricingComparison() {
                     {alt.rows.map((r) => (
                       <div key={r.label}>
                         <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
-                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-foreground">
                           {alt.pending ? (
                             <PendingBadge />
                           ) : (
                             <>
-                              <X
-                                className="mt-1 size-4 shrink-0 text-foreground/35"
-                                strokeWidth={3}
+                              {/* A neutral dot, not an ✗: these rows
+                                  describe what the other stack does, and
+                                  mostly it does have the thing (spend
+                                  notifications, a spend cap). The site
+                                  states competitors' strengths plainly. */}
+                              <span
                                 aria-hidden
+                                className="mt-[0.6rem] size-1.5 shrink-0 rounded-full bg-foreground/30"
                               />
                               {r.value}
                             </>
@@ -322,38 +334,28 @@ export function PricingComparison() {
                       </div>
                     ))}
                   </dl>
+                  {/* The fuller picture, including what this stack does well. */}
+                  <a
+                    href={alt.compareHref}
+                    className="mt-auto self-start rounded-sm pt-6 text-sm font-medium text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  >
+                    Full comparison →
+                  </a>
                 </Reveal>
               ))}
 
-              {/* Prisma — lifted on white with the always-on spectrum ring, the
-                  brand cube pattern greyscaled behind it, and a soft spectrum
-                  glow underneath so the winning column sits above the other
-                  two rather than merely beside them. */}
+              {/* Prisma — the same white card as the others (client review,
+                  2026-11-22: "the self promotion can be slightly more subtle").
+                  The always-on spectrum ring, the glow underneath, the cube
+                  pattern, the savings badge and the bold rows are gone; what
+                  marks it as ours is the cyan dot, the spectrum cost bar and
+                  the cyan checks. The numbers make the case. */}
               <div className="relative">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -inset-x-4 -bottom-6 top-8 rounded-full opacity-25 blur-[52px]"
-                  style={{ backgroundImage: SPECTRUM }}
-                />
                 <Reveal
                   delay={0.3}
-                  className="relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                  className="relative flex h-full flex-col rounded-[1.25rem] border border-black/[0.08] bg-white p-6"
                 >
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 opacity-[0.04] grayscale [mask-image:linear-gradient(to_bottom,black,transparent_55%)]"
-                  >
-                    <Pattern className="h-full w-full" scale={2.5} />
-                  </div>
-
-                  <div className="relative flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                    <RoleKicker color="bg-prism-cyan-400">{PRISMA.name}</RoleKicker>
-                    {SAVINGS_MULTIPLE !== null && (
-                      <Marker className="-mt-0.5 shrink-0">
-                        Up to {SAVINGS_MULTIPLE}x less vs {WIDEST.shortName}
-                      </Marker>
-                    )}
-                  </div>
+                  <RoleKicker color="bg-prism-cyan-400">{PRISMA.name}</RoleKicker>
                   <p className="relative mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
                     <CountUp value={PRISMA.cost} />
                     <span className="ml-1.5 align-baseline text-base font-normal text-muted-foreground">
@@ -373,7 +375,7 @@ export function PricingComparison() {
                     {PRISMA.rows.map((r) => (
                       <div key={r.label}>
                         <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
-                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] font-semibold leading-relaxed text-foreground">
+                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-foreground">
                           <CheckBold
                             className="mt-1 size-4 shrink-0 text-prism-cyan-500"
                             aria-hidden
@@ -383,10 +385,24 @@ export function PricingComparison() {
                       </div>
                     ))}
                   </dl>
-                  <SpectrumRing />
                 </Reveal>
               </div>
             </div>
+
+            {/* The estimate's basis, said on the page rather than only in
+                the code, with the date it was checked and a way to run your
+                own numbers in the calculator above. */}
+            <Reveal delay={0.35}>
+              <p className="mx-auto mt-10 max-w-3xl text-pretty text-center text-sm leading-relaxed text-muted-foreground">
+                {COMPARISON_BASIS}{" "}
+                <a
+                  href="#estimate"
+                  className="whitespace-nowrap rounded-sm font-medium text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  Try your own numbers →
+                </a>
+              </p>
+            </Reveal>
           </div>
         </div>
       </div>

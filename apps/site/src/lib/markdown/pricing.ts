@@ -1,14 +1,21 @@
+import { bulletList, ctaList, heading, joinBlocks, link, paragraphs, table } from "./blocks";
 import {
-  bulletList,
-  ctaList,
-  definitionList,
-  heading,
-  joinBlocks,
-  link,
-  paragraphs,
-  table,
-} from "./blocks";
+  APP_PROFILES,
+  COMPUTE_RATES,
+  FREE_COMPUTE_LIMITS,
+  fmtGB,
+  fmtOps,
+  PLANS as CALCULATOR_PLANS,
+  PRESETS as CALCULATOR_PRESET_LIST,
+} from "@/components/sections/calculator-options/calc";
 import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
+import { COMPARISON_BASIS } from "@/components/sections/pricing-comparison";
+import {
+  NEVER_BILLED,
+  PRICING_FLOW_LEDE,
+  COST_CONTROLS,
+  COST_CONTROLS_HEADING,
+} from "@/components/sections/pricing-ledger";
 import { renderCompareLinksMarkdown } from "./compare-links";
 import { renderTestimonialsMarkdown } from "./testimonials";
 
@@ -16,7 +23,7 @@ import { renderTestimonialsMarkdown } from "./testimonials";
  * Markdown rendition of /pricing.
  *
  * Source of truth is the section components rendered by src/app/pricing/page.tsx —
- * pricing-hero, pricing-plans, pricing-how-it-works (+ pricing-includes),
+ * pricing-hero, pricing-plans, pricing-cost-controls (+ pricing-ledger.ts),
  * pricing-calculator (+ calculator-options/calc.ts), pricing-comparison,
  * pricing-spec-table, testimonials-reveal, cta-burst and pricing-faq.
  *
@@ -28,19 +35,14 @@ import { renderTestimonialsMarkdown } from "./testimonials";
 
 const SIGN_UP = "https://console.prisma.io/sign-up";
 
-export const PRICING_H1 = "Usage-based pricing that bills you for what your app actually does";
+export const PRICING_H1 = "Usage-based pricing with cost controls";
 
 // The hero has no subhead paragraph of its own: it was removed on 2026-07-30
-// so the plan cards clear the fold, and its operation definition moved into the
-// opening paragraph of "How Prisma pricing works" (see the note in
-// pricing-hero.tsx). That paragraph is therefore the page's lede and is
-// exported here — the caller emits it, so the section below starts at its
-// second paragraph rather than repeating it.
-export const PRICING_SUBHEADLINE =
-  "Prisma bills you for real work, on both halves of your stack. Your app on Prisma Compute " +
-  "pays for the requests it serves, the memory and CPU it uses while running, and the data it " +
-  "sends out. Your database on Prisma Postgres counts every query as one operation, and " +
-  "operations are what you pay for.";
+// so the plan cards clear the fold. The Markdown page still opens with a
+// one-paragraph summary of what's metered (PRICING_FLOW_LEDE in
+// pricing-ledger.ts); on the page itself the hero title and the rates panel
+// under the plan cards say it.
+export const PRICING_SUBHEADLINE = PRICING_FLOW_LEDE;
 
 /** Mirrors PLANS in components/sections/pricing-plans.tsx. `blurb` lives on that
  *  data but is deliberately never rendered, so it is not repeated here. */
@@ -48,10 +50,13 @@ const PLANS = [
   {
     name: "Free",
     price: "$0 / month",
-    note: "Free forever. No credit card required.",
+    note:
+      "Free forever. No credit card required. Or skip sign-up: `npx create-db@latest` creates a " +
+      "Postgres database in seconds that lasts 24 hours; claim it to keep it " +
+      "(https://www.prisma.io/docs/postgres/npx-create-db).",
     compute: [
       "1M requests / month",
-      "360 GB-hours memory / month",
+      "360 GB-hours provisioned memory / month",
       "4 active vCPU-hours / month",
       "10 GB outbound bandwidth / month",
     ],
@@ -67,7 +72,7 @@ const PLANS = [
     compute: [
       "5M requests / month, then $1 per million",
       "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hours",
+      "$0.064 per active vCPU-hour",
       "$0.025 per GB outbound bandwidth",
     ],
     postgres: [
@@ -77,7 +82,7 @@ const PLANS = [
       "7-day daily backups",
     ],
     platform: ["Spend limits"],
-    cta: "Get started",
+    cta: "Start on Starter",
     popular: true,
   },
   {
@@ -87,7 +92,7 @@ const PLANS = [
     compute: [
       "20M requests / month, then $1 per million",
       "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hours",
+      "$0.064 per active vCPU-hour",
       "$0.025 per GB outbound bandwidth",
     ],
     postgres: [
@@ -97,7 +102,7 @@ const PLANS = [
       "7-day daily backups",
     ],
     platform: ["Spend limits", "GDPR"],
-    cta: "Get started",
+    cta: "Start on Pro",
     popular: false,
   },
   {
@@ -107,25 +112,26 @@ const PLANS = [
     compute: [
       "100M requests / month, then $1 per million",
       "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hours",
+      "$0.064 per active vCPU-hour",
       "$0.025 per GB outbound bandwidth",
     ],
     postgres: [
       "50M operations / month, then $1 per million",
-      "100 GB storage",
+      "100 GB storage, then $1.00 per GB",
       "1,000 databases",
       "30-day backup retention",
     ],
     platform: ["Spend limits", "GDPR, [HIPAA with a BAA](/postgres/hipaa), SOC 2, ISO 27001"],
-    cta: "Get started",
+    cta: "Start on Business",
     popular: false,
   },
 ];
 
 // The four cards are one comparison in the HTML (a single grid, one row of
 // features per product group), so they render as a table. An empty Platform
-// group is an em dash, which is the same "not on this plan" reading the spec
-// table uses for Free.
+// group is an em dash, meaning "nothing extra on this plan". (The spec table
+// below spells its cells out in words instead: "No usage billing" and "Not
+// available".)
 function planTable(): string {
   return table(
     ["Plan", "Price", "Prisma Compute", "Prisma Postgres", "Platform", "Get started"],
@@ -140,43 +146,30 @@ function planTable(): string {
   );
 }
 
-/** INCLUDES in components/sections/pricing-includes.tsx. */
-const EVERY_PLAN_INCLUDES = [
-  "Prisma ORM (always free)",
-  "Unlimited Prisma Postgres data transfer",
-  "Spend limits",
-  "Prisma Studio",
-  "CLI + Management API",
-];
-
 // PRESETS in components/sections/calculator-options/calc.ts, with the usage
 // readout each button shows (fmtOps · fmtGB), under the "Example usage, not plan
 // limits" line above the preset row. The V2 `blurb` on each preset is not
 // rendered by the compact preset row, so it is not included.
-const CALCULATOR_PRESETS = [
-  "Side project — 200K · 500 MB",
-  "Startup — 1M · 8 GB",
-  "Scaleup — 20M · 40 GB",
-];
+const CALCULATOR_PRESETS = CALCULATOR_PRESET_LIST.map(
+  (p) =>
+    `${p.label} — ${fmtOps(p.requests)} requests · ${fmtOps(p.ops)} operations · ${fmtGB(p.gb)}`,
+);
 
-// planTerms() from calc.ts, evaluated for each plan. These strings are static —
-// only the monthly totals and the "Recommended" / "Not available" states depend
-// on the slider positions, and those are interactive-only, so they are omitted.
-const CALCULATOR_PLAN_TERMS = [
-  { name: "Free plan", description: "200,000 ops • 2 GB storage • free forever" },
-  {
-    name: "Starter plan",
-    description: "1,000,000 ops included, then $0.008 per 1,000 • 10GB included, then $2/GB",
-  },
-  {
-    name: "Pro plan",
-    description: "10,000,000 ops included, then $0.002 per 1,000 • 50GB included, then $1.5/GB",
-  },
-  {
-    name: "Business plan",
-    description: "50,000,000 ops included, then $0.001 per 1,000 • 100GB included, then $1/GB",
-  },
+// The calculator's live bill (pricing-bill.tsx): the lines it itemizes. Rates
+// come from calc.ts so this copy can't drift; the quantities and totals depend
+// on the inputs and are interactive-only, so they are omitted.
+const CALCULATOR_BILL_LINES = [
+  "Plan — the plan's monthly price",
+  `Compute requests — included up to the plan's allowance (${CALCULATOR_PLANS.map((p) => `${p.requestsIncluded / 1_000_000}M on ${p.name}`).join(", ")}), then $${COMPUTE_RATES.requestsPerMillion} per million`,
+  `Compute memory — $${COMPUTE_RATES.memoryPerGBHour} per GB-hour, held while your app runs, including time spent waiting`,
+  `Compute CPU — $${COMPUTE_RATES.cpuPerVcpuHour} per vCPU-hour, only while your code is computing`,
+  `Compute bandwidth — $${COMPUTE_RATES.bandwidthPerGB} per GB sent out to the internet`,
+  "Postgres operations and storage — included up to the plan's allowance, then the plan's overage rate (see the plan table above)",
+  "Postgres data transfer — unlimited, included",
 ];
+const COMPUTE_APP_TYPES = APP_PROFILES.filter((p) => p.id !== "none").map(
+  (p) => `${p.label} — each request ${p.perRequest} (from the ${p.source} example)`,
+);
 
 // PRISMA + ALTERNATIVES in components/sections/pricing-comparison.tsx. The
 // label column has no header in the HTML (the cost bars are decoration and are
@@ -198,8 +191,8 @@ const COMPARISON_ROWS = [
   ],
   [
     "Database data transfer",
-    "500 GB egress per project included, then $0.10/GB",
-    "250 GB egress included, then $0.09/GB",
+    "500 GB egress per project included, then $0.10 per GB",
+    "250 GB egress included, then $0.09 per GB",
     "Included",
   ],
   [
@@ -235,9 +228,15 @@ const SPEC_GROUPS: {
     label: "Prisma Postgres",
     rows: [
       ["Operations included", "200k", "1M", "10M", "50M"],
-      ["Operation overage", "—", "$8 per million", "$2 per million", "$1 per million"],
+      [
+        "Operation overage",
+        "No usage billing",
+        "$8 per million",
+        "$2 per million",
+        "$1 per million",
+      ],
       ["Storage included", "2 GB", "10 GB", "50 GB", "100 GB"],
-      ["Storage overage", "—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
+      ["Storage overage", "No usage billing", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
       ["Databases", "50", "1,000", "1,000", "1,000"],
       ["Data transfer", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
       ["Spend limits", "Fixed at $0, no card required", INCLUDED, INCLUDED, INCLUDED],
@@ -247,25 +246,22 @@ const SPEC_GROUPS: {
     label: "Prisma Compute",
     rows: [
       ["Requests included", "1M", "5M", "20M", "100M"],
-      ["Request price", "—", "$1 per million", "$1 per million", "$1 per million"],
-      ["Provisioned memory included", "360 GB-hours", "—", "—", "—"],
+      ["Request price", "No usage billing", "$1 per million", "$1 per million", "$1 per million"],
       [
-        "Provisioned memory price",
-        "—",
+        "Provisioned memory",
+        "360 GB-hours / month",
         "$0.006 per GB-hour",
         "$0.006 per GB-hour",
         "$0.006 per GB-hour",
       ],
-      ["Active CPU included", "4 vCPU-hours", "—", "—", "—"],
       [
-        "Active CPU price",
-        "—",
+        "Active CPU",
+        "4 vCPU-hours / month",
         "$0.064 per vCPU-hour",
         "$0.064 per vCPU-hour",
         "$0.064 per vCPU-hour",
       ],
-      ["Outbound bandwidth included", "10 GB", "—", "—", "—"],
-      ["Outbound bandwidth price", "—", "$0.025 per GB", "$0.025 per GB", "$0.025 per GB"],
+      ["Outbound bandwidth", "10 GB / month", "$0.025 per GB", "$0.025 per GB", "$0.025 per GB"],
       ["Scale to zero when idle", INCLUDED, INCLUDED, INCLUDED, INCLUDED],
     ],
   },
@@ -292,7 +288,13 @@ const SPEC_GROUPS: {
     note: { label: "How to switch", href: "/docs/postgres/database/switch-from-accelerate" },
     rows: [
       ["Operations included", "60,000", "60,000", "60,000", "60,000"],
-      ["Operation overage", "—", "$0.018 per 1,000", "$0.008 per 1,000", "$0.006 per 1,000"],
+      [
+        "Operation overage",
+        "No usage billing",
+        "$0.018 per 1,000",
+        "$0.008 per 1,000",
+        "$0.006 per 1,000",
+      ],
       [
         "Egress included",
         "1 KiB per query",
@@ -300,11 +302,11 @@ const SPEC_GROUPS: {
         "1 KiB per query",
         "2 KiB per query",
       ],
-      ["Egress overage", "—", "$0.09 per GiB", "$0.09 per GiB", "$0.08 per GiB"],
+      ["Egress overage", "No usage billing", "$0.09 per GiB", "$0.09 per GiB", "$0.08 per GiB"],
       [
         "Cache tag invalidations",
-        "—",
-        "—",
+        "Not available",
+        "Not available",
         "$0.002 per 1,000, max 10,000 per day",
         "$0.001 per 1,000, max 100,000 per day",
       ],
@@ -318,7 +320,7 @@ const SPEC_GROUPS: {
       ["View and edit your data", INCLUDED, INCLUDED, INCLUDED, INCLUDED],
       [
         "Backups",
-        "—",
+        "Not available",
         "Daily, 7-day retention",
         "Daily, 7-day retention",
         "Daily, 30-day retention",
@@ -396,52 +398,61 @@ export function renderPricingMarkdown(): string {
     paragraphs("Custom pricing is available for high-volume teams."),
     ctaList([{ label: "Contact us", href: "/contact" }]),
 
-    heading(2, "How Prisma pricing works"),
-    // First paragraph omitted: it is PRICING_SUBHEADLINE, which the caller emits.
-    paragraphs([
-      "The ceremony around shipping stays free: deploys, preview branches, idle time, and the " +
-        "number of people on your team never add to the bill. An idle app scales to zero and " +
-        "costs nothing. A request does the same work whether it comes from a person, a script, " +
-        "or an AI agent, so that work is all you're charged for.",
-      "Every paid plan also includes a hard spend limit: set it in the Console, and usage-based " +
-        "pricing stays predictable and never becomes a surprise bill.",
+    // PricingCostControls: three cards right under the plan cards, under an
+    // sr-only H2. The "Free on every plan" card's tiles is decorative on the page;
+    // here it is the list, with the one-line reason for each item.
+    heading(2, COST_CONTROLS_HEADING),
+    ...COST_CONTROLS.flatMap((card, i) => [
+      heading(3, card.title),
+      paragraphs(card.body),
+      i === 2 ? bulletList(NEVER_BILLED.map((item) => `${item.label}: ${item.detail}`)) : undefined,
+      ctaList([{ label: card.link.label, href: card.link.href }]),
     ]),
-    heading(3, "Every plan includes"),
-    bulletList(EVERY_PLAN_INCLUDES),
 
     heading(2, "Estimate usage before you upgrade"),
     paragraphs(
-      "Estimate your usage before you upgrade, then set a spend limit so the bill can't surprise " +
-        "you. The calculator recommends the right plan for where you are.",
+      "Tell us what you're building and roughly how big it is, then fine-tune the numbers. " +
+        "You'll see the monthly bill on the cheapest plan that covers it, and you can set a spend " +
+        "limit on any paid plan.",
     ),
-    // Quick-start preset buttons, then the two sliders and the per-plan result
-    // cards. The estimated monthly totals and the "Recommended" badge are
-    // computed from the slider positions and are interactive-only, so only the
-    // static labels and per-plan terms are rendered here.
-    paragraphs("Example usage, not plan limits"),
+    // The calculator is four hinted steps: what you're building, how big it
+    // is, the usage sliders, then the bill. Quantities and totals depend on
+    // the inputs and are interactive-only, so only structure and rates render.
+    heading(3, "1. What are you building?"),
+    bulletList(APP_PROFILES.map((p) => p.label)),
+    heading(3, "2. How big is it?"),
     bulletList(CALCULATOR_PRESETS),
-    heading(3, "Estimate your monthly usage"),
+    heading(3, "3. Adjust your usage"),
+    paragraphs(
+      "Rough numbers are fine. Ticks on each slider mark where the recommended plan changes.",
+    ),
     bulletList([
-      "Database operations per month — 1 query = 1 operation",
-      "Storage in gigabytes",
-      "Database data transfer — unlimited, included free",
+      "Requests per month (not used for Database only)",
+      "Database operations per month (1 query = 1 operation)",
+      "Database storage in gigabytes",
     ]),
-    definitionList(CALCULATOR_PLAN_TERMS),
-    paragraphs("Hard spend limit on every paid plan, set in the Console — never a surprise bill."),
+    heading(3, "4. Your estimated bill"),
+    paragraphs(
+      'The bill opens on the recommended plan, the cheapest one your usage fits, with its monthly total and a three-line breakdown: the plan price, Compute, and Postgres. Each line opens to its meters, showing the usage, the rate, and the charge. Every plan\'s total is shown above the bill, and picking one shows its breakdown instead; a plan your usage is over shows "Over limits". The estimate is kept in the page address, so a copied link reopens it. The lines cover:',
+    ),
+    bulletList(CALCULATOR_BILL_LINES),
+    paragraphs([
+      `On Free there is no usage billing: each line shows usage against Free's limit (${FREE_COMPUTE_LIMITS.memoryGBHours} GB-hours of memory, ${FREE_COMPUTE_LIMITS.cpuHours} vCPU-hours, ${FREE_COMPUTE_LIMITS.bandwidthGB} GB of bandwidth, and 1M requests for Compute), and Free is not available once any limit is exceeded.`,
+      "The calculator turns requests into memory, CPU, and bandwidth using a typical shape for each app type, taken from the worked examples in the Compute pricing docs (https://www.prisma.io/docs/compute/pricing). Your app's real numbers will differ.",
+    ]),
+    bulletList(COMPUTE_APP_TYPES),
+    paragraphs(
+      "Set a hard spend limit on any paid plan in the Console. It caps usage charges, not the plan fee, and database queries stop when it's reached.",
+    ),
 
     heading(2, "See how Prisma compares at scale"),
     paragraphs([
-      "Prisma charges per operation: each query your app runs against your database counts as " +
-        "one. No seats. No database egress fees. And every paid plan includes a hard spend limit so there " +
-        "are no surprises.",
       "At around 50K monthly active users, Prisma Pro can cost less than half as much as a typical " +
         "Neon + Vercel setup, with one bill, included database data transfer, and a hard spend limit " +
         "you set.",
-      // The badge on the Prisma Pro column; its multiple is derived from the
-      // costs in the table below.
-      "Up to 2x less vs Neon + Vercel",
     ]),
     table(COMPARISON_HEADERS, COMPARISON_ROWS),
+    paragraphs(COMPARISON_BASIS),
 
     heading(2, "Compare plans"),
     paragraphs([

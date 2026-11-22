@@ -3,10 +3,10 @@ import { CompareLinks } from "@/components/sections/compare-links";
 import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { PricingCalculator } from "@/components/sections/pricing-calculator";
+import { PricingCostControls } from "@/components/sections/pricing-cost-controls";
 import { PricingComparison } from "@/components/sections/pricing-comparison";
 import { PricingFaq } from "@/components/sections/pricing-faq";
 import { PricingHero } from "@/components/sections/pricing-hero";
-import { PricingHowItWorks } from "@/components/sections/pricing-how-it-works";
 import { PricingPlans } from "@/components/sections/pricing-plans";
 import { PricingSpecTable } from "@/components/sections/pricing-spec-table";
 import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
@@ -25,7 +25,7 @@ export const metadata = createPageMetadata({
 // allowances as a group in the spec table — NOT as a separate section, hero
 // subhead, or strip (all three were tried and removed on Shane's feedback:
 // "we already have a table for these things").
-// "Every plan includes" is the right-hand column of PricingHowItWorks; the
+// What's never billed is the line under PricingCostControls' two cards; the
 // calculator's three entry points double as its preset selector.
 //
 // Plan cards sit directly under the hero panel, ahead of the how-it-works
@@ -43,7 +43,10 @@ export default function PricingPage() {
       <PricingHero>
         <PricingPlans />
       </PricingHero>
-      <PricingHowItWorks />
+      {/* Right under the plan cards, where Vercel puts its "No idle, no waste" /
+          "Control your spending" pair (client, 2026-11-22): the worry about a
+          runaway bill is answered next to the prices that raise it. */}
+      <PricingCostControls />
       <PricingCalculator />
       <PricingComparison />
       <PricingSpecTable />

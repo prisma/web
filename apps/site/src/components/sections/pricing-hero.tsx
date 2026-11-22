@@ -15,9 +15,9 @@ import { Texture } from "@/components/brand/texture";
 //  - The Pearly Plan testimonial and its prism ray. André approved removing it;
 //    its avatar was a placeholder anyway and TestimonialsReveal already carries
 //    testimonials further down the page.
-//  - The subhead, which defined an operation. PricingHowItWorks opens with the
-//    same definition ("Every query your app runs… counts as one operation"), so
-//    the explanation still lands, just after the prices rather than before them.
+//  - The subhead, which defined an operation. The plan cards and the
+//    calculator carry the definition ("1 query = 1 operation"), so the
+//    explanation still lands, just after the prices rather than before them.
 //    That inversion is the point of the ask.
 //  - The three checkmarks. "Free tier, no credit card required" is on the Free
 //    card, "One bill, one platform" and the cost comparison are both in
@@ -72,12 +72,17 @@ export function PricingHero({ children }: { children?: React.ReactNode }) {
           they come out both roomier AND 46px shorter — which is the only reason
           the padding here still leaves the CTAs above the fold at 1440x800.
           Measured at 1440: 270px wide / 528px tall -> 326px / 482px. */}
-      <div className="relative mx-auto max-w-site pb-20 pt-32 sm:pb-24 md:pt-36">
+      <div className="relative mx-auto max-w-site pb-14 pt-32 sm:pb-16 md:pt-36">
         <div className="flex min-w-0 flex-col items-start">
           <RoleKicker color="bg-prism-cyan-400">Pricing</RoleKicker>
           <h1 className="isolate mt-5 max-w-[34ch] text-balance text-[clamp(2.25rem,3.4vw,3.125rem)] leading-[1.06]">
-            Usage-based pricing that bills you for{" "}
-            <GlassGlide className="md:whitespace-normal">what your app actually does</GlassGlide>
+            {/* Client, 2026-11-22: say usage-based, and answer the worry it
+                raises (a bill nobody saw coming) in the same breath. The three
+                cost-control cards right under the plans make it concrete.
+                Was "Usage-based pricing: you pay for the work your app and
+                database do" (2026-11-21). */}
+            Usage-based pricing with{" "}
+            <GlassGlide className="md:whitespace-normal">cost controls</GlassGlide>
           </h1>
         </div>
 

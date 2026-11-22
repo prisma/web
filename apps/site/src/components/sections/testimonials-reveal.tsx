@@ -67,7 +67,7 @@ function CompanyMark({ t }: { t: Testimonial }) {
 
 function QuoteCard({ t }: { t: Testimonial }) {
   return (
-    <figure className="spectrum-border flex w-[19rem] shrink-0 flex-col rounded-2xl border border-black/[0.06] bg-white p-6 transition-[border-color] duration-500 hover:border-transparent sm:w-[22rem]">
+    <figure className="spectrum-border flex w-[19rem] shrink-0 flex-col rounded-2xl border border-black/[0.06] bg-white p-6 transition-[border-color] duration-150 ease-out hover:border-transparent sm:w-[22rem]">
       <blockquote className="text-pretty text-[15px] font-medium leading-normal text-foreground">
         &ldquo;{t.quote}&rdquo;
       </blockquote>

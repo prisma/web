@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
@@ -29,6 +30,12 @@ const TRACK = "h-2 w-full overflow-hidden rounded-full bg-foreground/[0.07]";
 // comparison column can be added before its figures land.
 export function CostBar({ fraction, spectrum = false, delay = 0, className }: CostBarProps) {
   const reduceMotion = useReducedMotion();
+  // Watch the full-width track, not the bar. The bar starts at scaleX(0), a
+  // zero-width box, and an IntersectionObserver doesn't reliably report a
+  // zero-area target as visible, so `whileInView` on the bar left some bars
+  // empty for good (client, 2026-11-22: "the bars aren't loading").
+  const trackRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(trackRef, { once: true, margin: "0px 0px -15% 0px" });
 
   if (fraction === null) {
     return (
@@ -58,13 +65,12 @@ export function CostBar({ fraction, spectrum = false, delay = 0, className }: Co
   }
 
   return (
-    <div className={cn(TRACK, className)} aria-hidden>
+    <div ref={trackRef} className={cn(TRACK, className)} aria-hidden>
       <motion.div
         className="h-full w-full origin-left rounded-full"
         style={fill}
         initial={{ scaleX: 0 }}
-        whileInView={{ scaleX: fraction }}
-        viewport={{ once: true, margin: "0px 0px -15% 0px" }}
+        animate={{ scaleX: inView ? fraction : 0 }}
         transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay }}
       />
     </div>

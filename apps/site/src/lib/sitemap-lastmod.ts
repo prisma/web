@@ -399,7 +399,7 @@ export function getGitFileDates(
  *
  * Section components used by one page only, which also take performance and
  * markup commits, are not listed: `/pricing`'s pricing-hero, pricing-plans,
- * pricing-spec-table, pricing-how-it-works and pricing-calculator, `/mcp`'s
+ * pricing-spec-table, pricing-cost-controls and pricing-calculator, `/mcp`'s
  * `_components`, `/stack`'s stack-hero-visual and best-for, and `/brand-kit`'s
  * `components/brand-kit/*.tsx`. A copy edit there moves the route's date only
  * through its `page.tsx`, rendition or content file. A route that is not

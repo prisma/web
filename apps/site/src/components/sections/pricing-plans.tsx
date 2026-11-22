@@ -1,9 +1,11 @@
 import { Marker } from "@/components/brand/marker";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { SpectrumRing } from "@/components/brand/spectrum-ring";
+import { ArrowRightLeft, ArrowUpFromLine, Cpu, MemoryStick } from "lucide-react";
 import { CheckBold } from "@/components/icons/forma";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
+import { CopyInline } from "./copy-inline";
 
 // V2 plan cards. Corrections applied on top of V2:
 //  - Gregory (2026-07-24): Business has an overage rate, $0.0010 per 1,000
@@ -27,6 +29,54 @@ import { cn } from "@/lib/utils";
 // this is the one piece of it with nowhere else to live — restoring it is a
 // one-line change if the client would rather have the copy than the fold.
 // Verify the fold if you do.
+// Card trim (client review with PostHog, 2026-11-21): the median desktop
+// visitor sees only about the first 1,550px of the page and the median phone
+// visitor about 2,100px, so the cards are most of what anyone reads.
+//  - Memory, CPU and bandwidth rates are identical on every paid plan, so each
+//    paid card says "billed by use" once and the rates appear a single time
+//    under the row (PAID_RATES). Numbers unchanged — still Shane's.
+//  - "Spend limits" is on every plan, so it moved out of Platform (now the
+//    "Cap your spending" card, pricing-cost-controls.tsx); Platform lists
+//    only what differs.
+//  - Paid buttons name their plan. All three said "Get started", so PostHog
+//    couldn't tell which paid plan anyone chose (cta_text is the label).
+// The Compute rates that are identical on every paid plan, shown once as a
+// strip under the cards (client, 2026-11-21, after Railway's pricing page:
+// big plain rates make the charges obvious). Postgres overage rates differ
+// by plan, so they stay on the cards. Numbers are Shane's, unchanged.
+const PAID_RATES = [
+  {
+    icon: ArrowRightLeft,
+    name: "Requests",
+    amount: "$1",
+    unit: "per million",
+    note: "beyond your plan's included requests",
+  },
+  {
+    icon: MemoryStick,
+    name: "Provisioned memory",
+    amount: "$0.006",
+    unit: "per GB-hour",
+    note: "while your app runs",
+  },
+  { icon: Cpu, name: "Active CPU", amount: "$0.064", unit: "per vCPU-hour", note: "CPU time used" },
+  {
+    icon: ArrowUpFromLine,
+    name: "Outbound bandwidth",
+    amount: "$0.025",
+    unit: "per GB",
+    note: "sent to the internet",
+  },
+];
+
+// Jump links under the cards: most visitors never scroll past them, so the
+// sections further down get a way in. Anchors live on each section.
+const JUMP_LINKS = [
+  { href: "#estimate", label: "Estimate your bill" },
+  { href: "#compare-plans", label: "Compare all features" },
+  { href: "#compare", label: "Prisma vs Neon, Supabase and Vercel" },
+];
+
 const PLANS = [
   {
     name: "Free",
@@ -34,7 +84,7 @@ const PLANS = [
     note: "Free forever. No credit card required.",
     compute: [
       "1M requests / month",
-      "360 GB-hours memory / month",
+      "360 GB-hours provisioned memory / month",
       "4 active vCPU-hours / month",
       "10 GB outbound bandwidth / month",
     ],
@@ -50,22 +100,17 @@ const PLANS = [
     name: "Starter",
     price: "$10",
     note: null,
-    compute: [
-      "5M requests / month, then $1 per million",
-      "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hours",
-      "$0.025 per GB outbound bandwidth",
-    ],
+    compute: ["5M requests / month included", "Usage billed at the rates below"],
     postgres: [
       "1M operations / month, then $8 per million",
       "10 GB storage, then $2.00 per GB",
       "1,000 databases",
       "7-day daily backups",
     ],
-    platform: ["Spend limits"],
+    platform: [],
     blurb:
       "Ship your first production app without worrying about the bill. Backups included, and a spend limit you set.",
-    cta: "Get started",
+    cta: "Start on Starter",
     href: "https://console.prisma.io/sign-up",
     popular: true,
   },
@@ -73,22 +118,17 @@ const PLANS = [
     name: "Pro",
     price: "$49",
     note: null,
-    compute: [
-      "20M requests / month, then $1 per million",
-      "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hours",
-      "$0.025 per GB outbound bandwidth",
-    ],
+    compute: ["20M requests / month included", "Usage billed at the rates below"],
     postgres: [
       "10M operations / month, then $2 per million",
       "50 GB storage, then $1.50 per GB",
       "1,000 databases",
       "7-day daily backups",
     ],
-    platform: ["Spend limits", "GDPR"],
+    platform: ["GDPR"],
     blurb:
       "For production apps with real traffic. More operations, lower overage rates, and headroom to grow without watching the meter.",
-    cta: "Get started",
+    cta: "Start on Pro",
     href: "https://console.prisma.io/sign-up",
     popular: false,
   },
@@ -96,24 +136,19 @@ const PLANS = [
     name: "Business",
     price: "$129",
     note: null,
-    compute: [
-      "100M requests / month, then $1 per million",
-      "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hours",
-      "$0.025 per GB outbound bandwidth",
-    ],
+    compute: ["100M requests / month included", "Usage billed at the rates below"],
     postgres: [
       "50M operations / month, then $1 per million",
-      "100 GB storage",
+      "100 GB storage, then $1.00 per GB",
       "1,000 databases",
       "30-day backup retention",
     ],
     // HIPAA deep-links to /postgres/hipaa (the Business-plan landing page);
     // the card renders feature strings through `renderFaqAnswer`, which turns
     // `[text](/path)` into an inline link.
-    platform: ["Spend limits", "GDPR, [HIPAA with a BAA](/postgres/hipaa), SOC 2, ISO 27001"],
+    platform: ["GDPR, [HIPAA with a BAA](/postgres/hipaa), SOC 2, ISO 27001"],
     blurb: "Built for high-growth teams with compliance requirements and sustained high volume.",
-    cta: "Get started",
+    cta: "Start on Business",
     href: "https://console.prisma.io/sign-up",
     popular: false,
   },
@@ -147,8 +182,12 @@ export function PricingPlans() {
                 : "border-black/[0.06]",
             )}
           >
+            {/* z-10: the SpectrumRing is rendered last and is also absolute, so
+                without it the ring paints over the marker it's meant to sit under. */}
             {plan.popular && (
-              <Marker className="absolute -top-3 left-1/2 -translate-x-1/2">Most popular</Marker>
+              <Marker className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+                Most popular
+              </Marker>
             )}
             <p className="text-sm font-semibold text-foreground">{plan.name}</p>
             <p className="mt-4 font-heading text-4xl font-medium tracking-tight text-foreground">
@@ -156,6 +195,30 @@ export function PricingPlans() {
               <span className="ml-1 text-base font-normal text-muted-foreground">/ month</span>
             </p>
             {plan.note && <p className="mt-2.5 text-sm text-muted-foreground">{plan.note}</p>}
+            {/* No-sign-up start (client, 2026-11-21). PostHog: 88% of plan
+                card clicks are "Start for free", so the people here mostly
+                want to try it now. Facts from docs postgres/npx-create-db:
+                no account or card, a temporary database for 24 hours until
+                claimed, and a claimed one stays on Free. Database only:
+                deploying to Compute needs a signed-in session, so nothing
+                here may suggest otherwise. One quiet line, not a chip: a
+                chip made Free the busiest card and put a second action above
+                "Start for free" (client review, 2026-11-21). The 24-hour and
+                claim details are behind the ↗ link and in the command's own
+                output. Copies are autocaptured ("Copy npx create-db@latest"). */}
+            {plan.name === "Free" && (
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Or skip sign-up:{" "}
+                <CopyInline command="npx create-db@latest">npx create-db</CopyInline>
+                <a
+                  href="/docs/postgres/npx-create-db"
+                  aria-label="About create-db: a temporary database for 24 hours that you can claim"
+                  className="ml-0.5 rounded-sm text-foreground outline-none hover:text-prism-cyan-700 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  ↗
+                </a>
+              </p>
+            )}
             {/* One loop for every group — Compute and Postgres get the exact
                 same treatment by construction (see CARD_GROUPS). */}
             <div className="mt-6">
@@ -205,19 +268,68 @@ export function PricingPlans() {
         ))}
       </div>
 
-      {/* Need more? — sits inside the panel with the cards, since it's part of
-          the pricing block rather than the start of the next section. It falls
-          below the fold, which is fine; the four cards are what had to clear it. */}
-      <div className="mt-6 flex flex-col items-start justify-between gap-5 rounded-2xl border border-black/[0.06] bg-white p-7 sm:flex-row sm:items-center sm:p-8">
-        <div>
-          <p className="font-heading text-lg font-medium text-foreground">Need more?</p>
+      {/* Compute usage rates, Railway-style (client, 2026-11-21): a label and
+          the four rates that are identical on every paid plan.
+          Off the card (client, 2026-11-22: "take this off a card"): a band
+          between two hairlines, on the cards' own four-column grid. The label
+          sits under Free, which has no usage billing, and the rates span the
+          three paid columns, so nothing reads as a Free rate. Text is inset
+          to the cards' padding so every left edge lines up. Phones: label on
+          top, rates two by two. */}
+      <div className="mt-10 grid gap-x-6 gap-y-6 border-y border-black/[0.08] py-8 lg:grid-cols-4">
+        <div className="sm:px-7">
+          <p className="text-sm font-semibold text-foreground">Usage rates</p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            Custom pricing is available for high-volume teams.
+            Prisma Compute, on every paid plan. Free has no usage billing.
           </p>
         </div>
-        <PrismButtonOutline href="/contact" className="shrink-0">
-          Contact us
-        </PrismButtonOutline>
+        <ul className="grid grid-cols-2 gap-x-6 gap-y-6 sm:px-7 md:grid-cols-4 lg:col-span-3">
+          {PAID_RATES.map(({ icon: Icon, name, amount, unit, note }) => (
+            <li key={name}>
+              {/* Two-line slot on phones, where "Provisioned memory" and
+                  "Outbound bandwidth" wrap in a half-width column, so the
+                  amounts below stay level across each pair. */}
+              <span className="flex min-h-10 items-start gap-2 text-sm font-medium text-foreground md:min-h-0 md:items-center">
+                <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-prism-red-500 md:mt-0" />
+                {name}
+              </span>
+              <span className="mt-1.5 block font-heading text-2xl tabular-nums text-foreground">
+                {amount}
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                {unit}, {note}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* One quiet footer line: where to go next on the left (most visitors
+          never scroll past the cards), custom pricing on the right. */}
+      <div className="mt-6 flex flex-col gap-4 text-sm sm:px-7 lg:flex-row lg:items-center lg:justify-between">
+        <nav aria-label="More on this page">
+          <ul className="flex flex-wrap gap-x-6 gap-y-2">
+            {JUMP_LINKS.map(({ href, label }) => (
+              <li key={href}>
+                <a
+                  href={href}
+                  className="rounded-sm text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <p className="text-muted-foreground">
+          Need more? Custom pricing is available for high-volume teams.{" "}
+          <a
+            href="/contact"
+            className="whitespace-nowrap rounded-sm font-medium text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            Contact us
+          </a>
+        </p>
       </div>
     </>
   );

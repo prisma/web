@@ -49,7 +49,10 @@ test("the /pricing comparison uses the recomputed Neon + Vercel figure", () => {
 
 test("the /pricing Markdown matches the comparison data", () => {
   const markdown = renderPricingMarkdown();
-  assert.ok(markdown.includes(`Up to ${SAVINGS_MULTIPLE}x less vs ${WIDEST.shortName}`));
+  // The /pricing card no longer carries the "Up to 2x less" badge (client,
+  // 2026-11-22: subtler self-promotion); the intro sentence makes the claim.
+  // The home scenario card still uses SAVINGS_MULTIPLE, pinned above.
+  assert.ok(!markdown.includes(`Up to ${SAVINGS_MULTIPLE}x less vs ${WIDEST.shortName}`));
   assert.ok(markdown.includes("can cost less than half as much as a typical"));
   for (const alt of ALTERNATIVES) assert.ok(markdown.includes(alt.cost), alt.cost);
   assert.ok(markdown.includes(PRISMA.cost));
@@ -137,7 +140,8 @@ test("Prisma's spend limit is one you set, never described as on by default", ()
     "src/components/product/content/postgres.ts",
     "src/components/sections/pricing-calculator.tsx",
     "src/components/sections/pricing-comparison.tsx",
-    "src/components/sections/pricing-how-it-works.tsx",
+    "src/components/sections/pricing-cost-controls.tsx",
+    "src/components/sections/pricing-ledger.ts",
   ].map((path) => readFileSync(join(siteRoot, path), "utf8"));
   for (const text of [
     renderPricingMarkdown(),

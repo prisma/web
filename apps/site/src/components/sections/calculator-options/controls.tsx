@@ -19,6 +19,15 @@ export function useEstimator(initialOps = 3_000_000, initialGB = 12) {
   return { ops, gb, opsT, gbT, setOpsT, setGbT, setPreset, rec };
 }
 
+const KEY_STEPS: Record<string, number> = {
+  ArrowRight: 0.01,
+  ArrowUp: 0.01,
+  ArrowLeft: -0.01,
+  ArrowDown: -0.01,
+  PageUp: 0.1,
+  PageDown: -0.1,
+};
+
 type RangeInputProps = {
   /** Normalized position 0..1. */
   t: number;
@@ -31,6 +40,13 @@ type RangeInputProps = {
   fillStyle?: React.CSSProperties;
   thumbClassName?: string;
   className?: string;
+  /** Visible but inert: faded, not focusable, not draggable. */
+  disabled?: boolean;
+  /** Drawn over the track and fill but under the thumb (e.g. tick marks). */
+  marks?: React.ReactNode;
+  /** Spoken value (aria-valuetext). Without it, screen readers announce the
+   *  raw 0–1000 position, which means nothing to anyone. */
+  valueText?: string;
 };
 
 // Headless range slider: a transparent native input drives an entirely
@@ -46,12 +62,37 @@ export function RangeInput({
   fillStyle,
   thumbClassName,
   className,
+  disabled = false,
+  marks,
+  valueText,
 }: RangeInputProps) {
   const pct = `${t * 100}%`;
+  // Focus ring only when the slider is being driven from the keyboard. On a
+  // range input, :focus-visible also matches after a mouse click in Chrome,
+  // which left a heavy grey ring on the thumb after every drag.
+  const [keyboard, setKeyboard] = useState(false);
+  // Arrows move 1% (10% with Shift), Page Up/Down 10%, Home/End the ends.
+  // The native step here is 0.1%, which made keyboard use a crawl.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    let next: number;
+    if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = 1;
+    else if (e.key in KEY_STEPS) next = t + KEY_STEPS[e.key] * (e.shiftKey ? 10 : 1);
+    else return;
+    e.preventDefault();
+    setKeyboard(true);
+    onT(Math.min(1, Math.max(0, next)));
+  };
   // h-11 below md so the drag target clears the 44px touch minimum; the track
   // and thumb stay centred, so it looks identical at every width.
   return (
-    <div className={cn("group relative flex h-6 items-center max-md:h-11", className)}>
+    <div
+      className={cn(
+        "group relative flex h-6 items-center transition-opacity max-md:h-11",
+        disabled && "opacity-40",
+        className,
+      )}
+    >
       <div className={cn("h-1.5 w-full rounded-full bg-black/[0.06]", trackClassName)} />
       {fillClassName !== undefined && (
         <div
@@ -63,11 +104,15 @@ export function RangeInput({
           style={{ width: pct, ...fillStyle }}
         />
       )}
+      {marks}
       <div
         aria-hidden
         className={cn(
+          // The real <input> is transparent, so its keyboard focus has to show
+          // on the drawn thumb — otherwise tabbing to a slider is invisible.
           "absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/[0.08] bg-white shadow-[0_1px_3px_rgba(21,21,21,0.25)] transition-transform group-active:scale-110",
           thumbClassName,
+          keyboard && "group-has-[input:focus]:ring-[3px] group-has-[input:focus]:ring-ring/50",
         )}
         style={{ left: pct }}
       />
@@ -78,7 +123,13 @@ export function RangeInput({
         value={Math.round(t * 1000)}
         onChange={(e) => onT(Number(e.currentTarget.value) / 1000)}
         aria-label={label}
-        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        aria-valuetext={valueText}
+        disabled={disabled}
+        onKeyDown={onKeyDown}
+        onKeyUp={(e) => e.key === "Tab" && setKeyboard(true)}
+        onPointerDown={() => setKeyboard(false)}
+        onBlur={() => setKeyboard(false)}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
       />
     </div>
   );
