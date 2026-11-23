@@ -6,11 +6,17 @@
   // landing-page pixel wrote is available when the Console reports a signup.
   const openaiPixelId = "V7u8DWWqnx63arxK1sLzkm";
   const openaiSdkUrl = "https://bzrcdn.openai.com/sdk/oaiq.min.js";
+  // Freebuff ads pixel. Same site tag as the landing pages
+  // (packages/ui/src/lib/freebuff-pixel.ts); on this prisma.io origin it can
+  // read the `bfcid` the landing-page pixel stored. Public, no API key.
+  const freebuffTagUrl = "https://freebuff.com/freebuff-tag.v2.js?t=fbt_xr5SWt5bTx2J5xzmgUW5uQ";
   if (window.parent === window) return;
   const seen = new Set();
   const seenOpenai = new Set();
+  const seenFreebuff = new Set();
   let initialized = false;
   let openaiLoaded = false;
+  let freebuffLoaded = false;
   let previousConsent = "";
   let previousOpenaiConsent = null;
   let openaiExternalId = null;
@@ -35,6 +41,7 @@
         ? conversion
         : null;
     const measuredByOpenai = measureOpenaiConversion(consent, validConversion);
+    const measuredByFreebuff = measureFreebuffConversion(consent, validConversion);
     window[`ga-disable-${measurementId}`] = !analytics;
     const signature = `${analytics}:${ads}`;
     if (signature !== previousConsent) {
@@ -83,7 +90,7 @@
       }
     }
     // Acknowledge once a destination has measured (or already holds) the handoff.
-    if (validConversion && (analytics || measuredByOpenai)) {
+    if (validConversion && (analytics || measuredByOpenai || measuredByFreebuff)) {
       window.parent.postMessage({ type: "console-analytics-accepted", id: validConversion.id }, consoleOrigin);
     }
   });
@@ -135,6 +142,33 @@
         window.oaiq("init", { pixelId: openaiPixelId, user: { external_id_sha256: externalId } });
       }
       window.oaiq("measure", "registration_completed", { type: "customer_action" }, { event_id: eventId });
+    }
+    return true;
+  }
+
+  // Loads the Freebuff pixel the first time advertising consent is granted and
+  // reports a completed signup as `signup_completed`. Only `sign_up` counts: a
+  // login is not an account creation, and the Console reports no trial,
+  // subscription, or installation here. The handoff id is the random id the
+  // Console gives each authentication handoff and reuses on its retries and
+  // replays, so the namespaced eventId lets Freebuff collapse a repeated report.
+  // Nothing reports signups to Freebuff server-side, so this is the only report.
+  function measureFreebuffConversion(consent, conversion) {
+    const granted = consent?.decided === true && consent?.advertisement === true;
+    if (!granted) return false;
+    if (!freebuffLoaded) {
+      freebuffLoaded = true;
+      window.freebuff = window.freebuff || function () { (window.freebuff.q = window.freebuff.q || []).push(arguments); };
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = freebuffTagUrl;
+      document.head.appendChild(script);
+    }
+    if (!conversion || conversion.event !== "sign_up") return false;
+    const eventId = `signup_completed:${conversion.id}`;
+    if (!seenFreebuff.has(eventId)) {
+      seenFreebuff.add(eventId);
+      window.freebuff("conversion", "signup_completed", { eventId });
     }
     return true;
   }

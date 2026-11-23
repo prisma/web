@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import vm from "node:vm";
 import { OPENAI_ADS_PIXEL_ID, OPENAI_ADS_SDK_URL } from "@prisma-docs/ui/lib/openai-pixel";
+import { FREEBUFF_TAG_SRC } from "@prisma-docs/ui/lib/freebuff-pixel";
 
 const script = readFileSync(new URL("../public/console-analytics.js", import.meta.url), "utf8");
 function setup() {
@@ -348,7 +349,7 @@ test("an invalid handoff is neither measured by the pixel nor acknowledged", () 
   assert.equal(app.messages.length, 1);
 });
 
-test("an ads-only login or a signup without a pixel id is not acknowledged", () => {
+test("an ads-only login is not acknowledged; a signup without an OpenAI id is, via Freebuff", () => {
   const app = setup();
   const adsOnly = { decided: true, analytics: false, advertisement: true };
   app.send({
@@ -356,11 +357,74 @@ test("an ads-only login or a signup without a pixel id is not acknowledged", () 
     consent: adsOnly,
     conversion: { id: "h-login", event: "login", method: "email" },
   });
+  assert.equal(app.messages.length, 1);
   app.send({
     ...grant,
     consent: adsOnly,
     conversion: { id: "h-anon", event: "sign_up", method: "email" },
   });
   assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 0);
-  assert.equal(app.messages.length, 1);
+  assert.deepEqual(freebuffConversions(app), [
+    ["conversion", "signup_completed", { eventId: "signup_completed:h-anon" }],
+  ]);
+  assert.equal(app.messages.length, 2);
+  assert.equal(
+    JSON.stringify(app.messages[1]?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "h-anon" }),
+  );
+});
+
+const freebuffScripts = (app: ReturnType<typeof setup>) =>
+  app.scripts.filter((s) => s.src === FREEBUFF_TAG_SRC);
+function freebuffConversions(app: ReturnType<typeof setup>) {
+  const queue = (app.window.freebuff?.q ?? []) as ArrayLike<unknown>[];
+  return JSON.parse(JSON.stringify(queue.map((entry) => Array.from(entry)))) as unknown[][];
+}
+
+test("the relay frame loads the same Freebuff tag as the site", () => {
+  assert.ok(script.includes(`freebuffTagUrl = "${FREEBUFF_TAG_SRC}"`));
+});
+
+test("loads the Freebuff tag only with advertising consent", () => {
+  for (const consent of [
+    undefined,
+    {},
+    { advertisement: true },
+    { decided: true, analytics: true, advertisement: false },
+  ]) {
+    const app = setup();
+    app.send({ ...grant, consent });
+    assert.equal(freebuffScripts(app).length, 0);
+    assert.equal(app.window.freebuff, undefined);
+  }
+  const app = setup();
+  app.send({ ...grant, consent: { decided: true, analytics: false, advertisement: true } });
+  app.send({ ...grant, consent: { decided: true, analytics: false, advertisement: true } });
+  assert.equal(freebuffScripts(app).length, 1);
+  assert.equal(freebuffScripts(app)[0]?.async, true);
+});
+
+test("reports a signup to Freebuff once, with a namespaced handoff id and nothing else", () => {
+  const app = setup();
+  app.send(grant);
+  app.send(grant);
+  app.send({ ...grant, conversion: { ...grant.conversion, id: "handoff-2" } });
+  assert.deepEqual(freebuffConversions(app), [
+    ["conversion", "signup_completed", { eventId: "signup_completed:handoff-1" }],
+    ["conversion", "signup_completed", { eventId: "signup_completed:handoff-2" }],
+  ]);
+  assert.doesNotMatch(JSON.stringify(freebuffConversions(app)), /private@|a1b2c3|google/);
+});
+
+test("logins, project creation and invalid handoffs are not Freebuff conversions", () => {
+  for (const conversion of [
+    { id: "h-login", event: "login", method: "github" },
+    { id: "h-project", event: "project_created" },
+    { ...grant.conversion, id: "" },
+    { ...grant.conversion, method: "unknown" },
+  ]) {
+    const app = setup();
+    app.send({ ...grant, conversion });
+    assert.deepEqual(freebuffConversions(app), []);
+  }
 });
