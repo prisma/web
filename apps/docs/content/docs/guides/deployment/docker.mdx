@@ -121,7 +121,7 @@ The warning at the top matters: `npm init -y` writes `"type": "commonjs"`, and t
     "test": "echo \"Error: no test specified\" && exit 1", // [!code --]
     "start": "node src/index.ts", // [!code ++]
     "contract:emit": "prisma contract emit",
-    "db:migrate": "prisma db migrate" // [!code ++]
+    "db:migrate": "prisma db migrate --no-advance-ref" // [!code ++]
   },
   "type": "commonjs", // [!code --]
   "type": "module", // [!code ++]
@@ -403,7 +403,7 @@ What the image needs, and why:
 
 - `npm ci` installs dev dependencies too. The container runs the Prisma CLI at start to apply migrations, so `prisma` has to be in the image.
 - `COPY . .` brings in `src/prisma/contract.json`, `src/prisma/contract.d.ts`, and `migrations/`. Because those are committed, the build has no Prisma step. If you prefer not to commit the emitted artifacts, add `RUN npx prisma contract emit` after the copy; it runs offline.
-- `CMD` applies pending migrations with `db migrate` and then starts the server. On a fresh database this creates the schema; on an existing one it reports `Already up to date` and moves on.
+- `CMD` applies pending migrations with `db migrate` and then starts the server. The script passes `--no-advance-ref`, so the run inside the container does not rewrite `migrations/app/refs/db.json`; without the flag, `db migrate` moves the `db` ref when it reads its connection from `prisma.config.ts` outside CI. On a fresh database this creates the schema; on an existing one it reports `Already up to date` and moves on.
 - `DATABASE_URL` is not baked in. The CLI reads it through `prisma.config.ts` and the runtime through `src/prisma/db.ts`, both from the container's environment, which Compose sets in the next step.
 
 ### 3.2. Create and configure a Docker Compose file
@@ -490,7 +490,7 @@ docker compose logs server
 
 ```text no-copy
 server-1  | > docker-test@1.0.0 db:migrate
-server-1  | > prisma db migrate
+server-1  | > prisma db migrate --no-advance-ref
 server-1  |
 server-1  | ...
 server-1  | ✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
@@ -565,7 +565,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Containerize a new Express app on Prisma ORM with Docker Compose, following https://www.prisma.io/docs/guides/deployment/docker.md.
 
-1. Create `docker-test`, run `npm init -y` and `npm install express`, then run `npx prisma@latest orm init --yes --target postgres --authoring psl`. Set `"type": "module"` in package.json and add the scripts `start` (`node src/index.ts`), `contract:emit` (`prisma contract emit`), and `db:migrate` (`prisma db migrate`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
+1. Create `docker-test`, run `npm init -y` and `npm install express`, then run `npx prisma@latest orm init --yes --target postgres --authoring psl`. Set `"type": "module"` in package.json and add the scripts `start` (`node src/index.ts`), `contract:emit` (`prisma contract emit`), and `db:migrate` (`prisma db migrate --no-advance-ref`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
 2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
 3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma migration plan --name init` then `npx prisma db migrate --advance-ref db`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
 4. Write a `.dockerignore` (node_modules, .env, .env.prod), a `Dockerfile` based on `node:24-alpine` that runs `npm ci`, copies the project, and uses `CMD ["sh", "-c", "npm run db:migrate && npm start"]`, a `docker-compose.yml` with a `postgres_db` service and a `server` service that builds the Dockerfile, publishes port 3000, waits for the database healthcheck, and loads `.env.prod`, and `.env.prod` with `DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres"`.
