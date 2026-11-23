@@ -524,7 +524,7 @@ Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `
   "scripts": {
     "prisma7:generate": "prisma7 generate",
     "prisma7:migrate": "prisma7 migrate dev", // [!code --]
-    "prisma8:migrate": "prisma db migrate --advance-ref db" // [!code ++]
+    "prisma8:migrate": "prisma db migrate" // [!code ++]
   }
 }
 ```
@@ -548,11 +548,11 @@ Emit, plan, and apply:
 ```npm
 npx prisma contract emit
 npx prisma migration plan --name add_user_bio
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 npx prisma db verify
 ```
 
-**Expected result:** `migration plan` reports `Planned baseline (6 operation(s)) + 1 operation(s)`, with your own number for the baseline, and writes two packages under `migrations/app/`: a baseline that records the schema you adopted in step 4.1, and `add_user_bio` with the single operation `Add column "bio" to "User"`. `db migrate` skips the baseline, because the marker already records that state, and applies `add_user_bio`. `--advance-ref db` points the `db` ref at the new contract, so the next plan starts from it, and `db verify` reports that marker and schema match the contract.
+**Expected result:** `migration plan` reports `Planned baseline (6 operation(s)) + 1 operation(s)`, with your own number for the baseline, and writes two packages under `migrations/app/`: a baseline that records the schema you adopted in step 4.1, and `add_user_bio` with the single operation `Add column "bio" to "User"`. `db migrate` skips the baseline, because the marker already records that state, and applies `add_user_bio`. `db migrate` points the `db` ref at the new contract, so the next plan starts from it, and `db verify` reports that marker and schema match the contract.
 
 Restart the app: the Prisma ORM 8 route returns users with `bio`, and the Prisma ORM 7 route keeps working untouched. The Prisma ORM 7 client learns about the new column only when you run `npm run prisma7:generate`, which reads the same `schema.prisma`. Additive changes like nullable columns are safe next to legacy Prisma ORM 7 code. Be careful with renames or drops of columns that Prisma ORM 7 routes still read.
 

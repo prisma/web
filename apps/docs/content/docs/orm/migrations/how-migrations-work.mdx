@@ -17,15 +17,15 @@ You run this loop many times a day:
 1. **Change your contract**: edit `contract.prisma`, then run `npx prisma contract emit`.
 2. **Plan a migration**: `migration plan` works out what has to change in the database by comparing your new contract with an earlier contract state, and writes what it finds as a migration directory under `migrations/app/`. A contract state is one version of your contract, named by its hash, so it is how Prisma ORM refers to your contract as it stood at a particular moment. Unless you tell it otherwise, the earlier state it compares against is the `db` ref, the file `migrations/app/refs/db.json` naming the contract state you last applied in development.
 3. **Review it**: before anything touches the database, run `npx prisma migration show <dir>` to see the operations and SQL that `db migrate` will run. If you want the migration to change rows as well, [edit `migration.ts` and recompile it](/orm/migrations/editing-a-migration) by running `node migrations/app/<dir>/migration.ts` from your project root, which rewrites `ops.json`. Nothing extra is needed to run that file, because the Prisma ORM CLI already requires Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer, and all of those run `migration.ts` directly.
-4. **Apply it**: `db migrate` starts by reading the database's marker, the record in the database of which contract state it matches, so it knows how much of your history the database has already seen, and then runs the migrations from that state to your current contract. In development, add [`--advance-ref db`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) so the next `migration plan` starts from what you just applied.
+4. **Apply it**: `db migrate` starts by reading the database's marker, the record in the database of which contract state it matches, so it knows how much of your history the database has already seen, and then runs the migrations from that state to your current contract. In development, it also moves the [`db` ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from), so the next `migration plan` starts from what you just applied.
 
-This example uses the contract from [Generating a migration](/orm/migrations/generating-a-migration#your-first-migration), whose `User` model is stored in the table `user` because it sets `@@map("user")`. Its first migration is already applied, with `npx prisma db migrate --advance-ref db`, and a database connection is set up as in [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql). Add an optional `phone String?` field to `User`, then run:
+This example uses the contract from [Generating a migration](/orm/migrations/generating-a-migration#your-first-migration), whose `User` model is stored in the table `user` because it sets `@@map("user")`. Its first migration is already applied, with `npx prisma db migrate`, and a database connection is set up as in [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql). Add an optional `phone String?` field to `User`, then run:
 
 ```npm
 npx prisma contract emit
 npx prisma migration plan --name add_user_phone
 npx prisma migration show 20260707T1006_add_user_phone
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 `migration plan` prepares the SQL but doesn't run it:
@@ -166,7 +166,7 @@ The commands in this table connect to a database:
 
 If you used Prisma ORM 7, these commands replace its migrate commands:
 
-- `migrate dev` becomes `migration plan`, then `db migrate --advance-ref db`. `migrate dev` also had a second job, making a development database match the contract without writing migration files, and that job is now `db update`, which changes the database directly. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) lists what each of these does to the ref.
+- `migrate dev` becomes `migration plan`, then `db migrate`. `migrate dev` also had a second job, making a development database match the contract without writing migration files, and that job is now `db update`, which changes the database directly. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) lists what each of these does to the ref.
 - `migrate deploy` becomes `db migrate`.
 - `migrate reset` has no equivalent, because Prisma ORM 8 never resets a database. On a database whose migration history does not need to be kept, such as a development database, [`npx prisma db update`](/cli/db-update) moves it to your contract and asks before it loses data. A database that changes only through migrations, such as production, is moved with `npx prisma db migrate`. Neither runs a seed script, so run yours afterwards.
 - `migrate diff` becomes `migration show <dir>`, which prints one migration, or `db update --dry-run`, which shows the operations that would make a database match the contract.

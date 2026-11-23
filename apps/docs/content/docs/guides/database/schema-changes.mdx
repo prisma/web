@@ -57,10 +57,10 @@ Do not commit `.env`. `orm init` already lists it in `.gitignore`.
 
 ### 1.3. Where a plan starts
 
-`migration plan` is offline. It never asks the database which contract state it matches, so you have to tell it which state to plan from. It resolves the origin in this order: an explicit `--from`, otherwise the ref named `db` in `migrations/app/refs/db.json`. With neither, it plans from an empty database only while `migrations/app/` has no migrations; once it has some, it stops and asks you to name the origin, as [Common gotchas](#common-gotchas) shows. Keep the `db` ref pointing at the state your local database matches by applying with `--advance-ref db`:
+`migration plan` is offline. It never asks the database which contract state it matches, so you have to tell it which state to plan from. It resolves the origin in this order: an explicit `--from`, otherwise the ref named `db` in `migrations/app/refs/db.json`. With neither, it plans from an empty database only while `migrations/app/` has no migrations; once it has some, it stops and asks you to name the origin, as [Common gotchas](#common-gotchas) shows. Applying a migration also points the `db` ref at the state your local database matches:
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 Do that every time you apply, and every plan chains from the right place without flags. Section 3 shows what happens when it cannot.
@@ -97,7 +97,7 @@ Its first migration was planned and applied on `main` with:
 
 ```npm
 npx prisma migration plan --name init
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -145,7 +145,7 @@ If nothing changed, you see the whole history marked applied:
 `@db` marks the contract state your database matches, `@contract` the emitted contract, and `(db)` the state the `db` ref names. When migrations are pending, the tree flags each one with `⧗ pending` and a summary line tells you how many. Apply them and update the `db` ref in one step:
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 There is no generate step after applying: your typed client reads `contract.json`, which you just pulled.
@@ -226,7 +226,7 @@ ALTER TABLE "public"."User" ADD COLUMN "favoriteColor" text;
 The `from:` line is the `init` state, taken from the `db` ref. She applies and commits:
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -279,7 +279,7 @@ CREATE TABLE "public"."Tag" (
 );
 ```
 
-His plan also starts `from:` the `init` state. He applies with `db migrate --advance-ref db` and commits. Both migrations now leave the same node and arrive at different ones. Neither developer knows about the other yet, and neither needs to.
+His plan also starts `from:` the `init` state. He applies with `db migrate` and commits. Both migrations now leave the same node and arrive at different ones. Neither developer knows about the other yet, and neither needs to.
 
 ### 3.3. Merge both branches
 
@@ -423,10 +423,10 @@ npx prisma migration graph
 1 space(s), 5 contract(s), 5 migration(s)
 ```
 
-Your own database is still on `init`, so two migrations are pending for it. Apply them and let `--advance-ref db` set the `db` ref to where the database actually ends up, which also settles the `db.json` conflict from section 3.3:
+Your own database is still on `init`, so two migrations are pending for it. Apply them and let `db migrate` set the `db` ref to where the database actually ends up, which also settles the `db.json` conflict from section 3.3:
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -473,7 +473,7 @@ npx prisma migration status
 ```
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -546,7 +546,7 @@ No `--from` was needed: the `db` ref points at the merged state because the last
 ### 4.3. Apply and check
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 npx prisma migration check
 ```
 
@@ -592,18 +592,14 @@ const tag = await db.orm.public.Tag.create({ tagName: "arcade", tagCategory: "ga
 
 :::warning
 
-`migration plan` fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN` when the project has migrations but no `db` ref and you passed no `--from`. This happens in a fresh clone that has never run `db migrate --advance-ref db`, or after a merge dropped `refs/db.json`. The error lists the three exits:
+`migration plan` fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN` when the project has migrations but no `db` ref and you passed no `--from`. This happens in a fresh clone that has never run `db migrate` against its own database, or after a merge dropped `refs/db.json`. The error says why, and then lists three exits:
 
 ```text no-copy
 ✘ [MIGRATION.PLAN_ORIGIN_UNKNOWN] Cannot determine the plan origin: migrations exist but no origin is named
   why: Migrations exist on disk, but there is no `db` ref and no --from was given, so the plan origin would silently fall back to an empty database and the resulting migration would recreate everything the existing migrations already create.
-→ Point the db ref at the origin contract: prisma migration ref set db <contract>
-→ Plan from an explicit origin: prisma migration plan --from <contract>
-→ Plan from an empty database deliberately: prisma migration plan --from @empty
-  docs: https://docs.prisma.io/docs/orm/v8/reference/error-reference/MIGRATION.PLAN_ORIGIN_UNKNOWN
 ```
 
-Pick the first or second. `--from @empty` over an existing history is only right for a deliberate rebuild.
+The exits are: point the `db` ref at the contract your database is at, with `migration ref set db <contract>`; name the starting contract for this one plan, with `--from <contract>`; or plan from an empty database, with `--from @empty`. Since `8.0.0-rc.25`, the error lists the contracts you can choose from. Pick the first or second. `--from @empty` over an existing history is only right for a deliberate rebuild.
 
 :::
 
@@ -615,7 +611,7 @@ Never run `db update` against a database that changes only through migrations, s
 
 :::note
 
-The merge conflict in `migrations/app/refs/db.json` is expected whenever two branches both applied with `--advance-ref db`. The file records where one developer's database was, so no merged value is "correct" for everyone. Resolve it with either side and let your next `db migrate --advance-ref db` write the truth.
+The merge conflict in `migrations/app/refs/db.json` is expected whenever two branches both applied a migration. The file records where one developer's database was, so no merged value is "correct" for everyone. Resolve it with either side and let your next `db migrate` write the truth.
 
 :::
 
@@ -636,7 +632,7 @@ Bring my local database up to date with the migrations on this branch using Pris
 
 1. Run `npx prisma migration status` and tell me what is pending. If it reports "Up to date", stop.
 2. If it warns that there is no migration path from the database state to the contract, the graph has two branch tips. Run `npx prisma migration graph`, then plan one merge migration from each tip with `npx prisma migration plan --from <migration-dir> --name merge_<other-change>`, and show me both DDL previews before continuing.
-3. Apply with `npx prisma db migrate --advance-ref db`, then run `npx prisma migration check` and `npx prisma db verify`.
+3. Apply with `npx prisma db migrate`, then run `npx prisma migration check` and `npx prisma db verify`.
 4. If `migration plan` fails with MIGRATION.PLAN_ORIGIN_UNKNOWN, do not delete any migration directory. Find the contract state the database is on in the `npx prisma migration status` output, pass that hash with `--from`, and show me the error text. If you cannot tell which state the database is on, stop and ask me.
 ```
 
