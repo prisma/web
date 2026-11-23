@@ -22,7 +22,7 @@ It uses the `hono` template so you get a small API you can verify with curl at e
 
 :::note[Already have an app?]
 
-Keep your code and add a small Prisma Composer declaration next to it: a `service.ts` for each server and one `module.ts`. The server reads its port from `service.port()` and binds `0.0.0.0`; [Port an existing app](/composer/porting-an-app) lists the other changes and has an agent prompt that makes them, and [Bring an app you already have](/prisma-compute/deploy#bring-an-app-you-already-have) is a worked example. Once `npm run build` and `npx prisma dev` run it, continue at [step 5](#5-deploy-app-and-database-to-prisma-compute). SvelteKit and Deno apps do not deploy to Prisma Compute yet.
+Keep your code and add a small Prisma Composer declaration next to it: a `service.ts` for each server and one `module.ts`. The server reads its port from `service.port()` and binds `0.0.0.0`; [Port an existing app](/composer/porting-an-app) lists the other changes and has an agent prompt that makes them, and [Bring an app you already have](/prisma-compute/deploy#bring-an-app-you-already-have) is a worked example. A SvelteKit app needs `@sveltejs/adapter-node`, and its `service.ts` sets `build: node({ module: import.meta.url, dir: "./build", entry: "index.js", dependencies: "external" })`, with `node` imported from `@prisma/composer/node`; adapter-node's server reads the port from `PORT` itself, so it needs no `service.port()` call. Once `npm run build` and `npx prisma dev` run it, continue at [step 5](#5-deploy-app-and-database-to-prisma-compute). Deno apps do not deploy to Prisma Compute yet.
 
 :::
 
@@ -248,14 +248,14 @@ Live apps outgrow their starter schema, so give users a role. Add one line to th
 // use prisma-8
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int                @id @default(autoincrement())
+  email     String             @unique
   username  String?
   name      String?
-  role      String   @default("member")
+  role      String             @default("member") // [!code ++]
   posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
+  createdAt DateTime           @default(now()) @onCreate(now())
+  updatedAt temporal.UpdatedAt
 }
 ```
 
@@ -266,12 +266,12 @@ npx prisma contract emit
 npx prisma migration plan --name add-user-role --from <timestamp>_init
 ```
 
-`--from` names the migration you are building on, and here it is required: a Composer deploy never sets the `db` ref that `migration plan` chains from by default, so a plan without it would describe every table again. The [`migration plan`](/cli/migration-plan) and [`migration ref`](/cli/migration-ref) references cover the default, the ref, and how to keep plans chaining on their own.
+`--from` names the migration you are building on, and here it is required: a Composer deploy never sets the `db` ref that `migration plan` chains from by default, so a plan without it stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. The [`migration plan`](/cli/migration-plan) and [`migration ref`](/cli/migration-ref) references cover the default, the ref, and how to keep plans chaining on their own.
 
 The plan is your change and nothing else. Review it like any other diff, with [`migration show`](/cli/migration-show) or by reading the generated package:
 
 ```text no-copy
-ALTER TABLE "public"."User" ADD COLUMN "role" text DEFAULT 'member' NOT NULL
+ALTER TABLE "public"."User" ADD COLUMN "role" text DEFAULT 'member' NOT NULL;
 ```
 
 Emitting also updated the query types, so include the new field in the route's typed select in `src/prisma/users.ts`, adding `"role"` to the `.select(...)` list and `role: user.role` to the returned object:

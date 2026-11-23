@@ -20,7 +20,13 @@ Install the package next to `@prisma/orm-postgres`:
 npm install @prisma/orm-extension-postgis
 ```
 
-A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in two files: in `prisma.config.ts`, import it from `/control` and add it to `extensions`; in `src/prisma/db.ts`, import it from `/runtime` and add it to `extensions`. Keep the rest of each file as it is; the full files look like this:
+In a project that `npm create prisma` generated, that command fails with `ERESOLVE`, because the project's Prisma Composer packages require the exact version of `@prisma/orm-postgres` that it installed, and the extension's latest version requires a newer one. Install the extension at the version of `@prisma/orm-postgres` in your `package.json` instead:
+
+```bash
+npm install --save-exact "@prisma/orm-extension-postgis@$(npm pkg get 'dependencies.@prisma/orm-postgres' | tr -d '"')"
+```
+
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in two files: in `prisma.config.ts`, import it from `/control` and add it to `extensions`; in `src/prisma/db.ts`, import it from `/runtime` and add it to `extensions`. If `npm create prisma` generated your project, do not replace these files. In `prisma.config.ts`, add the `/control` import and `extensions: [postgis]` inside the `ormConfig({ ... })` call. The generated file also has an `extensions` array inside `composer({ ... })`, which is for Prisma Composer and is the wrong place. In `src/prisma/db.ts`, add the `/runtime` import and `extensions: [postgis]` to every `postgres(...)` call. `npm run dev:composer` cannot run this extension: the local database it starts is PGlite, which does not include PostGIS, so the extension's migration fails with `MIGRATION.EXECUTION_FAILED`. Start the app with `npm run dev` instead, with `DATABASE_URL` set to a PostgreSQL server that has PostGIS, such as the `postgis/postgis` Docker image above. The smallest files that work look like this:
 
 ```ts title="prisma.config.ts"
 import 'dotenv/config';
@@ -81,6 +87,11 @@ npx prisma contract emit
 npx prisma migration plan --name add-places
 npx prisma db migrate --advance-ref db
 ```
+
+In a project that `npm create prisma` generated, two things differ:
+
+- The project has a first migration but no `db` ref, so `migration plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. Unless you have run `npm run db:init` in this checkout, run `npx prisma migration ref set db <directory>` once before `migration plan`, with the name of the first directory that `ls migrations/app` lists, such as `20261120T1155_init`.
+- `db migrate` applies the migrations to the database in `DATABASE_URL`, so set it to the server with PostGIS first.
 
 `migration plan` writes your migration under `migrations/app/`, and `contract emit` has already written the extension's files under `migrations/postgis/`, whose migration installs PostGIS in the database. Commit both. PostGIS may already be installed in another schema on the connection's search path, such as the `extensions` schema on Supabase, and `db sign` and `db verify` accept it there. Do not declare `extension postgis {}` in your own contract, because the extension declares it. [Generating a migration](/orm/migrations/generating-a-migration) explains `--advance-ref db`.
 

@@ -27,7 +27,7 @@ For what release candidate means, when the final release is expected, and how to
 
 ## 1. Add Prisma ORM to the project
 
-The `orm init` command below changes your `tsconfig.json` and your `package.json`. In `tsconfig.json`, it sets `module` to `preserve` and `moduleResolution` to `bundler`. If your `package.json` has no `"type"` field, it adds `"type": "module"`. If it has `"type": "commonjs"`, the command keeps it and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
+The `orm init` command below changes your `tsconfig.json` and your `package.json`. If you have no `tsconfig.json`, it writes one. If you have one, it turns on `resolveJsonModule`, adds `"node"` to `types`, and may set `module` to `preserve` and `moduleResolution` to `bundler`. [`orm init`](/cli/orm-init) lists the `module` and `moduleResolution` settings it leaves as they are. If your `package.json` has no `"type"` field and nothing under `dependencies` yet, it adds `"type": "module"` (packages under `devDependencies` do not count). If it already lists `dependencies`, or has `"type": "commonjs"`, the command keeps it as it is and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
 
 From the root of your project, run:
 
@@ -58,6 +58,7 @@ written
 installed
 ├─ @prisma/orm-postgres
 ├─ dotenv
+├─ pg
 ├─ prisma@latest (dev)
 ├─ @types/node (dev)
 └─ @prisma/cli-engine@0.10.0 (dev)
@@ -79,7 +80,7 @@ You do not need `prisma-8.md` for this page. It is a short reference for writing
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
 import { contractFromJson } from '@prisma/orm-postgres/static';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.d.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -90,7 +91,7 @@ export const db = postgres({
 });
 ```
 
-The first line loads `.env`, so every file that imports `db` reads `DATABASE_URL` from there. The two `contract` files it imports are written by `contract emit` in step 4.
+The first line loads `.env`, so every file that imports `db` reads `DATABASE_URL` from there. The two `contract` files it imports, `contract.json` and `contract.d.ts`, are already there, because `orm init` emitted them from its starter contract. `contract emit` in step 4 writes them again for your own contract.
 
 From now on, every `prisma` command ends with the line `Prisma agent skills are out of date`. You can ignore it, because it does not change what the command does. Agent skills are instruction files that AI coding tools read, and the line appears because your project has none yet. To add them and stop the line, run [`npx prisma@latest init`](/cli/init). In Prisma ORM 8, `init` adds the skills and a `postinstall` script that keeps them up to date, and it leaves your contract and your `.env` alone. `orm init` is the command that sets up Prisma ORM.
 
@@ -137,6 +138,9 @@ npx prisma contract emit
 │  types:     src/prisma/contract.d.ts
 
 ✔ Emitted contract.json and contract.d.ts
+
+storageHash:  a62d15a094e80be7b342d75e0538935972b9699c76dabb5339940dd50d17a889
+profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
 ```
 
 The command writes `contract.json` and `contract.d.ts` next to the contract. Commit both files, because `db.ts` imports them.
@@ -152,16 +156,16 @@ npx prisma db init
 ✔ Planning migration
 ✔ Initialising database across spaces
 │  contract:  src/prisma/contract.json
-│  database:  postgres://****@127.0.0.1:54329/app1
+│  database:  postgresql://****:****@127.0.0.1:55432/app1
 
 ✔ Applied 2 operation(s) across 1 contract space
 
 App space
 ├─ Create table "User"
 ├─ Add unique constraint on "User" (email)
-└─ marker b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
+└─ marker a62d15a094e80be7b342d75e0538935972b9699c76dabb5339940dd50d17a889
 
-✔ Advanced ref "db" → b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
+✔ Advanced ref "db" → a62d15a094e80be7b342d75e0538935972b9699c76dabb5339940dd50d17a889
 ```
 
 `db init` creates the tables your contract declares. The output names two more things it wrote:
@@ -178,7 +182,7 @@ Commit the `migrations/` directory together with your code, because `migration p
 Create `script.ts` in the root of your project:
 
 ```typescript title="script.ts"
-import { db } from "./src/prisma/db";
+import { db } from "./src/prisma/db.js";
 
 async function main() {
   const created = await db.orm.public.User.create({
@@ -243,17 +247,17 @@ npx prisma migration plan --name add_user_phone
 
 ✔ Planned baseline (3 operation(s)) + 1 operation(s)
 
-migrations/app/20260929T2120_baseline
+migrations/app/20261120T1012_baseline
 ├─ Create schema "public"
 ├─ Create table "User"
 └─ Add unique constraint on "User" (email)
-migrations/app/20260929T2121_add_user_phone
+migrations/app/20261120T1013_add_user_phone
 └─ Add column "phone" to "User"
 
-from:       b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
-to:         300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
-baseline:   migrations/app/20260929T2120_baseline
-app space:  migrations/app/20260929T2121_add_user_phone
+from:       a62d15a094e80be7b342d75e0538935972b9699c76dabb5339940dd50d17a889
+to:         ff182ac239264ad5c8539c19c350b32d6f1e18e785875e42a0301cde744f70e3
+baseline:   migrations/app/20261120T1012_baseline
+app space:  migrations/app/20261120T1013_add_user_phone
 ```
 
 The output continues with a preview of the SQL. The first plan in a project writes two directories. The baseline holds the steps that create the table, which `db init` already ran on your development database. The second directory is your change.
@@ -267,15 +271,15 @@ npx prisma db migrate --advance-ref db
 ```text no-copy
 ✔ Running migration plan across spaces
 │  migrations:  migrations
-│  database:    postgres://****@127.0.0.1:54329/app1
+│  database:    postgresql://****:****@127.0.0.1:55432/app1
 
 ✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
 
 App space
 ├─ Add column "phone" to "User"
-└─ marker 300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
+└─ marker ff182ac239264ad5c8539c19c350b32d6f1e18e785875e42a0301cde744f70e3
 
-✔ Advanced ref "db" → 300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
+✔ Advanced ref "db" → ff182ac239264ad5c8539c19c350b32d6f1e18e785875e42a0301cde744f70e3
 ```
 
 `db migrate` runs only the migrations that the database does not have yet, so here it runs only your change. `--advance-ref db` writes the new hash to the `db` ref, so that the next `migration plan` contains only your next change. Pass it every time you apply a migration to your development database. Commit the `migrations/` directory again.

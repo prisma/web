@@ -15,8 +15,6 @@ This guide shows you how to create and delete [Prisma Postgres](/postgres) datab
 
 When the pull request is closed, the workflow deletes the database. Every pull request gets its own isolated database, so migrations and data changes can be tested without touching a shared development database.
 
-The project setup, migrations, seed script, and the `postgres create`, `postgres list`, and `postgres connection create` commands below were run against a live Prisma Postgres database. The workflow file is assembled from those commands.
-
 :::note[Using Prisma ORM 7?]
 
 Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/integrations/github-actions](/guides/v7/integrations/github-actions).
@@ -55,13 +53,21 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 
 This writes `prisma.config.ts`, `src/prisma/contract.prisma`, `src/prisma/db.ts`, `.env.example`, `tsconfig.json`, and `prisma-8.md`, installs `@prisma/orm-postgres`, `dotenv` and `pg` plus the `prisma`, `@types/node`, and `@prisma/cli-engine` dev dependencies, and emits `src/prisma/contract.json` and `src/prisma/contract.d.ts`. `@prisma/cli-engine` provides `definePrismaConfig`, which the generated `prisma.config.ts` imports.
 
+From now on, every `prisma` command you run on your machine ends with this line:
+
+```text no-copy
+Prisma agent skills are out of date (installed @prisma/orm-postgres 8.0.0-rc.25, synced none). Run: prisma skills sync
+```
+
+Prisma ships instructions for coding agents, called skills, inside its packages, and none have been copied into this project yet. Run `npx prisma@latest init` once to copy them in, as [Use with your agent](#use-with-your-agent) describes. The line never makes a command fail, and the CLI does not print it in GitHub Actions. [The staleness check](/cli/skills#the-staleness-check) lists the ways to turn it off.
+
 Those two emitted files take the place of the generated client. There is no generated client package, no `prisma generate`, and no driver adapter to install: `src/prisma/db.ts` builds the client from `contract.json` and connects with the `DATABASE_URL` it reads from `.env`, which you create in step 2.3.
 
 ```typescript title="src/prisma/db.ts" no-copy
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
 import { contractFromJson } from '@prisma/orm-postgres/static';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.d.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -80,24 +86,24 @@ export const db = postgres({
 // use prisma-8
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int                @id @default(autoincrement())
+  email     String             @unique
   username  String?
   name      String?
   posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
+  createdAt DateTime           @default(now()) @onCreate(now())
+  updatedAt temporal.UpdatedAt
 }
 
 model Post {
-  id        Int      @id @default(autoincrement())
+  id        Int                @id @default(autoincrement())
   title     String
   content   String?
-  published Boolean  @default(false) // [!code ++]
-  author    User     @relation(fields: [authorId], references: [id])
+  published Boolean            @default(false) // [!code ++]
+  author    User               @relation(fields: [authorId], references: [id])
   authorId  Int
-  createdAt TimestamptzString @default(now())
-  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
+  createdAt DateTime           @default(now()) @onCreate(now())
+  updatedAt temporal.UpdatedAt
 }
 ```
 
@@ -110,8 +116,8 @@ npx prisma contract emit
 ```text no-copy
 ✔ Emitted contract.json and contract.d.ts
 
-storageHash:    0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
-executionHash:  4e88564095b5e0ba7904ffdba3c563ef916d87688c8c483c67055f71a9194f0f
+storageHash:    2e4f9dab69b51f86d48e823fa1727d7cf174bdf8bd37c3f48c92d968d2922fb7
+executionHash:  0ff7f5c55037616d53a67c7c581c1178658b41c7a674a85dd59fc3b8f9dd8a49
 profileHash:    3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
 ```
 
@@ -134,9 +140,14 @@ npx prisma migration plan --name init
 ```
 
 ```text no-copy
-✔ Planned 6 operation(s)
+│  contract:    src/prisma/contract.json
+│  migrations:  migrations/app
+│  name:        init
 
-migrations/app/20260910T1549_init
+✔ Planned 6 operation(s)
+ℹ No db ref set — planning from an empty database. Run db init, db update, or db sign if a database already exists.
+
+migrations/app/20261120T1053_init
 ├─ Create schema "public"
 ├─ Create table "Post"
 ├─ Create table "User"
@@ -145,8 +156,8 @@ migrations/app/20260910T1549_init
 └─ Add foreign key "Post_authorId_fkey" on "Post"
 
 from:       (baseline)
-to:         0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
-app space:  migrations/app/20260910T1549_init
+to:         2e4f9dab69b51f86d48e823fa1727d7cf174bdf8bd37c3f48c92d968d2922fb7
+app space:  migrations/app/20261120T1053_init
 ```
 
 `migration plan` is offline: it writes a migration directory under `migrations/app/` and prints a DDL preview, and it does not touch the database. Apply it to your development database. `--advance-ref db` records which contract your development database is at, so the next `migration plan` knows where to start:
@@ -156,6 +167,10 @@ npx prisma db migrate --advance-ref db
 ```
 
 ```text no-copy
+✔ Running migration plan across spaces
+│  migrations:  migrations
+│  database:    postgres://****:****@localhost:5432/prisma_gha_demo
+
 ✔ Applied 1 migration(s) (6 operation(s)) across 1 contract space(s)
 
 App space
@@ -165,9 +180,10 @@ App space
 ├─ Add unique constraint on "User" (email)
 ├─ Create index "Post_authorId_idx_e47547ed" on "Post"
 ├─ Add foreign key "Post_authorId_fkey" on "Post"
-└─ marker 0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
+└─ marker 2e4f9dab69b51f86d48e823fa1727d7cf174bdf8bd37c3f48c92d968d2922fb7
 
-✔ Advanced ref "db" → 0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
+✔ Advanced ref "db" → 2e4f9dab69b51f86d48e823fa1727d7cf174bdf8bd37c3f48c92d968d2922fb7
+→ Check every space against the database: prisma migration status
 ```
 
 Commit the `migrations/` directory, and whenever you change the contract, run `contract emit`, `migration plan --name <change>`, and `db migrate --advance-ref db` again; the pull request's database then receives exactly the migrations the pull request adds. See [How migrations work](/orm/migrations/how-migrations-work) for the full loop.
@@ -378,7 +394,7 @@ Deleting a database is destructive, so `postgres delete` asks you to type the da
 npx prisma postgres delete db_abc123def456 --project proj_abc123def456 --confirm db_abc123def456
 ```
 
-Without `--confirm`, a non-interactive run stops with `CLI.CONSENT_REQUIRED` and tells you the exact token to pass. The delete itself did not complete while validating this guide (the platform returned a server error for every delete that day), so no success output is shown.
+Without `--confirm`, a non-interactive run stops with `CLI.CONSENT_REQUIRED` and tells you the exact token to pass.
 
 ## 4. Add the GitHub Actions workflow
 
@@ -659,7 +675,7 @@ The workflow reads them through the `env` block in step 4.2.
 
 ## 7. Try the workflow
 
-You can test the setup in two ways. The workflow run itself was not executed while validating this guide; the commands it runs were, in step 3.
+You can test the setup in two ways.
 
 **Option 1: Open a pull request**
 
@@ -716,8 +732,6 @@ When the job fails with `MIGRATION.MARKER_MISMATCH`, [Drift](/orm/migrations/rol
 
 The workflow has no `db verify` step. `db verify` compares the database with the contract you last emitted, so if you point the `staging` ref at an earlier state on purpose, `db verify` would fail even though nothing is wrong.
 
-As in step 7, this workflow was not run on GitHub while validating the guide; its command was run against a local database, including one that had been changed outside the migration system, which failed with `MIGRATION.MARKER_MISMATCH`.
-
 ## Common gotchas
 
 :::warning
@@ -756,7 +770,7 @@ Set up per-pull-request Prisma Postgres databases for this project with GitHub A
 
 </AgentPrompt>
 
-The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. `init` and `orm init` are different commands. `orm init` sets up Prisma ORM in a project, and you ran it in [step 2.1](#21-initialize-prisma-orm). `init` installs the agent skills and does not set up Prisma ORM. Prompts you can give your agent after this guide:
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. `init` and `orm init` are different commands. `orm init` sets up Prisma ORM in a project, and you ran it in [step 2.1](#21-initialize-prisma-orm). `init` installs the agent skills and does not set up Prisma ORM. Because `orm init` already wrote a `prisma.config.ts`, `init` leaves that file alone and warns `INIT.CONFIG_KEPT`, suggesting a `skills` setting for it. You can ignore the warning: the setting it suggests names the same four agents the CLI uses when there is no setting, so nothing in this guide changes. Add it only to choose fewer agents; see [Agent skills](/cli/configuration#agent-skills). Prompts you can give your agent after this guide:
 
 - "Using the Prisma ORM skills, add a `Comment` model to the contract, plan a migration for it, and update the seed script."
 - "Add a test job to the preview workflow that runs `npm test` against the provisioned database after the seed step."

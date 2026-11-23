@@ -14,8 +14,10 @@ Every command and response below was run end to end against a live Prisma Postgr
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) 1.1 or later (Elysia is Bun-first)
+- [Bun](https://bun.sh/) 1.3 or later (Elysia is Bun-first)
 - A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
+
+To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. Neither `bun run dev:composer` (the local run in step 3) nor a deploy creates a MongoDB database for you, so export `MONGODB_URL` with your connection string before you run either. The first deploy copies the value to your project on Prisma Compute, and the deployed app reads it from there. Later deploys keep that stored value even if you export a different one. To change it, export the new connection string as `MONGODB_URL` and run `bunx prisma project env update MONGODB_URL --project my-elysia-api --role production`, which copies the exported value to the project (see [`prisma project`](/cli/project)); the app gets the new value on its next deploy. If you renamed the module or deployed with `--name`, pass that name to `--project`.
 
 ## 1. Scaffold the project
 
@@ -42,10 +44,18 @@ bun run db:init
 ```
 
 ```text no-copy
-"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+✔ Applied 5 operation(s) across 1 contract space
+
+App space
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
 ```
 
-If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat: when there is nothing left to do, it prints `✔ Database already matches contract across 1 contract space`.
 
 ## 3. Run the server
 
@@ -69,19 +79,21 @@ curl http://localhost:3000/users
 
 The route handler is ordinary Elysia code calling an ordinary Prisma ORM query; there is no framework adapter in between. To add write routes, follow the same pattern as the [Hono guide's POST route](/guides/frameworks/hono#4-add-a-post-route); the query code is identical.
 
+To run the app the way Prisma Compute runs it, with no `DATABASE_URL` to set, run `bun run dev:composer` instead. It builds the app, starts a local Prisma Postgres database, applies the committed migrations to it, and prints the app's local URL.
+
 ## 4. Deploy to Prisma Compute
 
 Elysia is supported on [Prisma Compute](/compute). The scaffold declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, pointing at the bundled server the `build` script produces, so no framework flags are needed. Sign in once (it opens a browser):
 
 ```bash
-bunx prisma@latest auth login
+bunx prisma auth login
 ```
 
 Then build and deploy from the project directory:
 
 ```bash
 bun run build
-bunx prisma@latest deploy
+bunx prisma deploy
 ```
 
 ```text no-copy
@@ -91,13 +103,56 @@ my-elysia-api
               https://xyz.ewr.prisma.build
 ```
 
-The deploy creates a project named after your module in your workspace, and re-running the deploy reuses it: the CLI finds the hosted state it stored on the first run and converges the project to your module. If a project with that name exists but the CLI cannot identify or verify its stored state (one left behind by a different checkout, for example), the deploy stops with `HostedStateBootstrapError`; deploy under another name with `--name <unique-name>`, or rename the module in `module.ts`. The deploy also provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. Verify the live endpoint returns the seeded users:
+The first deploy creates a project in your workspace named after your module, which is the first argument to `module()` in `module.ts` (`my-elysia-api` here). The project gets its own Prisma Postgres database, declared in `module.ts`. The deploy does not use the `DATABASE_URL` from your local steps, and the deployed database seeds on the app's first query. Running `bunx prisma deploy` again updates that same project.
+
+The deploy finds the project by that name, so a deploy from any app whose module has the same name, such as two apps both scaffolded as `my-app`, goes to that same project. Give each app its own name in `module.ts`. If a project with that name exists but the CLI cannot identify or verify its stored state (one deployed by an older version of Composer, for example), the deploy stops with `HostedStateBootstrapError`: rename the module in `module.ts`, or deploy under another name with `--name <unique-name>` and pass the same `--name` on every later deploy.
+
+Verify the live endpoint returns the seeded users:
 
 ```bash
 curl https://xyz.ewr.prisma.build/users
 ```
 
 For previews per Git branch and deploy on push, see [Deploy on push](/compute/deploy-on-push).
+
+## Change the schema
+
+The scaffold also writes a first migration to the `migrations/` directory. A deploy changes the hosted database only by applying the migrations in that directory, so every schema change needs a migration of its own.
+
+`migration:plan` writes each new migration as a step after the migration that `migrations/app/refs/db.json` names. That file is the `db` ref, and `db:init` creates it. If you have not run `db:init` in this checkout, for example because you only use `bun run dev:composer`, point the `db` ref at the first migration once. Pass the directory name only, without `migrations/app/` in front: `ls migrations/app` lists it, and its name ends in `_init`, such as `20261120T1011_init`. A path such as `migrations/app/20261120T1011_init` fails with `MIGRATION.REF_NOT_FOUND`.
+
+```bash
+bunx prisma migration ref set db <your init directory>
+```
+
+After you edit `src/prisma/contract.prisma`, for example to add a `bio String?` field to `User`, run:
+
+```bash
+bun run contract:emit
+bun run migration:plan --name add-user-bio
+```
+
+`contract:emit` updates the files your queries are type-checked against, and `migration:plan` writes the change as a new migration in `migrations/app/`. Then apply the migration to your local database, and point the `db` ref at it so that your next `migration:plan` starts from this migration. Without the ref step, the next plan would include this change a second time.
+
+If your development database is in `DATABASE_URL`, one command does both:
+
+```bash
+bun run migrate --advance-ref db
+```
+
+If you use `bun run dev:composer`, restart it: it applies new migrations when it starts. It does not update the `db` ref, so once it is running, set the ref yourself. Pass the last part of the path that `migration:plan` printed on its `app space:` line: for `migrations/app/20261120T1124_add_user_bio`, that is `bunx prisma migration ref set db 20261120T1124_add_user_bio`.
+
+```bash
+bunx prisma migration ref set db <new migration directory>
+```
+
+Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `bun run build` and `bunx prisma deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
+
+If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Pass the newest migration with `--from`: it is the first migration name in the graph that `bunx prisma migration list` prints, such as `20261120T1124_add_user_bio`. Then apply the migration as above:
+
+```bash
+bun run migration:plan --from <your newest migration directory> --name add-user-bio
+```
 
 ## Common gotchas
 
@@ -116,17 +171,17 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Verify `bun --version` first; if Bun is missing, stop and ask. Create a new Elysia API with Prisma ORM, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `bun create prisma@latest my-elysia-api --template elysia --provider postgres --yes`. Then run `bunx prisma@latest init` in `my-elysia-api` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
+1. Scaffold: `bun create prisma@latest my-elysia-api --template elysia --provider postgres --yes`. The scaffold installs the Prisma agent skills. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-elysia-api`, run `bun run db:init` with `DATABASE_URL` exported. The app seeds sample users on its first query, from `src/prisma/seed.ts`; there is no seed command to run.
 3. Start `bun run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
-4. Deploy: check `bunx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `bunx prisma@latest auth login`. Then run `bun run build` followed by `bunx prisma@latest deploy` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
+4. Deploy: check `bunx prisma auth whoami`; if I am not signed in, stop and ask me to run `bunx prisma auth login`. Then run `bun run build` followed by `bunx prisma deploy` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
 
 Use the installed Prisma ORM skills.
 ```
 
 </AgentPrompt>
 
-The prompt above runs [`bunx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
+The scaffold installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for Claude Code, Cursor, Codex, and Devin when you answer yes to its agent skills prompt. To install them later, run [`bunx prisma@latest init`](/cli/init) in the project. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add GET /users/:id that returns one user or a 404."
 - "Add a POST /users route that creates a user from the request body."

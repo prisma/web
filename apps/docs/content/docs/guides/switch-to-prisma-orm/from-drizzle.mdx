@@ -201,7 +201,7 @@ export default definePrismaConfig({
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
 import { contractFromJson } from '@prisma/orm-postgres/static';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.d.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -214,7 +214,7 @@ export const db = postgres({
 
 `src/prisma/contract.prisma` holds a placeholder `User` and `Post` model. You replace it in the next step.
 
-`orm init` also sets `"type": "module"` in `package.json` and adds `"types": ["node"]` plus `"module": "preserve"` to `tsconfig.json`. Next.js runs, builds and type-checks with those settings, so leave them in place.
+`orm init` also adds `"resolveJsonModule": true` and `"types": ["node"]` to `tsconfig.json`. It keeps the `"module": "esnext"` and `"moduleResolution": "bundler"` that a Next.js project has, and it leaves `package.json` without a `"type"` field, with a warning about it. Next.js builds and runs the app with these settings, so leave them as they are.
 
 ## 2. Infer a contract from your database
 
@@ -228,7 +228,8 @@ npx prisma contract infer --output ./src/prisma/contract.prisma
 ✔ Connecting to database...
 ✔ Introspecting database schema...
 Overwriting existing file: src/prisma/contract.prisma
-│  database:  postgres://****@localhost:5432/drizzle_app
+│  database:  postgres://****:****@localhost:5432/drizzle_app
+
 ✔ Contract written to src/prisma/contract.prisma
 ```
 
@@ -248,10 +249,10 @@ namespace public {
   }
 
   model Users {
-    id        Int               @id(map: "users_pkey") @default(autoincrement())
-    email     String            @unique(map: "users_email_unique")
+    id        Int                    @id(map: "users_pkey") @default(autoincrement())
+    email     String                 @unique(map: "users_email_unique")
     name      String?
-    role      pg.enum(Role)     @default("USER")
+    role      pg.enum(Role)          @default("USER")
     createdAt DateTime(precision: 6) @default(now()) @map("created_at")
     posts     Posts[]
     profiles  Profiles?
@@ -260,14 +261,14 @@ namespace public {
   }
 
   model Posts {
-    id                Int                 @id(map: "posts_pkey") @default(autoincrement())
+    id                Int                    @id(map: "posts_pkey") @default(autoincrement())
     title             String
     content           String?
-    published         Boolean             @default(false)
-    authorId          Int                 @map("author_id")
-    createdAt         DateTime(precision: 6)   @default(now()) @map("created_at")
+    published         Boolean                @default(false)
+    authorId          Int                    @map("author_id")
+    createdAt         DateTime(precision: 6) @default(now()) @map("created_at")
     postsToCategories PostsToCategories[]
-    author            Users               @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
+    author            Users                  @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
 
     @@map("posts")
   }
@@ -276,7 +277,7 @@ namespace public {
     postId     Int        @map("post_id")
     categoryId Int        @map("category_id")
     category   Categories @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "posts_to_categories_category_id_categories_id_fk", index: false)
-    post       Posts      @relation(fields: [postId], references: [id], onDelete: Cascade, map: "posts_to_categories_post_id_posts_id_fk", index: false)
+    post       Posts      @relation(fields: [postId], references: [id], onDelete: Cascade, map: "posts_to_categories_post_id_posts_id_fk", index: "posts_to_categories_post_id_category_id_pk")
 
     @@id([postId, categoryId], map: "posts_to_categories_post_id_category_id_pk")
     @@map("posts_to_categories")
@@ -306,7 +307,7 @@ Here is how each part of the Drizzle schema came through:
 - **Constraints and defaults.** Primary keys, unique constraints and foreign keys keep their database names through `map:`. `serial` columns become `Int @id @default(autoincrement())`. The `default(false)` and `defaultNow()` calls come back as `@default(false)` and `@default(now())`.
 - **Enum.** The `pgEnum("role", ...)` type is a `native_enum Role` block with `@@map("role")`, and the column uses it as `pg.enum(Role) @default("USER")`. The TypeScript type of the field is `'USER' | 'ADMIN'`.
 - **Timestamps.** `timestamp(..., { withTimezone: true })` columns are typed `DateTime(precision: 6)`. The next step covers what that means for your code.
-- **Relations.** Each `.references(...)` is an `@relation(...)` on the side that holds the foreign key, with `onDelete: Cascade` carried over. `index: false` records that Drizzle created no separate index for the foreign key. The list side (`posts Posts[]`) is derived for you; the `relations(...)` helpers in `schema.ts` have no equivalent because the contract already knows both directions.
+- **Relations.** Each `.references(...)` is an `@relation(...)` on the side that holds the foreign key, with `onDelete: Cascade` carried over. `index: false` records that Drizzle created no separate index for the foreign key. On the join table, `index: "posts_to_categories_post_id_category_id_pk"` records that the composite primary key, which starts with `post_id`, serves as that foreign key's index. The list side (`posts Posts[]`) is derived for you; the `relations(...)` helpers in `schema.ts` have no equivalent because the contract already knows both directions.
 - **One-to-one.** The unique `user_id` on `profiles` came through as `profiles Profiles?` on `Users` and `user Users` on `Profiles`.
 - **Many-to-many.** The join table is an explicit `PostsToCategories` model with a composite `@@id`, and `Posts` and `Categories` each hold a list of that model, not of each other. Prisma ORM has no implicit many-to-many; the [many-to-many section](#many-to-many-relations-in-prisma-8) below shows how to add the direct traversal.
 
@@ -342,10 +343,10 @@ namespace public {
   }
 
   model User {
-    id        Int               @id(map: "users_pkey") @default(autoincrement())
-    email     String            @unique(map: "users_email_unique")
+    id        Int                    @id(map: "users_pkey") @default(autoincrement())
+    email     String                 @unique(map: "users_email_unique")
     name      String?
-    role      pg.enum(Role)     @default("USER")
+    role      pg.enum(Role)          @default("USER")
     createdAt DateTime(precision: 6) @default(now()) @map("created_at")
     posts     Post[]
     profile   Profile?
@@ -354,15 +355,15 @@ namespace public {
   }
 
   model Post {
-    id                Int               @id(map: "posts_pkey") @default(autoincrement())
+    id                Int                    @id(map: "posts_pkey") @default(autoincrement())
     title             String
     content           String?
-    published         Boolean           @default(false)
-    authorId          Int               @map("author_id")
+    published         Boolean                @default(false)
+    authorId          Int                    @map("author_id")
     createdAt         DateTime(precision: 6) @default(now()) @map("created_at")
     postsToCategories PostToCategory[]
     categories        Category[]
-    author            User              @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
+    author            User                   @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
 
     @@map("posts")
   }
@@ -371,7 +372,7 @@ namespace public {
     postId     Int      @map("post_id")
     categoryId Int      @map("category_id")
     category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "posts_to_categories_category_id_categories_id_fk", index: false)
-    post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade, map: "posts_to_categories_post_id_posts_id_fk", index: false)
+    post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade, map: "posts_to_categories_post_id_posts_id_fk", index: "posts_to_categories_post_id_category_id_pk")
 
     @@id([postId, categoryId], map: "posts_to_categories_post_id_category_id_pk")
     @@map("posts_to_categories")
@@ -404,7 +405,8 @@ npx prisma contract emit
 
 ```text no-copy
 ✔ Emitted contract.json and contract.d.ts
-storageHash:  7cbfecc26820132f373d82c4e3ba43ce2ec6d4a4c3f6da73a58e5a31d461d09c
+
+storageHash:  619ae8026e681e04e2bb5e82502a4b600efa744561ed3c0cb8380690ae5d4833
 profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
 ```
 
@@ -415,16 +417,19 @@ npx prisma db sign
 ```
 
 ```text no-copy
-✔ Verifying database schema...
-✔ Signing database...
+✔ Connecting to database...
+✔ Introspecting database schema
+✔ Signing database
 │  contract:  src/prisma/contract.json
-│  database:  postgres://****@localhost:5432/drizzle_app
+│  database:  postgres://****:****@localhost:5432/drizzle_app
+
+✔ app: signed 619ae8026e681e04e2bb5e82502a4b600efa744561ed3c0cb8380690ae5d4833 (no marker before)
+
 ✔ Database signed
-from:  none
-to:    7cbfecc26820132f373d82c4e3ba43ce2ec6d4a4c3f6da73a58e5a31d461d09c
+✔ Advanced ref "db" → 619ae8026e681e04e2bb5e82502a4b600efa744561ed3c0cb8380690ae5d4833
 ```
 
-`db sign` verifies the schema before it writes the signature; if a table or column in the contract does not match the database, it exits with code 4 and signs nothing. Confirm the result with `db verify`:
+`db sign` verifies the schema before it writes the signature; if a table or column in the contract does not match the database, it exits with code 4 and signs nothing. It also points a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named `db` at the contract and writes it, with a copy of the contract, to a new `migrations/` folder. Commit that folder, because the first `migration plan` starts from the `db` ref. Confirm the result with `db verify`:
 
 ```npm
 npx prisma db verify
@@ -432,7 +437,8 @@ npx prisma db verify
 
 ```text no-copy
 ✔ Database marker and schema match contract
-storageHash:  7cbfecc26820132f373d82c4e3ba43ce2ec6d4a4c3f6da73a58e5a31d461d09c
+
+storageHash:  619ae8026e681e04e2bb5e82502a4b600efa744561ed3c0cb8380690ae5d4833
 profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
 ```
 
@@ -640,7 +646,7 @@ curl -X POST http://localhost:3000/api/posts \
 { "authorId": 1, "content": "Migration notes", "createdAt": "2026-09-10T15:58:28.179Z", "id": 5, "published": false, "title": "Drizzle to Prisma" }
 ```
 
-Optional fields are explicit: pass `null` for a nullable column you do not set, as `content` shows. The users route follows the same pattern with two plain creates, `User.create(...)` and then `Profile.create({ userId: user.id, bio })`.
+`content: body.content ?? null` stores `null` when the request has no content. You can also leave an optional field out of `.create(...)`, and the row then holds `null` there too. The users route follows the same pattern with two plain creates, `User.create(...)` and then `Profile.create({ userId: user.id, bio })`.
 
 ### 5.4. Updates and deletes
 

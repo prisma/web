@@ -22,7 +22,7 @@ On PostgreSQL, the following command moves Prisma ORM 7 to the `prisma7` command
 npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 ```
 
-It does not change `prisma/` or the database. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then continue with [step 2.5 of the guide](/guides/upgrade-prisma-orm/postgresql-incremental#25-set-up-tsconfigjson-for-the-prisma-orm-8-client), which checks `tsconfig.json`, and [phase 3](/guides/upgrade-prisma-orm/postgresql-incremental#3-migrate-one-route), moving routes one at a time to the client in `src/prisma/db.ts`. Prisma ORM 7 keeps owning your migrations until the guide's [phase 4](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership), where Prisma ORM 8 takes them over and goes on reading the same `schema.prisma`. If the schema's `datasource` block lists `citext`, `vector` or `postgis` in `extensions`, or a field uses `@db.Citext`, the command stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. Then follow the guide by hand from phase 1; its [step 2.3](/guides/upgrade-prisma-orm/postgresql-incremental#23-add-the-packs-for-postgresql-extensions) adds what those extensions need.
+It does not change `prisma/` or the database. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then continue with [step 2.5 of the guide](/guides/upgrade-prisma-orm/postgresql-incremental#25-set-up-tsconfigjson-for-the-prisma-orm-8-client), which checks `tsconfig.json`, and [phase 3](/guides/upgrade-prisma-orm/postgresql-incremental#3-migrate-one-route), moving routes one at a time to the client in `src/prisma/db.ts`. Prisma ORM 7 keeps owning your migrations until the guide's [phase 4](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership), where Prisma ORM 8 takes them over and goes on reading the same `schema.prisma`. If the schema's `datasource` block lists `citext`, `vector`, `postgis` or `pg_search` in `extensions`, or a field uses `@db.Citext`, the command stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. Then follow the guide by hand from phase 1; its [step 2.3](/guides/upgrade-prisma-orm/postgresql-incremental#23-add-the-packs-for-postgresql-extensions) adds what those extensions need.
 
 To set up Prisma ORM 8 in a new project, install `prisma` and `@prisma/orm-postgres` with the `pg` driver it takes as a peer dependency, then run `orm init`:
 
@@ -81,7 +81,7 @@ The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma 
 | `@@schema("billing")` | `namespace billing { model ... }` | a `namespace` block is a PostgreSQL schema; wrap the models in it. They become `db.orm.billing.Invoice` and so on |
 | implicit many-to-many (`Post[]` on `Tag` and `Tag[]` on `Post`, with no model for the join table) | the same two list fields, plus a model for the join table | you write the join table as a model yourself. Example below |
 | `@id`, `@unique`, `@default`, `@relation`, `@map`, `@@map`, `@@index`, `@@id`, `@@unique` | unchanged | a model without `@@map` names its table after the model, exactly as written, as in Prisma ORM 7 |
-| `extensions = [citext, pg_trgm]` in the `datasource` block | `extensions: [citext]` in `prisma.config.ts`, with `import citext from "@prisma/orm-postgres-contrib/citext/control"`, for an extension a pack provides, and an `extension pg_trgm {}` block in `contract.prisma` for any other | a pack is a package that adds an extension's column types; `citext`, `vector` and `postgis` come from packs. A `schema.prisma` read through `prisma7Schema(...)` keeps its `extensions` list and needs only the packs in `prisma.config.ts`; see [Using extensions](/orm/extensions/using-extensions). For the others, see [An extension a migration needs](/orm/contract-authoring/advanced-postgresql#an-extension-a-migration-needs) |
+| `extensions = [citext, pg_trgm]` in the `datasource` block | `extensions: [citext]` in `prisma.config.ts`, with `import citext from "@prisma/orm-postgres-contrib/citext/control"`, for an extension a pack provides, and an `extension pg_trgm {}` block in `contract.prisma` for any other | a pack is a package that adds an extension's column types; `citext`, `vector`, `postgis` and `pg_search` come from packs. A `schema.prisma` read through `prisma7Schema(...)` keeps its `extensions` list and needs only the packs in `prisma.config.ts`; see [Using extensions](/orm/extensions/using-extensions). For the others, see [An extension a migration needs](/orm/contract-authoring/advanced-postgresql#an-extension-a-migration-needs) |
 | `@ignore` on a field, `@@ignore` on a model | not available in `contract.prisma` | `contract emit` rejects both in a Prisma ORM 8 contract file. Delete the attribute. The field or model then appears in the client, and the database does not change. A `schema.prisma` read through `prisma7Schema(...)` can keep `@ignore` and `@@ignore`; see [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) |
 | a required relation field over an optional foreign key, or the reverse | rejected | since `8.0.0-rc.10`, `contract emit` reports `PSL_RELATION_NULLABILITY_MISMATCH`. Give the relation field and its `@relation(fields: [...])` columns the same `?`, or none |
 
@@ -200,7 +200,7 @@ The Prisma ORM 8 command-line tool groups commands by what they act on: `contrac
 | `prisma migrate resolve` for a database that already matches your schema | [step 4 of the migration guide](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership) | the guide records which contract the database matches, both in the database and in your repository. Follow it rather than running the commands by hand |
 | `prisma migrate reset` | `prisma db update` | Prisma ORM 8 never resets a database. `db update` moves a database whose migration history does not need to be kept to your contract, and asks before it loses data. A database that changes only through migrations, such as production, is moved with `prisma db migrate` |
 | `prisma db seed` | none | there is no seed command. Write a script that imports `db` from `src/prisma/db.ts` and calls `.create(...)`, and run it the way you run any TypeScript file, for example `npx tsx src/prisma/seed.ts` |
-| `prisma studio` | none in the Prisma ORM 8 tool | run Studio from the Prisma ORM 7 tool, from a directory outside your project, with the connection string spelled out: `cd /tmp && npx prisma@7 studio --url "postgresql://user:password@localhost:5432/mydb"`. See [Studio with Prisma ORM](/studio/prisma-next) |
+| `prisma studio` | none in the Prisma ORM 8 tool | run Studio from the Prisma ORM 7 tool, from a directory outside your project, with the connection string spelled out: `cd .. && npx prisma@prev studio --url "postgresql://user:password@localhost:5432/mydb"`. See [Studio with Prisma ORM](/studio/prisma-next) |
 | `prisma format` | `prisma contract format` | |
 | `prisma validate` | none | `prisma contract emit` fails if the contract is invalid, and `prisma db verify` checks it against the database |
 
@@ -219,13 +219,13 @@ The rest are in the [CLI reference](/cli).
 
 ## `src/prisma/db.ts` replaces `PrismaClient`
 
-Prisma ORM 8 does not generate a `PrismaClient`, so you create the client yourself, once, in `src/prisma/db.ts`, from `contract.json` and `contract.d.ts`, which `prisma contract emit` wrote:
+Prisma ORM 8 does not generate a `PrismaClient`. The client is created in `src/prisma/db.ts`, which `prisma orm init` writes for you, from `contract.json` and `contract.d.ts`, which `prisma contract emit` writes:
 
 ```ts title="src/prisma/db.ts"
 import "dotenv/config";
 import postgres from "@prisma/orm-postgres/runtime";
 import { contractFromJson } from "@prisma/orm-postgres/static";
-import type { Contract } from "./contract.d";
+import type { Contract } from "./contract.d.js";
 import contractJson from "./contract.json" with { type: "json" };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -236,7 +236,7 @@ export const db = postgres({
 });
 ```
 
-`prisma orm init` writes this file for you. Every example on this page imports `db` from it.
+Every example on this page imports `db` from it.
 
 `db` has these parts:
 
@@ -419,7 +419,7 @@ Here `conflictOn` is a list of field names. In `upsert` it is an object of field
 
 Also not available today:
 
-- Nested writes other than `create`, `connect`, `disconnect`, and, inside `update()`, filtered `updateAll` and `deleteAll`: nested `update` and `delete` of one row, `upsert`, and `set` on a relation. For `connectOrCreate`, pass `{ onConflict: 'connect' }` to a nested `create`, since `8.0.0-rc.25`; see [`create()`](/orm/reference/orm-client#create). Prisma ORM 7's nested `updateMany` and `deleteMany` are `p.where(...).updateAll({ ... })` and `p.where(...).deleteAll()` in a relation callback; see [`update()`](/orm/reference/orm-client#update). For the rest, change the related rows through their own model, for example `db.orm.public.Post.where({ authorId }).updateAll({ ... })`, inside `db.transaction(...)` if it must be atomic.
+- Nested `upsert`, and `set` on a relation. Nested `update` and `delete` of one row are available inside `update()` since `8.0.0-rc.25`: `p.where(...).update({ ... })` and `p.where(...).delete()` on a list field, and `p.update({ ... })` and `p.delete()` on a single related row. For `connectOrCreate`, pass `{ onConflict: 'connect' }` to a nested `create`, since `8.0.0-rc.25`; see [`create()`](/orm/reference/orm-client#create). Prisma ORM 7's nested `updateMany` and `deleteMany` are `p.where(...).updateAll({ ... })` and `p.where(...).deleteAll()` in a relation callback; see [`update()`](/orm/reference/orm-client#update). For the rest, change the related rows through their own model, for example `db.orm.public.Post.where({ authorId }).updateAll({ ... })`, inside `db.transaction(...)` if it must be atomic.
 - The list filters `has`, `hasEvery`, `hasSome`, and `isEmpty` on `String[]` and other list fields. The fields themselves work, and you can filter on them with a raw SQL query written the same way as the [raw SQL example](#raw-sql) above. For a `Post` model with a `tags String[]` field:
 
   ```ts title="Prisma ORM 8"

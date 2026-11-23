@@ -28,7 +28,7 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 
 | Option | What it does |
 | --- | --- |
-| `--target <db>` | Sets the database target. Use `postgres` or `mongodb`. |
+| `--target <db>` | Sets the database target. Use `postgres` or `mongodb`, or, since `8.0.0-rc.25`, the name of a target package, such as `@prisma/orm-sqlite` or `@prisma/orm-mysql`. See [Any target package](#any-target-package). |
 | `--authoring <style>` | Sets the contract authoring style. Use `psl` or `typescript`. |
 | `--schema-path <path>` | Sets where the starter contract is written. |
 | `--from-prisma7-schema <path>` | Uses the Prisma ORM 7 schema at `<path>` as the contract source instead of writing a starter contract. PostgreSQL only. See [On a Prisma ORM 7 project](#on-a-prisma-orm-7-project). |
@@ -46,7 +46,10 @@ The exact files depend on the target and authoring style, but a Postgres PSL set
 - a starter contract file such as `src/prisma/contract.prisma`, whose first line is `// use prisma-8`. Keep that line, because `contract emit` reads only `.prisma` files that start with it.
 - emitted contract artifacts after installation runs
 - a runtime client file (`src/prisma/db.ts`) that loads `contract.json` with `contractFromJson` and creates the client from it
-- `.env.example`, `tsconfig.json`, and updated `package.json`
+- `.env.example` and `tsconfig.json`
+- `package.json`, with a `contract:emit` script that runs `prisma contract emit`. If the folder has no `package.json`, `orm init` creates a minimal one and prints a warning.
+- `.gitignore`, with `node_modules/`, `dist/` and `.env` added when they are missing
+- `.gitattributes`, which marks the emitted contract files and the contract snapshots under `migrations/` as generated, so GitHub collapses them in pull request diffs
 - `prisma-8.md`, a short quick reference for writing your first typed query
 
 The install step adds the target package and `dotenv` to `dependencies`. It adds `prisma@latest`, `@types/node`, and the matching `@prisma/cli-engine` to `devDependencies`.
@@ -60,7 +63,13 @@ The generated `prisma.config.ts` imports `definePrismaConfig` from `@prisma/cli-
 A CommonJS project is one where your code loads other files with `require`, or where `tsc` compiles your `import` lines to `require` calls. `orm init` changes `package.json` and `tsconfig.json` in ways that stop a CommonJS app from starting. This list says what it changes, and the sections after it say what to change back before you run the app again:
 
 - In `package.json`, `orm init` adds `"type": "module"` when the file has no `"type"` field and lists no `dependencies` yet, and Node.js then loads every `.js` file in the project as an ES module. When the file already has `dependencies` and no `"type"` field, or declares `"type": "commonjs"`, `orm init` keeps it as it is and prints a warning.
-- In `tsconfig.json`, `orm init` keeps a `moduleResolution` of `bundler`, `node16` or `nodenext`, with its `module`, because the `db.ts` it writes imports its types as `./contract.d.js`, which resolves under all three. A project on `node`, or with no resolution set, gets `"module": "preserve"` and `"moduleResolution": "bundler"` in place of the values it had. In every case `orm init` adds `"resolveJsonModule": true` and `"node"` to `types` when they are missing. Before `8.0.0-rc.24`, it always set `preserve` and `bundler`.
+- In `tsconfig.json`, `orm init` keeps your `module` and `moduleResolution` when they are one of the pairs in the table below, because the `db.ts` it writes imports its types as `./contract.d.js`, which resolves under each. Any other project, including one on `node` or with no resolution set, gets `"module": "preserve"` and `"moduleResolution": "bundler"` in place of the values it had. In every case `orm init` adds `"resolveJsonModule": true` and `"node"` to `types` when they are missing. Before `prisma` `8.0.0-rc.34`, it always set `preserve` and `bundler`.
+
+  | `moduleResolution` | `module` values it keeps | Kept only when |
+  | --- | --- | --- |
+  | `bundler` | `preserve`, `esnext` | always |
+  | `nodenext` | `nodenext`, `node18`, `node20` | `package.json` has `"type": "module"` |
+  | `node16` | `node18`, `node20` | `package.json` has `"type": "module"` |
 
 What you do next depends on how you run the app.
 
@@ -145,6 +154,19 @@ npx prisma@latest orm init --skip-install
 
 Without `--json`, standard output gets one line per file the command wrote: its path, relative to the working directory. The progress and the summary go to standard error. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the rules data lines follow.
 
+## Any target package
+
+Since `8.0.0-rc.25`, `--target` also takes the name of a target package. `orm init` installs that package and writes the project from what the package provides:
+
+```npm
+npx prisma@latest orm init --yes --target @prisma/orm-sqlite --authoring psl
+```
+
+- `@prisma/orm-sqlite` and `@prisma/orm-mysql` are set up this way. They have no short name: `--target sqlite` names an unrelated package and is refused.
+- Before it installs a package that has no short name, `orm init` checks that the package lists the `prisma-orm-extension` keyword, and stops with `CLI.INIT_TARGET_PACKAGE_NOT_VERIFIED` when it does not.
+- When you run `orm init` without `--target`, the list of targets has an entry "Another target package", which asks for the package name.
+- With `--json`, the result has a `package` field with the name of the target package. `target` is `postgres` or `mongodb` for those two, and the package name for any other package.
+
 ## Exit codes
 
 In a script, pass `--yes` with `--target` and `--authoring` (see [Options](#options)) so that `orm init` asks no questions:
@@ -174,7 +196,7 @@ These are the common causes of exit code `2`. The [error reference](/orm/referen
 | Error code | Cause | Files written |
 | --- | --- | --- |
 | [`CLI.INIT_MISSING_FLAGS`](/orm/reference/error-reference#CLI.INIT_MISSING_FLAGS) | It ran without questions, because of `--yes`, `--no-interactive`, or standard input that is not a terminal, and a required flag such as `--target` or `--authoring` is missing. The error lists each missing flag. | None |
-| [`CLI.INIT_INVALID_FLAG_VALUE`](/orm/reference/error-reference#CLI.INIT_INVALID_FLAG_VALUE) | A flag has a value it does not accept, such as `--target mysql`. | None |
+| [`CLI.INIT_INVALID_FLAG_VALUE`](/orm/reference/error-reference#CLI.INIT_INVALID_FLAG_VALUE) | A flag has a value it does not accept, such as a `--target` that is neither a short name nor a valid package name. | None |
 | [`CLI.INIT_INVALID_MANIFEST`](/orm/reference/error-reference#CLI.INIT_INVALID_MANIFEST) | `package.json` is not valid JSON. | None |
 | [`CLI.INIT_INVALID_TSCONFIG`](/orm/reference/error-reference#CLI.INIT_INVALID_TSCONFIG) | `tsconfig.json` cannot be parsed, even allowing comments and trailing commas. | None |
 | [`CLI.CONSENT_REQUIRED`](/cli/error-reference#CLI.CONSENT_REQUIRED) | The run would replace files, so it needs `--confirm` with the name of the directory you run it in, such as `--confirm my-app`, not its full path. This happens on a project that is already set up, where a second run replaces `src/prisma/contract.prisma`, `prisma.config.ts`, `src/prisma/db.ts`, and `prisma-8.md`, and on every [Prisma ORM 7 project](#on-a-prisma-orm-7-project). | None on a project that is already set up. On a Prisma ORM 7 project, the dependencies may already be installed, which changes `package.json`. |

@@ -3,7 +3,8 @@ title: Using extensions
 description: 'Extensions add database features like vector search, geospatial data, and full-text search to a Prisma ORM project.'
 url: /orm/extensions/using-extensions
 metaTitle: Using extensions in Prisma ORM
-metaDescription: 'Add an extension to a Prisma ORM project, from install to first query, and browse the catalog of available extensions such as pgvector, PostGIS, and ParadeDB.'
+# TODO(paradedb-hidden): restore "such as pgvector, PostGIS, and ParadeDB" when ParadeDB is listed again.
+metaDescription: 'Add an extension to a Prisma ORM project, from install to first query, and browse the catalog of available extensions such as pgvector and PostGIS.'
 ---
 
 An extension is a package that teaches Prisma ORM a database feature it does not know out of the box. Installing one gives you new column types to declare and new query operations to call, along with the migrations that install the feature in the database itself. Vector search, geospatial data, full-text search, typed JSON, and provider-specific integrations all reach your project this way.
@@ -92,22 +93,27 @@ model Post {
 
 Getting the new column from your contract into your database takes these commands, in this order:
 
-1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. It also writes the extension's own files under `migrations/pgvector/`: its contract, its head ref and its migrations. Commit them along with your other migrations. Run it again after every later change to `contract.prisma`, and after you upgrade the extension package.
+1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. It also writes the extension's migrations and head ref under `migrations/pgvector/`, and a copy of its contract under `migrations/snapshots/<hash>/`. Commit them along with your other migrations. Run it again after every later change to `contract.prisma`, and after you upgrade the extension package.
 2. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and makes the database match your contract: it creates the `Post` table, or adds the `embedding` column when the `Post` table already exists.
 
 The extension's contract declares the PostgreSQL extension `vector`, so its migration runs `CREATE EXTENSION IF NOT EXISTS vector` and you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
 
-The extension's contract declares `vector` outside any schema, so `db sign` and `db verify` accept the extension in any schema on the connection's search path, such as the `extensions` schema Supabase installs extensions in. A Supabase database that already has pgvector, PostGIS, ParadeDB or citext there adopts Prisma ORM 8 with `npx prisma contract emit` and `npx prisma db sign`. When the extension is in a schema that is not on the search path, `db verify` fails and names the schema and the search path. Add that schema to the search path of the role your app connects as, or reinstall the extension in a schema on the search path.
+The extension's contract declares `vector` outside any schema, so `db sign` and `db verify` accept the extension in any schema on the connection's search path, such as the `extensions` schema Supabase installs extensions in. A Supabase database that already has pgvector, PostGIS or citext there adopts Prisma ORM 8 with `npx prisma contract emit` and `npx prisma db sign`. When the extension is in a schema that is not on the search path, `db verify` fails and names the schema and the search path. Add that schema to the search path of the role your app connects as, or reinstall the extension in a schema on the search path.
 
-Do not declare `vector` in your own contract as well. `contract emit` refuses an `extension vector {}` block with `PSL_ENTITY_DECLARED_BY_PACK`, and `migration plan` and `db update` refuse an `extension('vector')` handle in a TypeScript contract. The same holds for `postgis` with the PostGIS extension, `pg_search` with ParadeDB, and `citext` with the citext pack.
+Do not declare `vector` in your own contract as well. `contract emit` refuses an `extension vector {}` block with `PSL_ENTITY_DECLARED_BY_PACK`, and `migration plan` and `db update` refuse an `extension('vector')` handle in a TypeScript contract. The same holds for `postgis` with the PostGIS extension and `citext` with the citext pack.
 
-:::note[Upgrading pgvector, PostGIS, ParadeDB or citext from before `8.0.0-rc.23`]
+{/* TODO(paradedb-hidden): ParadeDB is temporarily hidden from the docs. Restore in the two paragraphs and two note titles around this comment:
+"pgvector, PostGIS, ParadeDB or citext" (Supabase sentence and the first upgrade note title),
+"`postgis` with the PostGIS extension, `pg_search` with ParadeDB, and `citext` with the citext pack",
+"pgvector, PostGIS or ParadeDB" (the second upgrade note title). */}
+
+:::note[Upgrading pgvector, PostGIS or citext from before `8.0.0-rc.23`]
 
 Since `8.0.0-rc.23`, each of these extensions declares its PostgreSQL extension outside any schema. After you upgrade, run `npx prisma contract emit`, which writes new migrations and a new head ref under the extension's directory in `migrations/`, and commit all of them. When you upgrade from before `8.0.0-rc.22`, these include the migrations the next note describes. Then run `npx prisma db migrate` against each database. On a database that already ran the migrations added in `8.0.0-rc.22`, the migration it runs has no operations, so the database does not change. If your own contract declares the same extension, remove that declaration first, as described above.
 
 :::
 
-:::note[Upgrading pgvector, PostGIS or ParadeDB from before `8.0.0-rc.22`]
+:::note[Upgrading pgvector or PostGIS from before `8.0.0-rc.22`]
 
 Since `8.0.0-rc.22`, each of these extensions declares its PostgreSQL extension in its contract, instead of installing it in a migration that records an invariant, an id the database keeps to show that migration ran. After you upgrade, run `npx prisma contract emit` and commit the files it writes under the extension's directory in `migrations/`: a new head ref and two new migrations. Then run `npx prisma db migrate` against each database. On a database where the old migration already installed the extension, the new migration only moves the extension's marker. On a database that has the extension but was never signed, `npx prisma db sign` works now. `db sign` refuses a contract space whose head ref needs an invariant the database has not recorded, with `MIGRATION.SIGN_INVARIANTS_MISSING`, because only `db migrate` can run the migration that records it.
 
@@ -177,7 +183,6 @@ Every extension, whether Prisma wrote it or someone in the community did, is lis
 | --- | --- | --- | --- | --- |
 | [arktype-json](https://www.prisma.io/extensions/arktype-json) | JSON columns validated by an arktype schema and typed end to end. | `@prisma/orm-extension-arktype-json` | PostgreSQL | Prisma |
 | [MongoDB](https://www.prisma.io/extensions/mongodb) | MongoDB support for Prisma ORM: config, runtime, contract authoring, BSON values, and migrations in one package. | `@prisma/orm-mongo` | MongoDB | Prisma |
-| [ParadeDB](https://www.prisma.io/extensions/paradedb) (experimental) | BM25 full-text search ranked by relevance, with fuzzy, phrase, and proximity queries. | `@prisma/orm-extension-paradedb` | PostgreSQL | Prisma |
 | [pgvector](https://www.prisma.io/extensions/pgvector) | Vector columns and similarity search for embeddings. | `@prisma/orm-extension-pgvector` | PostgreSQL | Prisma |
 | [PostGIS](https://www.prisma.io/extensions/postgis) | Geometry columns and geospatial queries such as distance and containment. | `@prisma/orm-extension-postgis` | PostgreSQL | Prisma |
 | [PostgreSQL](https://www.prisma.io/extensions/postgresql) | PostgreSQL support for Prisma ORM: config, runtime, contract authoring, and migrations in one package. | `@prisma/orm-postgres` | PostgreSQL | Prisma |

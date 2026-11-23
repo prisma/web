@@ -15,7 +15,7 @@ In Prisma ORM 8, `schema.prisma` is replaced by a file called [the contract](/or
 - model definitions must be split, composed, or reused across ordinary TypeScript modules or packages
 - you want to build models in a loop from data you already keep in TypeScript, such as one model per entry in a list of table names
 
-If neither applies, write PSL, which is more compact and is what [`contract infer`](/cli/contract-infer) writes.
+If neither applies, write PSL, which is more compact and is what [`contract infer`](/cli/contract-infer) writes. On PostgreSQL, the builder cannot write [value objects](/orm/contract-authoring/psl-syntax#value-objects) or [base models with variants](/orm/contract-authoring/psl-syntax#base-models-and-variants), so a PostgreSQL contract that needs them stays in PSL.
 
 ## Point the config at the contract file
 
@@ -45,6 +45,8 @@ export default definePrismaConfig({
   }),
 });
 ```
+
+`prisma contract emit` loads `contract.ts` as an ES module, so the project's `package.json` must not declare `"type": "commonjs"`, which `npm init -y` writes and `orm init` keeps. With it, `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED` and `Cannot use import statement outside a module`. Set `"type": "module"` in `package.json`, and read [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) first if the rest of your app is CommonJS. Removing the `"type"` line also lets `contract emit` load the file, but Node.js then prints a `MODULE_TYPELESS_PACKAGE_JSON` warning each time a `prisma` command loads `contract.ts`, as `contract emit` and `contract print` do.
 
 ## A complete contract
 
@@ -132,7 +134,7 @@ The options object takes four more keys, all optional:
 | Option | What it does |
 | --- | --- |
 | `naming: { tables: "snake_case", columns: "snake_case" }` | Derives table and column names from model and field names, so `createdAt` becomes `created_at` without a `.column(...)` call on every field. Set either key or both. |
-| `foreignKeyDefaults: { constraint: true, index: true }` | Gives every `rel.belongsTo` a foreign key constraint and an index in the database. Without this option a relation gets neither unless its own `.sql({ fk })` asks; see [Relations](#relations). |
+| `foreignKeyDefaults: { constraint: false, index: true }` | For every relation that has `.sql({ fk })`, sets whether the database gets a foreign key constraint and an index on its column. Both are `true` when you leave the option out. A relation's own `.sql({ fk: { constraint, index } })` overrides it. It does not add a foreign key to a relation without `.sql({ fk })`; see [Relations](#relations). |
 | `defaultControlPolicy: "managed"` | The [control policy](#control-policy) for every model that does not set its own. |
 | `namespaces: ["audit"]` | The PostgreSQL schemas other than `public` that models may use; see [Namespaces](#namespaces). |
 
@@ -350,7 +352,7 @@ Post.relations({
 });
 ```
 
-`fk` takes `name`, `onDelete`, and `onUpdate`. `onDelete` and `onUpdate` each take `'noAction'`, `'restrict'`, `'cascade'`, `'setNull'`, or `'setDefault'`.
+`fk` takes `name`, `onDelete`, `onUpdate`, `constraint`, and `index`. `constraint: false` keeps the relation without a foreign key constraint in the database, and `index: false` without an index on its column; both override `foreignKeyDefaults`. `onDelete` and `onUpdate` each take `'noAction'`, `'restrict'`, `'cascade'`, `'setNull'`, or `'setDefault'`.
 
 Prisma ORM does not check that the column types on the two sides of a relation match, so choose a field helper that produces the same column type as the key you point at.
 
@@ -537,7 +539,11 @@ Configuration that legitimately varies per environment, such as the database URL
 
 TypeScript and [PSL](/orm/contract-authoring/psl-syntax) authoring produce the same `contract.json` and `contract.d.ts` for an equivalent contract, so you can move between the two forms without changing anything downstream. A project names exactly one contract file in its config.
 
-No command converts a `.prisma` contract into TypeScript, so to move an existing project, write the TypeScript file by hand, point `contract` in `prisma.config.ts` at it, and delete the `.prisma` file so the two can never disagree.
+On PostgreSQL, the TypeScript builder cannot write everything PSL can. It has no [value objects](/orm/contract-authoring/psl-syntax#value-objects), so the complete contract above stores `address` as a `Jsonb` column where PSL would declare `type Address`. It has no [base models and variants](/orm/contract-authoring/psl-syntax#base-models-and-variants) either. A PostgreSQL contract that uses one of them stays in PSL. The MongoDB builder has both, as `valueObject` and as `discriminator` and `base`.
+
+To move from TypeScript to PSL, run [`npx prisma contract print --output ./src/prisma/contract.prisma`](/cli/contract-print). It loads `contract.ts` and writes the same contract as PSL, starting with the `// use prisma-8` line. The hashes stay the same, so the database needs no migration and no `db sign`. On PostgreSQL, every `rel.belongsTo` needs a foreign key constraint for this, because PSL's `@relation` always creates one: give each one `.sql({ fk })`, and leave the constraint on, with no `constraint: false` in `foreignKeyDefaults` unless the relation's own `fk` sets `constraint: true`. Otherwise the command fails with `CONTRACT.PRINT_UNSUPPORTED`. Then set `contract` in `prisma.config.ts` to `"./src/prisma/contract.prisma"`, delete `contract.ts`, and run `npx prisma contract emit`.
+
+No command converts a `.prisma` contract into TypeScript, so to move the other way, write the TypeScript file by hand, point `contract` in `prisma.config.ts` at it, and delete the `.prisma` file so the two can never disagree.
 
 ## Use with your agent
 

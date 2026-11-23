@@ -8,7 +8,7 @@ metaDescription: 'Group writes atomically with db.transaction() on PostgreSQL, a
 
 Run several writes as one unit with `db.transaction(...)`: they all commit together, or they all roll back.
 
-Prisma ORM 8 runs on PostgreSQL, SQLite, and MongoDB. MySQL is an early preview that reads data, and its `db.transaction(...)` runs reads and raw SQL. The examples on this page are PostgreSQL; `db.transaction(...)` works the same way on SQLite, and MongoDB is covered in [Transactions on MongoDB](#transactions-on-mongodb).
+The examples on this page are PostgreSQL. `db.transaction(...)` works the same way on SQLite and MySQL. MongoDB is covered in [Transactions on MongoDB](#transactions-on-mongodb).
 
 ## Run writes in a transaction
 
@@ -74,6 +74,8 @@ await db.transaction(async (tx) => {
 ```
 
 `tx.transaction(callback)` runs a nested transaction in a savepoint, to any depth, on PostgreSQL, MySQL, MariaDB, SQLite and Supabase. When the inner callback throws, only its work is rolled back, the inner call rejects with the error, and `tx` stays usable. The inner callback receives the same kind of `tx`, with `orm`, `sql` and the other members. While it runs, a statement on the outer `tx` is refused with `RUNTIME.TRANSACTION_SUSPENDED`. Nested transactions are in Prisma ORM since `8.0.0-rc.25`.
+
+Await each call on `tx` before you send the next one. An ORM write of several statements, such as a `create()` with a nested relation, runs in a savepoint of its own since `8.0.0-rc.25`, so a write that fails leaves none of its rows. While it runs, other work on the same `tx`, such as a second call in `Promise.all`, is refused with `RUNTIME.TRANSACTION_SUSPENDED`.
 
 ### Options and isolation level
 

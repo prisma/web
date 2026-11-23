@@ -247,7 +247,7 @@ import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
-export const db = mongo({ contract, url: process.env.MONGODB_URL!, dbName: 'app' });
+export const db = mongo({ contract, url: process.env.DATABASE_URL!, dbName: 'app' });
 
 const users = await db.orm.users.all();
 ```
@@ -338,7 +338,7 @@ Restrict a query to the one row a primary key or a unique constraint names.
 
 #### Remarks
 
-- PostgreSQL only.
+- Available on PostgreSQL, SQLite, and MySQL. Not available on MongoDB yet.
 - The criterion is an object with a value for every field of the primary key or of one `@@unique` constraint, such as `{ id }`, `{ email }` or `{ tenantId, userId }`. A field that is not part of such a key, or a key with a field missing, is a type error. When the call runs, a criterion without a value for every field of one key throws an error whose `code` is `ORM.ARGUMENT_INVALID`.
 - It filters exactly as `where()` with the same object does. A value cannot be `null`, because a unique constraint allows any number of rows whose column is `NULL`; to read those, use `where({ field: null })`.
 - After it, the calls that address many rows are compile errors: `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, `distinctOn()`, `all()`, `aggregate()`, `groupBy()`, `updateAll()`, `updateAndCount()`, `deleteAll()`, `deleteAndCount()`, and `prepared.all()` and `prepared.aggregate()`. `first()`, `firstOrThrow()`, `update()`, `delete()`, `select()`, `include()` and a further `where()` still compile.
@@ -395,7 +395,7 @@ Eagerly load a relation onto the returned rows.
 
 - Available for PostgreSQL and MongoDB, with differences noted below.
 - On PostgreSQL, `include(relationName, refineFn?)` loads both to-one and to-many relations. The optional callback receives the related rows as a collection, so you can filter, order, limit, and aggregate them. See [Refinements, aggregates, and combine](#refinements-aggregates-and-combine).
-- On MongoDB, wrap the `id` of a related document loaded by `include()` in `String(...)` before you compare it. It comes back as an `ObjectId` object, while a document's own `id` comes back as a hex string.
+- On MongoDB, a related document loaded by `include()` comes back with the same field names and value types as when you read it on its own, so its `id` is a hex string.
 - On MongoDB, `include()` loads a relation that is stored as a reference. It takes the relation name and nothing else, and TypeScript rejects a second argument.
 
 #### Options
@@ -431,7 +431,7 @@ const users = await db.orm.public.User.include('posts').where({ id: aliceId }).a
 
 ```typescript
 const posts = await db.orm.posts.include('author').where({ title: 'Hello world' }).all();
-// posts[0].author.id is an ObjectId; compare it as String(posts[0].author.id)
+// posts[0].author.id is a hex string, like posts[0].id
 ```
 
 For a task-oriented guide to loading related records, see [Relations and joins](/orm/fundamentals/relations-and-joins).
@@ -981,12 +981,12 @@ const doc = await db.orm.users.where({ email }).firstOrThrow();
 
 ### Custom `Collection` subclass
 
-On PostgreSQL and SQLite you can subclass `Collection` to add your own methods to a model, and pass the subclass to the client in the `collections` option.
+On PostgreSQL, SQLite, and MySQL you can subclass `Collection` to add your own methods to a model, and pass the subclass to the client in the `collections` option.
 
 #### Remarks
 
-- PostgreSQL and SQLite. You cannot subclass a collection on MongoDB.
-- `collections` maps a model name to your class. You pass it to the function that creates your client: `postgres(...)`, `postgresServerless(...)` for serverless functions, `sqlite(...)` for SQLite, or `supabase(...)` for Supabase. Your class is then used wherever that client gives you the model: on `db.orm`, on every transaction's `tx.orm`, on each connection the serverless client opens, and on the Supabase clients that run queries as a database role, such as the one `asUser(jwt)` returns. Models you leave out keep the built-in class.
+- PostgreSQL, SQLite, and MySQL. You cannot subclass a collection on MongoDB.
+- `collections` maps a model name to your class. You pass it to the function that creates your client: `postgres(...)`, `postgresServerless(...)` for serverless functions, `sqlite(...)` for SQLite, `mysql(...)` for MySQL, or `supabase(...)` for Supabase. Your class is then used wherever that client gives you the model: on `db.orm`, on every transaction's `tx.orm`, on each connection the serverless client opens, and on the Supabase clients that run queries as a database role, such as the one `asUser(jwt)` returns. Models you leave out keep the built-in class.
 - If the module that defines your classes needs the contract type, import only the type, `import type { Contract } from './contract.d'`, so that it does not import the module that creates the client.
 - `Collection<Contract, 'Task'>` takes two type arguments: your contract type, and the name of the model this collection is for.
 - A method that returns `this.variant('bug')` gives back a collection narrowed to the `Bug` model. It is chainable, so you finish it with `all()`, `first()`, or any other method.
@@ -1029,7 +1029,7 @@ const lockedBugs = await db.transaction((tx) => tx.orm.public.Task.bugs().forUpd
 
 The last line runs inside a transaction, so your method works on `tx.orm` too. `forUpdate()` locks the rows it reads with `FOR UPDATE` until the transaction ends.
 
-On SQLite, `db.orm` holds the models directly, so the same method is `db.orm.Task.bugs()`.
+On SQLite and MySQL, `db.orm` holds the models directly, so the same method is `db.orm.Task.bugs()`.
 
 ### Package methods with `using` [#package-methods-with-using]
 
@@ -1074,7 +1074,7 @@ A query fragment is a function from a collection to a collection, a piece of a q
 
 #### Remarks
 
-- PostgreSQL and SQLite. On SQLite, `db.orm` holds the models directly, so a fragment for one model is `db.orm.Post.fragment(body)`.
+- PostgreSQL, SQLite, and MySQL. On SQLite and MySQL, `db.orm` holds the models directly, so a fragment for one model is `db.orm.Post.fragment(body)`.
 - `db.orm.fragment(fields, body)` makes a fragment for every model that has the given fields. Declare each field as `field.column(type.X(...))`, with `field` and `type` from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `with` does not compile.
 - `db.orm.public.Post.fragment(body)` makes a fragment for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`. Call it on the model's collection itself: on a collection with chained calls, such as `db.orm.public.Post.where(...).fragment(body)`, it throws an error whose `code` is `ORM.ARGUMENT_INVALID`, and a `where()`, `orderBy()` or `include()` before it is a compile error. Put those calls in the body instead.
 - A fragment made by `db.orm.fragment(fields, body)` that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. One that orders returns `Ordered<C>`, so `cursor()` compiles after it. A fragment made by `collection.fragment(body)` returns the type its body returns. A filter or order on the collection before `with()` is not recorded in that type, so `update()`, `delete()` or `cursor()` after `with()` compiles only when the body itself filters or orders.
@@ -1328,9 +1328,11 @@ Update the matched row and return it, or `null` if none matches.
   ```
 
 - Take care on PostgreSQL: `update()` takes an object of field values only, and passing a function instead writes nothing, reports nothing, and returns `null`.
-- On PostgreSQL, `update()` can also relink related rows. `connect()` points the foreign key at a different row, and `disconnect()` sets the foreign key to `NULL`, or removes a many-to-many link without deleting either row. On a relation whose foreign key is required, `disconnect()` is a type error, and throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED` with `meta.reason` `'required-foreign-key'` before any statement runs; use `connect()` to another row, or delete the row. On a many-to-one relation, such as `Post.author`, `disconnect([criteria])` unlinks the row only when the linked row matches the criteria. `disconnect([])` disconnects nothing. Before `8.0.0-rc.25`, the criteria were ignored on a many-to-one relation, and an empty list acted like `disconnect()`. An update with such a relation callback finds its row by the filter alone, so it throws an error whose `code` is `ORM.ARGUMENT_INVALID` on a collection with an `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()`.
-- On PostgreSQL, a relation callback in `update()` can also change the related rows a filter matches: `where(...)` on the relation, then `updateAll({ ... })` or `deleteAll()`. This needs a to-many relation: on a to-one relation, such as `Post.user`, it throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. It changes only rows related to the row you are updating. On a many-to-many relation, those are the rows linked to it through the join table. There, `deleteAll()` deletes the related rows themselves, not only the links, so a tag that another post also uses is gone for that post too. It does not delete the join table's rows: the foreign key's delete action decides. A key that cascades removes them, and with a key that does not, the database rejects the delete and the whole update is rolled back. `where(...)` takes everything the model's own `where()` takes, and chained `where` calls combine with AND.
-- A relation callback in `create()` or `update()` can return an array of operations, which run in the order you list them. In `create()` the operations are `create` and `connect`. `update()` also takes `disconnect`, `updateAll` and `deleteAll`, which throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED` in `create()`. A to-one relation, such as `Post.user`, takes at most one operation: an array of two or more throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`, before any statement runs. An empty array changes nothing. An array inside the array, or an element that is not an operation, throws an error whose `code` is `ORM.ARGUMENT_INVALID`. The example under "Update and delete filtered related rows" below returns an array of two operations.
+- On PostgreSQL, SQLite, and MySQL, `update()` can also relink related rows. `connect()` points the foreign key at a different row, and `disconnect()` sets the foreign key to `NULL`, or removes a many-to-many link without deleting either row. On a relation whose foreign key is required, `disconnect()` is a type error, and throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED` with `meta.reason` `'required-foreign-key'` before any statement runs; use `connect()` to another row, or delete the row. On a many-to-one relation, such as `Post.author`, `disconnect([criteria])` unlinks the row only when the linked row matches the criteria. `disconnect([])` disconnects nothing. Before `8.0.0-rc.25`, the criteria were ignored on a many-to-one relation, and an empty list acted like `disconnect()`. On a many-to-many relation, `connect()` adds a link, and that does not work on MySQL yet: it throws an error whose `code` is `RUNTIME.AST_UNSUPPORTED`. An update with such a relation callback finds its row by the filter alone, so it throws an error whose `code` is `ORM.ARGUMENT_INVALID` on a collection with an `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()`.
+- On PostgreSQL, SQLite, and MySQL, a relation callback in `update()` can also change the related rows a filter matches: `where(...)` on the relation, then `updateAll({ ... })` or `deleteAll()`. This needs a to-many relation: on a to-one relation, such as `Post.user`, it throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. It changes only rows related to the row you are updating. On a many-to-many relation, those are the rows linked to it through the join table. There, `deleteAll()` deletes the related rows themselves, not only the links, so a tag that another post also uses is gone for that post too. It does not delete the join table's rows: the foreign key's delete action decides. A key that cascades removes them. With a key that has no delete action or restricts the delete, the database rejects the delete and the whole update is rolled back. `where(...)` takes everything the model's own `where()` takes, and chained `where` calls combine with AND.
+- Since `8.0.0-rc.25`, a relation callback in `update()` can also update or delete one related row. On a to-many relation, `where(...)` then `update({ ... })` or `delete()` changes the first related row the filter matches; without `where(...)` they are a type error, and throw an error whose `code` is `ORM.ARGUMENT_INVALID`. On a to-one relation, `update({ ... })` and `delete()` change the linked row, narrowed by `where(...)` if you call it. When no related row matches, nothing changes and nothing is thrown. On a many-to-one relation, such as `Post.user`, `delete()` sets the row's foreign key to `NULL` and then deletes the related row; when that foreign key is required, `delete()` is a type error, and throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED` with `meta.reason` `'required-foreign-key'`.
+- `update()` data that sets a foreign key of the row, such as `userId`, and also has a callback on that relation, such as `user`, throws an error whose `code` is `ORM.ARGUMENT_INVALID` before any statement runs. Set the foreign key or use the callback. Before `8.0.0-rc.25` both ran, and a `create`, `connect` or `disconnect` callback overwrote the foreign key.
+- A relation callback in `create()` or `update()` can return an array of operations, which run in the order you list them. In `create()` the operations are `create` and `connect`. `update()` also takes `disconnect`, `update`, `delete`, `updateAll` and `deleteAll`, which throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED` in `create()`. A to-one relation, such as `Post.user`, takes at most one operation: an array of two or more throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`, before any statement runs. An empty array changes nothing. An array inside the array, or an element that is not an operation, throws an error whose `code` is `ORM.ARGUMENT_INVALID`. The example under "Update and delete filtered related rows" below returns an array of two operations.
 - `update()` and `delete()` find the row by its primary key, or else by a unique key whose columns are all required. A unique key with a nullable column does not count, because two rows can both hold `NULL` in it. On a table with no other key, `update()`, `delete()`, and a write followed by `.include(...)` throw an error whose `code` is `ORM.ROW_IDENTITY_MISSING`. Give the table a primary key, or make the key's fields required. Since `8.0.0-rc.25`.
 - The discriminator field of a polymorphic model cannot be updated: setting it is a type error, and throws an error whose `code` is `ORM.FIELD_IMMUTABLE`.
 - On PostgreSQL, `update()` changes the row `first()` would return, so `orderBy()`, `offset()`, `cursor()`, `distinct()`, and `distinctOn()` choose it. After `limit(0)` it changes nothing and returns `null`.
