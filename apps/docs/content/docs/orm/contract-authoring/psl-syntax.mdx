@@ -157,7 +157,21 @@ On PostgreSQL, `Int`, `BigInt`, `Float`, `Decimal`, `String`, `Boolean`, `Bytes`
 
 `Decimal` also takes `precision` and `scale`, and `String` with `storage: varchar` or `storage: char` takes `length`, as in `Decimal(precision: 10, scale: 2)` and `String(storage: varchar, length: 35)`. Write these three by name, because a positional argument fills `storage` first: `Decimal(10, 2)` is refused at `storage`. `String(length: 35)` is refused too, because a bare `String` is a `text` column, which has no length. The contract stores only the explicit type, so you can also write the explicit type itself, such as `Int2`, `Varchar(35)` or `NumericString(10, 2)`.
 
-You can also use one of these PostgreSQL types as the field type: `Uuid`, `Inet`, `Bit`, `Varbit`, `Xml`, `Oid`, `Money`, or one of the date and time types below. `Bit(8)` and `Varbit(64)` set a length, and `TimestamptzTemporal(3)` or `DateTime(precision: 6)` sets how many digits of a second are kept. Write each length, precision and scale as a whole number without quotes: `Varchar("35")` and `Varchar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Xml` reads and writes text and has no equality, so no filter can compare it. `Oid` reads a whole number from 0 to 4294967295. `Money` reads a decimal string with two fraction digits, such as `"-1234.56"`. PostgreSQL prints `money` in the locale its `lc_monetary` setting names, and Prisma ORM reads only the `C` form, so `lc_monetary` must be `C`, `POSIX` or `en_US`. Check with `SHOW lc_monetary`, run as your app's role outside Prisma ORM, and change it with `ALTER ROLE <role> SET lc_monetary = 'C'`. Under any other locale, reading a `Money` field fails with [`RUNTIME.LC_MONETARY_NOT_C`](/orm/reference/error-reference#RUNTIME.LC_MONETARY_NOT_C). Before `8.0.0-rc.25`, Prisma ORM set `lc_monetary` on its own connections, which a pooled Prisma Postgres connection string refused.
+You can also use one of these PostgreSQL types as the field type: `Uuid`, `Inet`, `Bit`, `Varbit`, `Xml`, `Oid`, `Money`, or one of the date and time types below. `Bit(8)` and `Varbit(64)` set a length, and `TimestamptzTemporal(3)` or `DateTime(precision: 6)` sets how many digits of a second are kept. Write each length, precision and scale as a whole number without quotes: `Varchar("35")` and `Varchar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Xml` reads and writes text and has no equality, so no filter can compare it. `Oid` reads a whole number from 0 to 4294967295. `Money` reads a decimal string with two fraction digits, such as `"-1234.56"`.
+
+PostgreSQL prints a `money` value in the format of the locale its `lc_monetary` setting names, and Prisma ORM reads only the `C` format. So before you use a `Money` field, check that `lc_monetary` is `C`, `POSIX` or `en_US` for the role your app connects as. Run this as that role, outside Prisma ORM:
+
+```sql
+SHOW lc_monetary;
+```
+
+If it shows another locale, change it for the role:
+
+```sql
+ALTER ROLE <role> SET lc_monetary = 'C';
+```
+
+Under any other locale, reading a `Money` field fails with [`RUNTIME.LC_MONETARY_NOT_C`](/orm/reference/error-reference#RUNTIME.LC_MONETARY_NOT_C). Before `8.0.0-rc.25`, Prisma ORM set `lc_monetary` on its own connections, which a pooled Prisma Postgres connection string refused.
 
 The names `SmallInt`, `BigIntNumber`, `Numeric`, `UnboundedInt`, `Real`, `VarChar` and `VarBit` are deprecated. They still work and give the same contract, but `contract emit` and the editor report the warning `PSL_DEPRECATED_SCALAR_NAME` where one is written, and they will be removed. Write the convenience type that gives the same type instead. `VarBit` has no convenience type, so write the explicit type `Varbit`:
 
@@ -171,7 +185,7 @@ The names `SmallInt`, `BigIntNumber`, `Numeric`, `UnboundedInt`, `Real`, `VarCha
 | `VarChar(12)` | `String(storage: varchar, length: 12)` |
 | `VarBit(16)` | `Varbit(16)` |
 
-On every SQL database, `sql.String(n)` is now written `sql.Varchar(n)`, because `String` is the convenience type for text. `sql.String(n)` still works, and reports `PSL_DEPRECATED_SCALAR_NAME`.
+On every SQL database, write a text column with a length as `sql.Varchar(n)`. It was written `sql.String(n)` before `8.0.0-rc.25`, and the old name still works, but it reports `PSL_DEPRECATED_SCALAR_NAME`, because `String` is now the convenience type for text.
 
 The same convenience types work on the other databases, each choosing that database's explicit type. On SQLite, `Int` is `IntegerNumber`, `BigInt` is `IntegerBigInt`, `Float` is `Real`, `Decimal` is `DecimalString`, `String` is `Text`, `Boolean` is `IntegerBoolean`, `Bytes` is `Blob` and `Json` is `PlainJson`. On MongoDB, `Int` is `Int32`, `BigInt` is `Int64BigInt`, `Float` is `Double`, `Decimal` is `Decimal128`, `Boolean` is `Bool`, `Bytes` is `Binary`, `String` is `BsonString` and `Json` is `PlainJson`. On MySQL and MariaDB, `Float`, `Decimal`, `Boolean`, `Bytes` and `Json` are available since `8.0.0-rc.25`.
 
@@ -782,9 +796,9 @@ A variant can be in a different `namespace` block from its base, on PostgreSQL a
 
 You query a variant through the base model: `db.orm.public.Task.variant('bug')` returns the `Bug` rows only, and `public` here is the PostgreSQL schema. `variant()` takes the discriminator value from `@@base`, not the model name. Writing a row of a variant starts with the same `variant('bug')` call. See [`variant()`](/orm/reference/orm-client#variant).
 
-On a variant, `@@map` does more than rename: on PostgreSQL it chooses between two storage layouts. Give the variant its own `@@map`, as `Bug` has here, and its fields are in a table of their own that shares the base model's primary key. Leave `@@map` out and they are nullable columns in the base table.
+On a variant, `@@map` does more than rename: on PostgreSQL it chooses between two storage layouts. Give the variant its own `@@map`, as `Bug` has here, and its fields are in a table of their own that shares the base model's primary key. Leave `@@map` out and they are nullable columns in the base table. [Relational data modeling](/orm/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two.
 
-A variant without its own `@@map` shares the base model's table, so a unique or an index on it would cover the other variants' rows too. `@unique`, `@@unique`, and most `@@index` without `where:` on such a variant are refused with `PSL_UNSCOPED_INDEX_ON_STI_VARIANT`, and the message gives the partial index to write instead, one whose `where:` keeps it to the variant's rows. A relation on such a variant stores its foreign key and backing index in the shared table. Before `8.0.0-rc.25`, both were dropped. [Relational data modeling](/orm/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two.
+A variant without its own `@@map` shares the base model's table, so a unique or an index on it would cover the other variants' rows too. `@unique`, `@@unique`, and most `@@index` without `where:` on such a variant are refused with `PSL_UNSCOPED_INDEX_ON_STI_VARIANT`, and the message gives the partial index to write instead, one whose `where:` keeps it to the variant's rows. A relation on such a variant stores its foreign key and backing index in the shared table. Before `8.0.0-rc.25`, the uniques, indexes and foreign keys of such a variant were dropped from the contract without a warning.
 
 On MongoDB, a variant adds its fields to documents in the base model's collection, so it declares `@@base` but no `@@map` of its own. Because the variant's fields share documents with the base model's, a variant field stored under a name a base field uses, such as the discriminator's, is refused with `PSL_DUPLICATE_STORED_NAME`. A variant field that restates a base field with a different stored name, type, optionality or list shape is refused with `PSL_VARIANT_FIELD_DIFFERS_FROM_BASE`: restate it exactly as the base declares it, or leave it out.
 

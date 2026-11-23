@@ -403,7 +403,7 @@ What the image needs, and why:
 
 - `npm ci` installs dev dependencies too. The container runs the Prisma CLI at start to apply migrations, so `prisma` has to be in the image.
 - `COPY . .` brings in `src/prisma/contract.json`, `src/prisma/contract.d.ts`, and `migrations/`. Because those are committed, the build has no Prisma step. If you prefer not to commit the emitted artifacts, add `RUN npx prisma contract emit` after the copy; it runs offline.
-- `CMD` applies pending migrations with `db migrate` and then starts the server. The script passes `--no-advance-ref`, so the run inside the container does not rewrite `migrations/app/refs/db.json`; without the flag, `db migrate` moves the `db` ref when it reads its connection from `prisma.config.ts` outside CI. On a fresh database this creates the schema; on an existing one it reports `Already up to date` and moves on.
+- `CMD` applies pending migrations with `db migrate` and then starts the server. The script passes `--no-advance-ref`, so the run inside the container does not rewrite `migrations/app/refs/db.json`; without the flag, `db migrate` updates the `db` ref whenever it reads its connection from `prisma.config.ts` and does not detect CI. On a fresh database this creates the schema; on an existing one it reports `Already up to date` and moves on.
 - `DATABASE_URL` is not baked in. The CLI reads it through `prisma.config.ts` and the runtime through `src/prisma/db.ts`, both from the container's environment, which Compose sets in the next step.
 
 ### 3.2. Create and configure a Docker Compose file

@@ -6,9 +6,14 @@ metaTitle: Database change and data protection policies in Prisma ORM
 metaDescription: 'How a database records a change policy (migrations, db update, or both) and a data protection policy (data loss and access changes), how a ref declares them, and how db migrate, db update and migration plan enforce them.'
 ---
 
-A database can record two policies, and every Prisma ORM command that changes it obeys them. The change policy says which commands may change the database. The data protection policy says whether a change may lose data, or change who can read or write it. A production database can record that it changes only through reviewed migrations, and that no change may drop data.
+Database policies are rules stored in a database about how Prisma ORM may change it. Use them to protect a database such as production from a command run by mistake: for example, a production database can record that it changes only through reviewed migrations, and that no change may drop data. Every Prisma ORM command that changes the database reads its policies first, and refuses to do what they forbid.
 
-A database that records no policy behaves as before policies existed: every command may change it, and losing data or changing access needs your consent. Policies are in Prisma ORM since `8.0.0-rc.25`.
+A database can record two policies:
+
+- The [change policy](#change-policy) says which commands may change the database.
+- The [data protection policy](#data-protection-policy) says whether a change may lose data, or change who can read or write it.
+
+A database that records no policy works as it did before policies existed: every command may change it, and losing data or changing access needs your consent. Policies are in Prisma ORM since `8.0.0-rc.25`. To give a database its policies, you write them in a ref, a file under `migrations/app/refs/` that names the version of your contract an environment should match, and then apply that ref to the database, as [Set a database's policies](#declare-policies-in-a-ref) shows.
 
 ## Change policy
 
@@ -19,26 +24,44 @@ The change policy lists the ways the database may be changed:
 | `migrate` | [`db migrate`](/cli/db-migrate), which runs the migrations you planned |
 | `reconcile` | [`db update`](/cli/db-update) and [`db sign`](/cli/db-sign), which change or sign the database to match a contract with no migration |
 
-A command the policy does not allow fails with [`MIGRATION.CHANGE_POLICY_FORBIDS`](/orm/reference/error-reference#MIGRATION.CHANGE_POLICY_FORBIDS) before it changes anything. A production database usually records `["migrate"]`, so `db update` cannot change it by accident. Plan the change with [`migration plan`](/cli/migration-plan) and apply it with `db migrate` instead.
+A command the policy does not allow fails with [`MIGRATION.CHANGE_POLICY_FORBIDS`](/orm/reference/error-reference#MIGRATION.CHANGE_POLICY_FORBIDS) before it changes anything. A production database usually records `["migrate"]`, so that `db update` cannot change it by accident. To change such a database, plan the change with [`migration plan`](/cli/migration-plan) and apply it with `db migrate`.
 
 ## Data protection policy
 
-The data protection policy has two settings:
+The data protection policy has two settings, and each takes one of three values:
 
-- `dataLoss` covers an operation that loses data, such as dropping a table or a column, or a type change that can change values. Its values are `data-loss-forbidden`, `data-loss-with-consent` and `data-loss-permitted`.
-- `accessWidening` covers an operation that changes who can read or write data. On PostgreSQL, that is disabling row-level security or dropping a row-level security policy. Its values are `access-widening-forbidden`, `access-widening-with-consent` and `access-widening-permitted`.
+| Setting | What it covers | Values |
+| --- | --- | --- |
+| `dataLoss` | An operation that loses data, such as dropping a table or a column, or a type change that can change values | `data-loss-forbidden`, `data-loss-with-consent`, `data-loss-permitted` |
+| `accessWidening` | An operation that changes who can read or write data | `access-widening-forbidden`, `access-widening-with-consent`, `access-widening-permitted` |
 
-`with-consent` is the default, and is how the commands behave without a policy: `db update` asks before it loses data or changes access, and `migration plan` asks before it writes a migration that loses data.
+On PostgreSQL, two operations count as changing access: disabling row-level security, and dropping a row-level security policy. On SQLite, MySQL, MariaDB and MongoDB, no operation counts, so `access-widening-forbidden` refuses nothing there. For access changes, only the operations Prisma ORM plans are checked: a row-level security change you write as raw SQL in a migration is not.
 
-Where a setting is `forbidden`, `db update` and `db migrate` refuse such an operation before anything runs, with [`MIGRATION.DATA_PROTECTION_FORBIDS`](/orm/reference/error-reference#MIGRATION.DATA_PROTECTION_FORBIDS). `--delete`, `--allow` and an answer typed in the terminal cannot permit it. `--rename` still applies, because a rename loses nothing. If you only renamed a model or a field, say so with `--rename`. If you changed a field's type, plan the change with `migration plan --convert`. Otherwise, keep the model or field in the contract. The error says how to plan the change again without losing data. Do not edit or delete a migration that belongs to an extension package; the extension's author or the database's owner has to resolve it.
+### `with-consent`
 
-Where a setting is `permitted`, `db update` asks nothing about it: an unanswered loss is a delete.
+`with-consent` is the default, and is how the commands behave when the database records no policy. `db update` asks before it loses data or changes access, and `migration plan` asks before it writes a migration that loses data.
 
-`access-widening-forbidden` sees only the operations Prisma ORM plans. A row-level security change written as raw SQL in a migration is not checked.
+### `forbidden`
 
-## Declare policies in a ref
+When a setting is `forbidden`, `db update` and `db migrate` refuse such an operation before anything runs, with [`MIGRATION.DATA_PROTECTION_FORBIDS`](/orm/reference/error-reference#MIGRATION.DATA_PROTECTION_FORBIDS). No answer permits it: not `--delete`, not `--allow`, and not an answer typed in the terminal. The error says how to plan the change again without losing data, which depends on what you changed:
 
-A [ref](/cli/migration-ref) declares the policies its database should have, in a `policies` key of its file. Every key is optional, and a key you leave out declares nothing:
+- If you renamed a model or a field, say so with `--rename`, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) shows. A rename loses no data, so the policy allows it.
+- If you changed a field's type, plan the change with `migration plan --convert`, so that the migration converts the stored values.
+- Otherwise, keep the model or field in the contract.
+
+When the refused operation is in a migration that an extension package ships, do not edit or delete that migration. The extension's author, or the owner of the database, has to resolve it.
+
+### `permitted`
+
+When a setting is `permitted`, `db update` asks nothing about such an operation. Where it would have asked whether to keep or lose data, it loses the data, as if you had answered with `--delete`.
+
+## Set a database's policies [#declare-policies-in-a-ref]
+
+You declare the policies a database should have in a [ref](/cli/migration-ref), the file that names the contract state an environment should match, and then apply that ref to the database.
+
+### 1. Declare the policies in a ref
+
+Add a `policies` key to the ref's file. Every key inside it is optional, and a key you leave out declares nothing:
 
 ```json title="migrations/app/refs/production.json"
 {
@@ -54,18 +77,18 @@ A [ref](/cli/migration-ref) declares the policies its database should have, in a
 }
 ```
 
-Commands that rewrite a ref file keep its `policies`.
+The commands that rewrite a ref file keep its `policies` key.
 
-## Apply a ref's policies to a database
+### 2. Apply the ref to the database [#apply-a-refs-policies-to-a-database]
 
-`db migrate --to <ref>` and `db update --to <ref>` compare the ref's policies with the database's before they run anything. If they differ, the command fails with [`MIGRATION.POLICY_MISMATCH`](/orm/reference/error-reference#MIGRATION.POLICY_MISMATCH), and the error names each setting with both values. Either correct the ref, or, if the database's owner meant to change the policy, pass `--permit-policy-change`:
+`db migrate --to <ref>` and `db update --to <ref>` compare the ref's policies with the database's before they run anything. When they differ, the command fails with [`MIGRATION.POLICY_MISMATCH`](/orm/reference/error-reference#MIGRATION.POLICY_MISMATCH), and the error names each setting with both values. If the ref is wrong, correct it. If the owner of the database means to change its policies, pass `--permit-policy-change`:
 
 ```npm
 npx prisma db migrate --to production --permit-policy-change --db "$DATABASE_URL"
 ```
 
-The run is checked against the ref's policies, and writes them into the database when it succeeds. A failed run leaves the old policies. With no migration pending, the run writes only the policies. `--permit-policy-change` needs `--to` with a ref name. A ref that declares no policies changes nothing, so a deploy pipeline can pass the flag every time.
-
-`migration plan --to <ref>` refuses to write a migration that the ref's data protection policy forbids.
+With `--permit-policy-change`, the run is checked against the ref's policies, and writes them into the database when it succeeds. A failed run leaves the old policies in place, and a run with no pending migration writes only the policies. The flag needs `--to` with a ref name. A deploy pipeline can pass the flag on every run, because with a ref that declares no policies, the flag changes nothing.
 
 Treat `--permit-policy-change` as consent from whoever owns the database, in the same way as `--delete`. Do not add it, or loosen a ref's `policies`, to get a refused command past a policy.
+
+`migration plan --to <ref>` checks the ref's policies too: it refuses to write a migration that the ref's data protection policy forbids.
