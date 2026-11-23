@@ -1,12 +1,12 @@
 ---
 title: Domains
-description: Add a custom domain to a production app, publish the two DNS records it asks for, and the platform issues the TLS certificate.
+description: Add a custom domain to an app on any branch, publish the two DNS records it asks for, and the platform issues the TLS certificate.
 url: /compute/domains
 metaTitle: Custom domains | Prisma Compute
 metaDescription: Add a custom domain to a Prisma Compute app, publish the TXT and CNAME records, wait until it serves, and read what a domain's state means.
 ---
 
-Configure custom domains that point to your [production app](/compute/branching). You can't configure custom domains for preview apps.
+Configure custom domains that point to your app on any [branch](/compute/branching): production, staging, or a preview.
 
 A domain serves your app once your workspace has proved it owns the domain, the domain's DNS points at Prisma, the app has a live deployment, and a TLS certificate has been issued. You do the first two by publishing DNS records. The platform issues the certificate.
 
@@ -15,10 +15,10 @@ A domain serves your app once your workspace has proved it owns the domain, the 
 You'll need:
 
 - A [linked project](/compute/getting-started).
-- A production app. You can add a domain before the app has a [promoted, running deployment](/compute/deployments); the domain starts serving once it has one.
+- An app. You can add a domain before the app has a [promoted, running deployment](/compute/deployments); the domain starts serving once it has one.
 - Access to edit DNS records within your DNS provider.
 
-Domain commands target the [production branch](/compute/branching). Pointing them at any other branch fails with a `BRANCH_NOT_DEPLOYABLE` error. Every domain subcommand also accepts `--project` and `--branch` flags.
+Domain commands target the [production branch](/compute/branching) unless you pass `--branch <name>`. See [A domain on another branch](#a-domain-on-another-branch).
 
 ## Add a custom domain
 
@@ -87,6 +87,19 @@ npx prisma service domain retry shop.acme.com --service web
 
 The platform looks your DNS up when you add a domain, once more ten minutes later if it found nothing, and after that only when you ask. `retry` asks it to check now: it looks the DNS records up again, and if the last certificate failed, it orders a new one. A workspace can order a limited number of new certificates per hour. When that limit or the API's rate limit is reached, `retry` fails with `SERVICE.DOMAIN_RETRY_RATE_LIMITED` and says when to run it again.
 
+## A domain on another branch
+
+To give a staging or preview app its own domain, pass `--branch` with the branch's name:
+
+```npm
+npx prisma service domain add staging.acme.com --service web --branch staging
+npx prisma service domain wait staging.acme.com --service web --branch staging
+```
+
+The domain belongs to the app on that branch, so pass the same `--branch` to `show`, `retry`, and `delete`. The DNS records and the states are the same as on production.
+
+A preview is normally removed when its Git branch is deleted. While a custom domain on the preview holds a certificate, the preview is kept. Delete the domain first, then delete the branch.
+
 ## Remove a domain
 
 ```npm
@@ -124,7 +137,6 @@ When the platform gave no reason, the CLI says that provisioning failed for reas
 
 ## Limits
 
-- Custom domains are only available on production apps.
 - Routing uses CNAME records only. Apex domains need a DNS provider that supports CNAME-like records (ALIAS, ANAME, or CNAME flattening) at the apex.
 - Wildcard hostnames such as `*.acme.com` are rejected.
 - Up to 3 custom domains per app. Adding more returns `SERVICE.DOMAIN_QUOTA_EXCEEDED`.
@@ -132,6 +144,6 @@ When the platform gave no reason, the CLI says that provisioning failed for reas
 
 ## Next steps
 
-- [Deployments](/compute/deployments): promote a deployment to production.
+- [Deployments](/compute/deployments): deploy an app and promote a deployment.
 - [Known limitations](/compute/limitations): what Compute can and can't do.
 - [`service domain` reference](/cli/service#service-domain): every domain subcommand and flag.
