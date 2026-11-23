@@ -62,7 +62,7 @@ Do not call `db.transaction(...)` inside the helper: it does not nest, so the in
 
 ### Nested transactions
 
-Sometimes part of the work in a transaction may fail without undoing the rest, such as creating a welcome post after you create a user. Run that part in a nested transaction with `tx.transaction(...)`:
+Sometimes you want part of the work in a transaction to be allowed to fail without undoing the rest, such as creating a welcome post after you create a user. Run that part in a nested transaction with `tx.transaction(...)`:
 
 ```typescript
 await db.transaction(async (tx) => {
@@ -71,13 +71,20 @@ await db.transaction(async (tx) => {
     await tx.transaction(async (inner) => {
       await createWelcomePost(inner, user.id);
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "RUNTIME.TRANSACTION_ROLLBACK_FAILED") {
+      throw error;
+    }
     // only the welcome post is rolled back; the user is still created
   }
 });
 ```
 
-When the inner callback throws, only its work is rolled back: the inner call rejects with the error, and the outer `tx` stays usable, so the outer transaction can still commit. The inner callback receives the same kind of `tx`, with `orm`, `sql` and the other members, and can nest again to any depth. While the inner callback runs, a statement sent on the outer `tx` is refused with `RUNTIME.TRANSACTION_SUSPENDED`.
+When the inner callback throws, only its work is rolled back: the inner call rejects with the error, and the outer `tx` stays usable, so the outer transaction can still commit.
+
+The exception is an error that ends the whole transaction, such as a deadlock on MySQL or MariaDB, and then the outer transaction cannot commit. In that case `tx.transaction(...)` rejects with `RUNTIME.TRANSACTION_ROLLBACK_FAILED`, and the error's `cause` is the error your callback threw. Every later statement on `tx` is refused with `RUNTIME.TRANSACTION_CLOSED`. The `catch` above rethrows the error in that case, so the whole transaction fails.
+
+The inner callback receives the same kind of `tx`, with `orm`, `sql` and the other members, and can nest again to any depth. While the inner callback runs, a statement sent on the outer `tx` is refused with `RUNTIME.TRANSACTION_SUSPENDED`.
 
 A nested transaction runs in a savepoint. It works on PostgreSQL, MySQL, MariaDB, SQLite and Supabase, since `8.0.0-rc.25`.
 

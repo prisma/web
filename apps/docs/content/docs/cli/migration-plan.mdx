@@ -15,7 +15,11 @@ With neither, what happens depends on the migrations already on disk:
 - **`migrations/app/` is empty.** The plan starts from an empty database and contains the full `CREATE` operations for the whole contract. This is the first migration in a new project. The command says so under its summary (`No db ref set — planning from an empty database`), and `--json` output carries `fromDefaulted: true`, so a plan that recreates a database you already have is easy to spot. If a database already exists, run `db init`, `db update`, or `db sign` first.
 - **Migrations already exist.** The command refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` rather than write a migration that creates every table from nothing, which no existing database could apply. The error names three ways out: `migration ref set db <contract>` to point the ref at the state your database is at, `--from <ref>` to name the starting state for this one plan, or `--from @empty` when you do mean to plan from an empty database. To find the state your database is at, run `npx prisma migration status`, which prints its hash next to the `@db` label, and pass that hash, or the directory name of the migration that ends at it, as `<contract>`.
 
-Keep the `db` ref current and you never see the refusal. [`db init`](/cli/db-init) and [`db update`](/cli/db-update) update it for you when you run them without `--db`; with `--db` you have to add `--advance-ref db`. [`db sign`](/cli/db-sign) updates it whenever it signs, `--db` or not, unless you pass `--no-advance-ref`. [`db migrate`](/cli/db-migrate) updates it when you run it without `--db` and it does not detect CI, or when you pass `--advance-ref db`.
+Keep the `db` ref current and you never see the refusal. When you work against your development database with the connection from `prisma.config.ts`, the commands that change it keep the ref current for you. The exceptions are listed per command:
+
+- [`db init`](/cli/db-init) and [`db update`](/cli/db-update) update it unless you pass `--db`. With `--db`, add `--advance-ref db`.
+- [`db sign`](/cli/db-sign) updates it every time it signs, with or without `--db`, unless you pass `--no-advance-ref`.
+- [`db migrate`](/cli/db-migrate) updates it unless you pass `--db` or it runs in CI. Add `--advance-ref db` to update it there too.
 
 ### The automatic baseline
 
@@ -90,11 +94,12 @@ Some changes cannot be made in one step, and are refused with `MIGRATION.PLANNIN
 - two models or fields that trade tables or columns;
 - a model or field that moves to a name another one gives up in the same change;
 - a model or field that takes over the table or column of one the change removes;
-- enum members that trade stored values.
+- enum members that trade stored values;
+- an enum member that takes the stored value of a member the change removes.
 
-Make such a change in two steps, through a name nothing uses, such as `prisma_swap_users`, planned and applied one after the other.
+Make each of these changes in two steps, planned and applied one after the other. For a trade, or a name another one gives up, go through a name nothing uses, such as `prisma_swap_users`. For a takeover, first remove the model, field or enum member that holds the name, then add the new one in the second step. If that first step removes an enum member and you answer `--delete`, a required column cannot keep the rows that hold the member: delete those rows, or set them to a value the enum keeps, before the step is applied.
 
-On MySQL and MongoDB, these changes are planned as before. Before `8.0.0-rc.25`, a changed `@@map` was planned as dropping the table and creating an empty one, and asked for `--delete`.
+On MySQL and MongoDB, a changed stored name is handled as it was on every database before `8.0.0-rc.25`: a changed `@@map` is planned as dropping the table and creating an empty one, and asks for `--delete`.
 
 On PostgreSQL, a changed `onDelete` or `onUpdate` on a relation is planned as dropping the foreign key and adding it back with the new actions. A changed or removed primary key is planned the same way, and because PostgreSQL does not drop a primary key while a foreign key points at it, the migration first drops every foreign key that points at the old key, then adds back each one the new contract still declares. A foreign key the new contract leaves out stays dropped. When such a foreign key is on a table the migration must not change, such as a table whose model has an [`@@control(...)`](/orm/contract-authoring/psl-syntax#control-policy) value other than `managed`, or a table in a schema the contract no longer declares, the command refuses and names that foreign key. Before `8.0.0-rc.20`, both changes failed with `MIGRATION.PLANNING_FAILED`.
 
@@ -115,7 +120,7 @@ On PostgreSQL and SQLite, removing a member from an `enum` block is asked about 
 - If you renamed the member, answer with `--rename Status.ARCHIVED:Status.RETIRED`. The migration changes the stored value in every column and list that holds it.
 - To let the value go, answer with `--delete Status.ARCHIVED`. Optional columns that hold it are set to `NULL`, and lists lose it. A required column cannot take `NULL`, so while any of its rows hold the value, the apply fails with `MIGRATION.PRECHECK_FAILED` before it changes anything. The error counts those rows and says how to keep them.
 
-A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value is [a changed stored name](#a-changed-stored-name): the migration replaces the value in the rows and asks nothing. Two members that swap their stored values are refused; make the swap in two migrations through a value nothing uses. [Stored enum values](/orm/reference/migration-api#stored-enum-values) in the migration API reference shows the calls a migration uses.
+A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value is [a changed stored name](#a-changed-stored-name): the migration replaces the value in the rows and asks nothing. Two members that swap their stored values are refused; make the swap in two migrations through a value nothing uses. A member that takes the stored value of a member you remove is refused too; remove the old member in one migration and add the new one in the next. [Stored enum values](/orm/reference/migration-api#stored-enum-values) in the migration API reference shows the calls a migration uses.
 
 Native PostgreSQL enums (`pg.enum(...)`) are not affected. Before `8.0.0-rc.21`, PostgreSQL failed at apply when a row held the removed value, and SQLite planned nothing.
 
@@ -141,7 +146,7 @@ On MongoDB, changes inside documents are asked about too, since `8.0.0-rc.25`:
 
 A new required field inside a value object or an embedded model is not asked about: the migration gives it a temporary value in the objects that lack it. To write your own value, pass `--backfill Address.zip` and replace the placeholder in the migration with an aggregation expression, such as `{ $literal: 'unknown' }`.
 
-MongoDB applies operations one at a time, so a plan in which one operation writes a field, key or value that another operation of the same plan reads, such as two renames that trade names, is refused. The error advises you to make the change in two migrations.
+On MongoDB, make a change in two migrations when one part of it writes a field, key or value that another part reads, such as two renames that trade names. `migration plan` refuses such a change in one migration, because MongoDB applies the operations one at a time.
 
 On MongoDB, a field type change that can lose values is asked about, as on SQL, and it has two answers. `--delete User.age` casts the stored values with `$convert` and stops on a value it cannot cast. `--convert User.age` writes a data transform that holds `placeholder('User.age:update')`, which you replace with your own update document or aggregation pipeline; [MongoDB operations](/orm/reference/migration-api#mongodb-operations) shows the planned transform. A change such as `String` to `Boolean`, which `$convert` would get wrong, offers `--convert` only. A cast that keeps every value, such as `Int` to `BigInt`, is planned with nothing asked.
 

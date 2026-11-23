@@ -31,16 +31,16 @@ npx prisma db migrate --db "$DATABASE_URL"
 | `--advance-ref <name>` | After a successful run, points the named [ref](/cli/migration-ref) at the contract state the database now matches. Works with `--db` and in CI too. See [The `db` ref](#the-db-ref). |
 | `--no-advance-ref` | Changes no ref. Added in `8.0.0-rc.25`. Cannot be combined with `--advance-ref`. |
 | `--show` | Prints the migrations `db migrate` would run, and runs nothing. |
-| `--permit-policy-change` | With `--to <ref>`, checks the run against the ref's declared [policies](/orm/migrations/database-policies) and writes them into the database when it succeeds. Without it, a ref whose policies differ from the database's fails with `MIGRATION.POLICY_MISMATCH`. |
+| `--permit-policy-change` | With `--to <ref>`, checks the run against the ref's declared [policies](/orm/migrations/database-policies) and writes them into the database when it succeeds. Without it, a ref whose policies differ from the database's fails with `MIGRATION.POLICY_MISMATCH`. Pass it only when the owner of the database means to apply the ref's policies. |
 | `--from <contract>` | Use it with `--show`, where it sets the starting state for the preview. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
 ### The `db` ref [#the-db-ref]
 
-The `db` ref is the file `migrations/app/refs/db.json`. It records which contract your development database is at, and `migration plan` starts from it when you do not pass `--from`.
+The `db` ref is the file `migrations/app/refs/db.json`. It records which contract your development database is at, and `migration plan` starts from it when you do not pass `--from`. Commit it with your migrations, as you do every [ref file](/cli/migration-ref). When two branches both change it, git reports a conflict in the file: take either side, then run `db migrate`, which points the ref at your own database again, as [Merge both branches](/guides/database/schema-changes#33-merge-both-branches) shows.
 
-When you run `db migrate` with the connection from `prisma.config.ts`, and the command does not detect CI, it points the `db` ref at the contract the database is at after the run, as `db init` and `db update` do. In every other situation it leaves the `db` ref alone unless you pass `--advance-ref`:
+When you run `db migrate` with the connection from `prisma.config.ts`, and the command does not detect CI, it points the `db` ref at the contract the database is at after the run, as [`db init`](/cli/db-init) and [`db update`](/cli/db-update) do. In every other situation it leaves the `db` ref alone unless you pass `--advance-ref`:
 
 | Situation | Ref that `db migrate` updates |
 | --- | --- |
@@ -49,7 +49,7 @@ When you run `db migrate` with the connection from `prisma.config.ts`, and the c
 | `--db <url>` | None |
 | `--advance-ref <name>` | `<name>` |
 | `--no-advance-ref` | None |
-| The run ends at the empty contract, such as `--to @empty` | None. An existing `db` ref stays as it is, with the warning `MIGRATION.REF_NOT_ADVANCED_TO_EMPTY` |
+| The run ends at the empty contract, such as `--to @empty`, with the connection from `prisma.config.ts`, and without `--advance-ref` or `--no-advance-ref` | None. An existing `db` ref stays as it is, with the warning `MIGRATION.REF_NOT_ADVANCED_TO_EMPTY` |
 
 A ref cannot name the empty contract, so a run that ends there with `--advance-ref <name>` is refused with `MIGRATION.REF_TARGET_EMPTY` before it applies anything. Passing `--advance-ref` and `--no-advance-ref` together fails with `CLI.ADVANCE_REF_ARG_CONFLICT`.
 
@@ -84,7 +84,7 @@ npx prisma db verify --db "$DATABASE_URL"
 
 ```npm
 npx prisma db migrate --show
-npx prisma db migrate --show --from @contract --to production
+npx prisma db migrate --show --from @contract --to prod
 ```
 
 A `--from` that is not `@db` sets the starting state of your own migrations only. The preview starts every extension's migrations from an empty database, so it can list extension migrations your database has already run. To see exactly what a run against a database would do, preview without `--from`.
@@ -94,7 +94,7 @@ A `--from` that is not `@db` sets the starting state of your own migrations only
 If your project uses named [refs](/cli/migration-ref), apply up to a target ref:
 
 ```npm
-npx prisma db migrate --db "$DATABASE_URL" --to production
+npx prisma db migrate --db "$DATABASE_URL" --to prod
 ```
 
 Manage refs with [`migration ref`](/cli/migration-ref).

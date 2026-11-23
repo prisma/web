@@ -119,7 +119,7 @@ npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 
 A plain `orm init` offers the same setup when it finds a Prisma ORM 7 config, or a `prisma/schema.prisma` with a `datasource` block. The database target comes from the schema's `datasource` provider, and a `--target` that disagrees with it fails with `CLI.INIT_PRISMA7_TARGET_MISMATCH`.
 
-First, `orm init` installs `@prisma/orm-postgres`, `dotenv` and `pg`, adding them to `package.json` if they are not there yet, and uses the installed package to check that Prisma ORM 8 can read the schema. Apart from that install, it changes nothing until the check passes. A schema it cannot read, for example one with a `view` block, stops the command with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`, which lists each problem with its line and the Prisma ORM 7 edit that removes it, and gives the command that removes the packages it just added.
+First, `orm init` installs `@prisma/orm-postgres`, `dotenv` and `pg`, adding them to `package.json` if they are not there yet, and then checks that Prisma ORM 8 can read the schema. Apart from that install, it changes nothing until the check passes. A schema it cannot read, for example one with a `view` block, stops the command with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`, which lists each problem with its line and the Prisma ORM 7 edit that removes it, and gives the command that removes the packages it just added.
 
 When the check passes, `orm init` asks you to confirm by typing the name of the directory you run it in. In a script, where nobody can type, pass that name with `--confirm`, and add `--no-interactive` so that any other question takes its default answer. For a project in a directory named `my-app`:
 
@@ -178,7 +178,7 @@ In a script, pass `--yes` with `--target` and `--authoring` (see [Options](#opti
 npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
-`orm init` writes the project from the target package, so it installs that package, with `dotenv` and, on PostgreSQL, `pg`, before it writes any file. Its other installs run after the files are written. It has worked in this order since `8.0.0-rc.25`, and its exit code says how far it got:
+The exit code says how far `orm init` got. It installs the target package, with `dotenv` and, on PostgreSQL, `pg`, before it writes any file, and its other dependencies after the files are written. It has worked in this order since `8.0.0-rc.25`:
 
 | Code | What happened | What to do |
 | --- | --- | --- |
@@ -204,8 +204,8 @@ These are the common causes of exit code `2`. The [error reference](/orm/referen
 | [`CLI.UNEXPECTED`](/orm/reference/error-reference#CLI.UNEXPECTED) | `package.json` or `tsconfig.json` cannot be read, for example because of its file permissions. | None |
 | [`CLI.INIT_WRITE_FAILED`](/orm/reference/error-reference#CLI.INIT_WRITE_FAILED) | A file could not be written, for example because a directory is in its place or the disk is full. | The ones written before it, which the error lists in `filesWritten`. On a Prisma ORM 7 project, the old `prisma.config.ts` may also be renamed, which the error lists in `filesRenamed`. |
 | [`CLI.INIT_PROBE_FAILED`](/orm/reference/error-reference#CLI.INIT_PROBE_FAILED) | With `--probe-db --strict-probe`, the database check failed. | All of them |
-| [`CLI.INIT_TARGET_PACKAGE_NOT_INSTALLED`](/orm/reference/error-reference#CLI.INIT_TARGET_PACKAGE_NOT_INSTALLED) | The target package, such as `@prisma/orm-postgres`, cannot be found from the project: `--skip-install` was passed and the project does not have it, or it is still missing after the install, as under Yarn Plug'n'Play. The next action gives the install command. | None |
-| [`CLI.INIT_CONTRIBUTION_UNAVAILABLE`](/orm/reference/error-reference#CLI.INIT_CONTRIBUTION_UNAVAILABLE) | The installed target package has no `init` entrypoint that `orm init` can load. Write `prisma.config.ts` by hand, importing `defineConfig` from the package. | None; the package stays installed |
+| [`CLI.INIT_TARGET_PACKAGE_NOT_INSTALLED`](/orm/reference/error-reference#CLI.INIT_TARGET_PACKAGE_NOT_INSTALLED) | The target package, such as `@prisma/orm-postgres`, cannot be found from the project: `--skip-install` was passed and the project does not have it, or it is still missing after the install, as under Yarn Plug'n'Play. The error prints the command that installs it. | None |
+| [`CLI.INIT_CONTRIBUTION_UNAVAILABLE`](/orm/reference/error-reference#CLI.INIT_CONTRIBUTION_UNAVAILABLE) | The installed target package does not support `orm init`. Write `prisma.config.ts` by hand, importing `defineConfig` from the package. | None; the package stays installed |
 | [`CLI.INIT_AUTHORING_UNSUPPORTED`](/orm/reference/error-reference#CLI.INIT_AUTHORING_UNSUPPORTED) | `--authoring` names a way to write the contract that the target package does not offer. | None; the package stays installed |
 
 ## After initialization

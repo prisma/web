@@ -10,7 +10,7 @@ metaDescription: Learn how to reconcile a database with the current Prisma ORM c
 
 Like Prisma ORM 7's `db push`, use it when you want a database to match your contract and do not need a migration file for the change, for example on your development database while you try out a contract change.
 
-A database whose [change policy](/orm/migrations/database-policies) does not include `reconcile` refuses `db update` with `MIGRATION.CHANGE_POLICY_FORBIDS`. Its [data protection policy](/orm/migrations/database-policies#data-protection-policy) decides whether the update asks before it loses data or changes access, refuses, or goes ahead without asking.
+A database whose [change policy](/orm/migrations/database-policies) does not include `reconcile` refuses `db update` with `MIGRATION.CHANGE_POLICY_FORBIDS`. Its [data protection policy](/orm/migrations/database-policies#data-protection-policy) decides whether the update asks before it loses data or changes access, refuses, or goes ahead without asking. A database that records no policy allows `db update`, which then asks before it loses data or changes access.
 
 ## Usage
 
@@ -29,7 +29,7 @@ npx prisma db update --db "$DATABASE_URL"
 | `--delete <subject>` | Lets the update lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed, a field of a value object, or the rows of a variant. Repeatable. |
 | `--convert <Variant>` | On PostgreSQL and SQLite, rewrites the stored discriminator value of a variant whose value changed. Repeatable. |
 | `--allow <Model>` | Lets one operation change who can read or write the model's data. Repeatable. |
-| `--permit-policy-change` | With `--to <ref>`, checks the run against the ref's declared [policies](/orm/migrations/database-policies) and writes them into the database when it succeeds. Without it, a ref whose policies differ from the database's fails with `MIGRATION.POLICY_MISMATCH`. |
+| `--permit-policy-change` | With `--to <ref>`, checks the run against the ref's declared [policies](/orm/migrations/database-policies) and writes them into the database when it succeeds. Without it, a ref whose policies differ from the database's fails with `MIGRATION.POLICY_MISMATCH`. Pass it only when the owner of the database means to apply the ref's policies. |
 | `--advance-ref <name>` | After the update, points the named [ref](/cli/migration-ref) at the contract state the database now matches. Without it, `db update` points the `db` ref there when you leave out `--db`, and changes no ref when you pass `--db`. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
@@ -84,11 +84,12 @@ Some changes cannot be made in one step, and are refused with `MIGRATION.PLANNIN
 - two models or fields that trade tables or columns;
 - a model or field that moves to a name another one gives up in the same change;
 - a model or field that takes over the table or column of one the change removes;
-- enum members that trade stored values.
+- enum members that trade stored values;
+- an enum member that takes the stored value of a member the change removes.
 
-Make such a change in two steps, through a name nothing uses, such as `prisma_swap_users`, applied one after the other.
+Make each of these changes in two steps, applied one after the other. For a trade, or a name another one gives up, go through a name nothing uses, such as `prisma_swap_users`. For a takeover, first remove the model, field or enum member that holds the name, then add the new one in the second step. If that first step removes an enum member and you answer `--delete`, a required column cannot keep the rows that hold the member: delete those rows, or set them to a value the enum keeps, before the step is applied.
 
-On MySQL and MongoDB, these changes are planned as before. Before `8.0.0-rc.25`, a changed `@@map` was planned as dropping the table and creating an empty one, and asked for `--delete`.
+On MySQL and MongoDB, a changed stored name is handled as it was on every database before `8.0.0-rc.25`: a changed `@@map` is planned as dropping the table and creating an empty one, and asks for `--delete`.
 
 `db update` names each subject by model and field from the contract the database was last updated to, which it stores when it advances a ref. With `--db`, pass `--advance-ref <name>` on every run so that contract is stored for the next run. Without a stored contract, each subject is its storage name, and a run with `--rename` fails with `MIGRATION.STATEMENT_ORIGIN_UNKNOWN`. Adding `--advance-ref` to that run does not help, because the missing contract is the one the database is at before it. To store it, emit the contract the database is at, run `db update --advance-ref db --dry-run` with the same `--db`, and check that it plans no operations. Then run it again without `--dry-run`, which changes nothing in the database and stores the contract. Then emit the new contract and run the rename.
 
@@ -109,7 +110,7 @@ On PostgreSQL and SQLite, removing a member from an `enum` block is asked about 
 - If you renamed the member, answer with `--rename Status.ARCHIVED:Status.RETIRED`. The update changes the stored value in every column and list that holds it.
 - To let the value go, answer with `--delete Status.ARCHIVED`. Optional columns that hold it are set to `NULL`, and lists lose it. A required column cannot take `NULL`, so while any of its rows hold the value, the apply fails with `MIGRATION.PRECHECK_FAILED` before it changes anything. The error counts those rows and says how to keep them.
 
-A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value is [a changed stored name](#a-changed-stored-name): the update replaces the value in the rows and asks nothing. Two members that swap their stored values are refused; make the swap in two runs through a value nothing uses.
+A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value is [a changed stored name](#a-changed-stored-name): the update replaces the value in the rows and asks nothing. Two members that swap their stored values are refused; make the swap in two runs through a value nothing uses. A member that takes the stored value of a member you remove is refused too; remove the old member in one run and add the new one in the next.
 
 Native PostgreSQL enums (`pg.enum(...)`) are not affected. Before `8.0.0-rc.21`, PostgreSQL failed at apply when a row held the removed value, and SQLite planned nothing.
 

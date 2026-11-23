@@ -1321,7 +1321,8 @@ Update the matched row and return it, or `null` if none matches.
 
 #### Remarks
 
-- Available for PostgreSQL and MongoDB. Requires a prior `where()` (see the warning at the top of this section).
+- Available on every database. Requires a prior `where()` (see the warning at the top of this section).
+- Relation callbacks, which change related rows in the same call, work on PostgreSQL, SQLite, MySQL and MariaDB, but not on MongoDB. [Related rows](#update-related-rows) lists them.
 - On MongoDB, `update()` takes an object of field values, or a callback that returns field operations, such as `(p) => [p.content.set('Rewritten')]`. See [Field update operations](#field-update-operations).
 - On MongoDB, the update input covers the base model's fields only. Putting a field declared on a variant in the update, such as `duration` on `Tutorial`, makes TypeScript complain even though the update runs correctly. Put `// @ts-expect-error` on the line directly above the line TypeScript flags. When the complaint goes away, TypeScript reports the comment itself as unused, so delete it then. The same is true of `updateAll()` and `updateAndCount()`.
 
@@ -1331,7 +1332,6 @@ Update the matched row and return it, or `null` if none matches.
   ```
 
 - Take care on PostgreSQL: `update()` takes an object of field values only, and passing a function instead writes nothing, reports nothing, and returns `null`.
-- To change related rows in the same call, pass a relation callback for the relation field. [Related rows](#update-related-rows) lists the operations.
 - `update()` and `delete()` find the row by its primary key, or else by a unique key whose columns are all required. A unique key with a nullable column does not count, because two rows can both hold `NULL` in it. On a table with no other key, `update()`, `delete()`, and a write followed by `.include(...)` throw an error whose `code` is `ORM.ROW_IDENTITY_MISSING`. Give the table a primary key, or make the key's fields required. This rule applies since `8.0.0-rc.25`.
 - The discriminator field of a polymorphic model cannot be updated: setting it is a type error, and throws an error whose `code` is `ORM.FIELD_IMMUTABLE`.
 - On PostgreSQL, `update()` changes the row `first()` would return, so `orderBy()`, `offset()`, `cursor()`, `distinct()`, and `distinctOn()` choose it. After `limit(0)` it changes nothing and returns `null`.
@@ -1340,42 +1340,45 @@ Update the matched row and return it, or `null` if none matches.
 
 #### Related rows [#update-related-rows]
 
-On PostgreSQL, SQLite, and MySQL, the object you pass to `update()` can hold a callback for a relation field, such as `posts: (p) => ...`. The callback returns an operation on the related rows:
+On PostgreSQL, SQLite, MySQL and MariaDB, the object you pass to `update()` can hold a callback for a relation field, such as `posts: (p) => ...`. The callback returns an operation on the related rows:
 
 | Operation | Relation | What it changes |
 | --- | --- | --- |
+| `create({ ... })` | any | Creates a related row linked to this one. |
 | `connect(criteria)` | any | Points the foreign key at another row. On a many-to-many relation, adds a link. |
-| `disconnect()` | any | Sets the foreign key to `NULL`. On a many-to-many relation, removes the link and keeps both rows. |
+| `disconnect()`, `disconnect([criteria])` | any | Sets the foreign key to `NULL`. On a many-to-many relation, see the note below the table. |
 | `where(...).updateAll({ ... })`, `where(...).deleteAll()` | to-many | Every related row the filter matches. |
 | `where(...).update({ ... })`, `where(...).delete()` | to-many | The first related row the filter matches. |
 | `update({ ... })`, `delete()` | to-one | The linked row, narrowed by `where(...)` if you call it. |
 
-`update()` and `delete()` of one related row are available since `8.0.0-rc.25`. Each operation changes only rows related to the row you are updating, and `where(...)` takes everything the model's own `where()` takes, with chained `where` calls combined with AND.
+On a many-to-many relation, `disconnect([criteria])` removes the links to the rows that match the criteria and keeps the rows themselves. A bare `disconnect()` there is a type error, and throws an error whose `code` is `ORM.ARGUMENT_INVALID`, because it does not say which links to remove.
+
+`updateAll()`, `deleteAll()`, `update()` and `delete()` change only rows that are already related to the row you are updating. `update()` and `delete()` of one related row are available since `8.0.0-rc.25`. `connect(criteria)` works differently: it links whichever rows match the criteria, so `posts: (p) => p.connect({ id: postId })` moves that post to this user even when it belongs to another user. `where(...)` takes everything the model's own `where()` takes, and chained `where` calls are combined with AND.
 
 `connect()` and `disconnect()`:
 
 - On a relation whose foreign key is required, `disconnect()` is a type error. At runtime it throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED` with `meta.reason` `'required-foreign-key'` before any statement runs. Use `connect()` to another row, or delete the row.
 - On a many-to-one relation, such as `Post.user`, `disconnect([criteria])` unlinks the row only when the linked row matches the criteria, and `disconnect([])` disconnects nothing. Before `8.0.0-rc.25`, the criteria were ignored on a many-to-one relation, and an empty list acted like `disconnect()`.
 - On a many-to-many relation, `connect()` does not work on MySQL yet: it throws an error whose `code` is `RUNTIME.AST_UNSUPPORTED`.
-- An update with such a callback finds its row by the filter alone, so on a collection with an `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()` it throws an error whose `code` is `ORM.ARGUMENT_INVALID`.
+- An `update()` that holds a relation callback cannot follow `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()`. It throws an error whose `code` is `ORM.ARGUMENT_INVALID`.
 
 `updateAll()` and `deleteAll()`:
 
 - They need a to-many relation. On a to-one relation, such as `Post.user`, they throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED`.
 - On a many-to-many relation, the related rows are the ones linked to the row through the join table. There, `deleteAll()` deletes the related rows themselves, not only the links, so a tag that another post also uses is gone for that post too.
-- `deleteAll()` does not delete the join table's rows: the foreign key's delete action decides. A key that cascades removes them. With a key that has no delete action or restricts the delete, the database rejects the delete and the whole update is rolled back.
+- The rows in the join table itself, which hold the links, are not deleted by `deleteAll()`: the delete action of the join table's foreign key decides what happens to them. A key that cascades removes them. With a key that has no delete action or restricts the delete, the database rejects the delete and the whole update is rolled back.
 
 `update()` and `delete()` of one related row:
 
 - On a to-many relation, they need `where(...)` first. Without it they are a type error, and throw an error whose `code` is `ORM.ARGUMENT_INVALID`.
 - When no related row matches, nothing changes and nothing is thrown.
-- On a many-to-one relation, such as `Post.user`, `delete()` sets the row's foreign key to `NULL` and then deletes the related row. When that foreign key is required, `delete()` is a type error, and throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED` with `meta.reason` `'required-foreign-key'`.
+- On a many-to-one relation, such as `Post.user`, `delete()` deletes the linked row. For `user: (u) => u.delete()` on a post, it sets the post's `userId` to `NULL` and then deletes that user. When that foreign key is required, `delete()` is a type error, and throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED` with `meta.reason` `'required-foreign-key'`.
 
 Rules for every relation callback:
 
-- Set a foreign key of the row, such as `userId`, or pass a callback on its relation, such as `user`, but not both. Data that does both throws an error whose `code` is `ORM.ARGUMENT_INVALID` before any statement runs. Before `8.0.0-rc.25` both ran, and a `create`, `connect` or `disconnect` callback overwrote the foreign key.
+- In `update()`, set a foreign key of the row, such as `userId`, or pass a callback on its relation, such as `user`, but not both. `update()` data that does both throws an error whose `code` is `ORM.ARGUMENT_INVALID` before any statement runs. Before `8.0.0-rc.25` both ran, and a `create`, `connect` or `disconnect` callback overwrote the foreign key.
 - A callback in `create()` or `update()` can return an array of operations, which run in the order you list them. The example under "Update and delete filtered related rows" below returns two.
-- In `create()`, the operations are `create` and `connect`. The others throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED` there.
+- A relation callback in `create()` data takes only `create` and `connect`. The other operations in the table throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED` there.
 - A to-one relation, such as `Post.user`, takes at most one operation. An array of two or more throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED` before any statement runs.
 - An empty array changes nothing. An array inside the array, or an element that is not an operation, throws an error whose `code` is `ORM.ARGUMENT_INVALID`.
 
@@ -1385,7 +1388,7 @@ Rules for every relation callback:
 |---|---|---|---|
 | The changes | Object of field values, or on MongoDB a field-operations callback | Yes | What to set on the matched row, passed as the only argument. There is no `data` wrapper. |
 
-On PostgreSQL that object can also carry `connect` or `disconnect` for a related row, as shown below.
+On PostgreSQL, SQLite, MySQL and MariaDB, that object can also hold relation callbacks, as [Related rows](#update-related-rows) shows.
 
 #### Return type
 
@@ -2426,7 +2429,7 @@ Use `Shape` to declare a function's return type once, and TypeScript checks the 
 
 ### `AsyncIterableResult`
 
-The methods `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `AsyncIterableResult`. You can use it two ways:
+The methods `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `AsyncIterableResult`, which you can read all at once or one row at a time:
 
 - `await` the result (or call `.toArray()`) to get every row in one array.
 - Loop over it with `for await ... of` to take rows one at a time.
