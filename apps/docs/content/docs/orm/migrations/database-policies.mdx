@@ -1,12 +1,12 @@
 ---
 title: Database policies
-description: 'A database can record how it may change and what data it protects. Every command that changes it obeys those policies.'
+description: 'A database can record how it may change and what data it protects. db migrate, db update and db sign obey those policies.'
 url: /orm/migrations/database-policies
 metaTitle: Database change and data protection policies in Prisma ORM
 metaDescription: 'How a database records a change policy (migrations, db update, or both) and a data protection policy (data loss and access changes), how a ref declares them, and how db migrate, db update and migration plan enforce them.'
 ---
 
-Database policies are rules stored in a database about how Prisma ORM may change it. Use them to protect a database such as production from a command run by mistake: for example, a production database can record that it changes only through reviewed migrations, and that no change may drop data. Every Prisma ORM command that changes the database reads its policies first, and refuses to do what they forbid.
+Database policies are rules stored in a database about how Prisma ORM may change it. Use them to protect a database such as production from a command run by mistake: for example, a production database can record that it changes only through reviewed migrations, and that no change may drop data. `db migrate`, `db update` and `db sign` read the database's policies first, and refuse to do what they forbid.
 
 A database can record two policies:
 
@@ -114,7 +114,7 @@ If the ref is wrong, correct it. If the owner of the database means to change it
 npx prisma db migrate --to prod --permit-policy-change --db "$DATABASE_URL"
 ```
 
-With `--permit-policy-change`, the run is checked against the ref's policies, and writes them into the database when it succeeds. A failed run leaves the old policies in place, and a run with no pending migration writes only the policies. When the ref's policies already match the database's, or the ref declares none, the flag writes nothing. The flag needs `--to` with a ref name; without one, the command fails with `CLI.INVALID_ARGUMENTS`.
+With `--permit-policy-change`, the run is checked against the ref's policies, and writes them into the database when it succeeds. A run with no pending migration writes only the policies. On PostgreSQL, SQLite and MySQL the policies are written in the run's transaction, so a failed run leaves the old ones in place. MongoDB has no such transaction: it writes the policies with the record of the contract the database reaches, after the last migration, and a run that fails after that write keeps the new policies. After a failed run on MongoDB, run the `migration status` command above to see which policies the database has. When the ref's policies already match the database's, or the ref declares none, the flag writes nothing. The flag needs `--to` with a ref name; without one, the command fails with `CLI.INVALID_ARGUMENTS`.
 
 Pass the flag only on the run where the owner means to apply the ref's policies, not on every run of a deploy pipeline. A pipeline that always passes it would write any later change to the ref's `policies` into the database, including one that loosens them, without anyone agreeing to it. So after a change to a ref's `policies` is merged, the owner runs the command above once, by hand or as a one-off job. Until then, the pipeline's `db migrate --to prod` fails with `MIGRATION.POLICY_MISMATCH` and changes nothing. From then on the policies match, and the pipeline's usual `db migrate --to prod` passes the check without the flag.
 
