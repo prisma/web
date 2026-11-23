@@ -10,10 +10,10 @@ Section 1 lists passages that make the reader do something extra, avoid somethin
 
 Will, 2026-11-22: the docs must never work around a defect in a Prisma tool; the tool gets fixed. The rule is in `apps/docs/AGENTS.md` since prisma/web#8893 (merged 2026-11-22). Each docs passage below is removed when a release contains its fix.
 
-| Entry | Fix | State on 2026-11-22 |
+| Entry | Fix | State on 2026-11-24 |
 | --- | --- | --- |
-| O1, and most of O2, O11, P3 | prisma/orm#31169: `db migrate` advances the `db` ref when the connection comes from the config and CI is not detected | open, waiting for Will's approval |
-| O3, O4, parts of O8 and O13 | prisma/orm#31174: every `migration plan` the CLI prints is one that runs (after #31130 fixed the first case) | open, waiting for Will's approval |
+| O1, and most of O2, O11, P3 | prisma/orm#31169: `db migrate` advances the `db` ref when the connection comes from the config and CI is not detected | merged 2026-11-23, in `v8.0.0-rc.25`. Docs passages not yet removed. |
+| O3, O4, parts of O8 and O13 | prisma/orm#31174: when the CLI tells you to run `migration plan`, the command it prints works (after #31130 fixed the first case) | merged 2026-11-23, in `v8.0.0-rc.25`. Docs passages not yet removed. Its description lists what it does not fix. |
 
 Not started: every other entry. Before starting one in prisma/orm, check current `main`: other sessions are fixing defects there too. Waiting for Will: whether the Prisma ORM 8 CLI gets a `studio` command (C1), and how to route the 67 entries outside prisma/orm. Follow-up noted during review: ADR 267 line 77 in prisma/orm tells readers to migrate "each existing database" with `--advance-ref db`, which conflicts with the rule that the `db` ref follows only the development database.
 
