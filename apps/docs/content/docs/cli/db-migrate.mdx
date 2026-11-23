@@ -113,23 +113,23 @@ You edited the contract, ran `contract emit`, and then ran `db migrate`. The tar
 
 ```text
 ✘ [MIGRATION.PATH_UNREACHABLE] Current contract has no planned migration path
-  why: No migration edge connects the current state "<current hash>" to the target "<target hash>" in contract space "app".
-→ Plan the missing edge: prisma migration plan --from <current hash> --to <target hash> --name <slug>
-→ Apply it: prisma db migrate --to <target hash>
+  why: No migration edge connects "<current hash>" to the target "<target hash>" in contract space "app". The on-disk migration graph does not join the two, and migrate replays existing edges — it never invents one.
+→ Plan the missing edge: prisma migration plan --from <current hash>
+→ Apply it: prisma db migrate --db <url>
 ```
 
-Do not run the commands as the error prints them. Its [`migration plan`](/cli/migration-plan) command fails with `MIGRATION.REF_NOT_FOUND`, because `--to` only accepts a contract that a migration already produces, and its `db migrate --to` command fails with `MIGRATION.PATH_UNREACHABLE` again until the migration is planned. Run `migration plan` without `--to`, with the current hash from the error and a name for the migration, then apply the result. The first seven characters of the hash are enough:
+Run the two commands the error prints, with `npx` in front of each and your connection string in place of `<url>`. The first, [`migration plan`](/cli/migration-plan), writes the missing migration, and the second applies it. Add `--name` to the first command to name the new migration's directory, whose name otherwise ends in `_migration`:
 
 ```npm
 npx prisma migration plan --from <current hash> --name add-phone
 npx prisma db migrate --db "$DATABASE_URL"
 ```
 
-Without `--to`, `migration plan` plans up to the contract you just emitted.
+The printed `migration plan` has no `--to`, because without one it plans up to the contract you just emitted.
 
 ### You passed `--to` with an earlier migration
 
-`db migrate` cannot run a migration backwards. To take the database back, you plan a new migration that undoes the later ones. The error is the same as above. Here the two commands it suggests work as printed, because a migration already produces each of the two states. Put `npx` in front of each:
+`db migrate` cannot run a migration backwards. To take the database back, you plan a new migration that undoes the later ones. The error is the same as above, and its two commands also run as printed, with the earlier state as their `--to`. Put `npx` in front of each:
 
 ```npm
 npx prisma migration plan --from <current hash> --to <target hash> --name undo-phone
