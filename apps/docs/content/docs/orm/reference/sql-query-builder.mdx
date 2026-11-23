@@ -182,7 +182,7 @@ Reduce each row to a chosen set of columns or computed expressions.
 
 #### Options
 
-`select()` has three forms:
+`select()` takes column names, an aliased expression, or an object of aliased expressions:
 
 | Form | Signature | Description |
 |---|---|---|
@@ -967,6 +967,10 @@ These exist on every database:
 
 For `in()` and `notIn()`, `values` is an array or a subquery. All four of `in()`, `notIn()`, `exists()`, and `notExists()` take a select query that you do not call `build()` on.
 
+A value you compare with a column must have the column's type. For an enum column typed `'human' | 'agent'`, `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in` and `notIn` accept only those members, so a misspelled member, a plain `string` or a `string[]` is a type error. Narrow the value first, for example by checking it against the enum's members. The same holds for any other column whose TypeScript type allows only some of the values Prisma ORM reads and writes for it.
+
+Old rows can still hold a value the enum no longer lists, such as a member you removed. To match such a value, compare through [`fns.raw`](#fnsraw-and-returns), which takes any value of the type the enum is stored as, such as any `string` for an enum stored as text. Before `8.0.0-rc.25`, the comparison functions also accepted any such value.
+
 ```ts
 const named = db.sql.public.user
   .select('id', 'email')
@@ -997,7 +1001,7 @@ Which aggregate functions exist depends on your database, and PostgreSQL gives y
 | `min(field)` | The input column's own type. A `varchar` column gives a `String` (`text`) |
 | `max(field)` | The input column's own type. A `varchar` column gives a `String` (`text`) |
 
-On PostgreSQL, `fns` also has `ilike(expr, pattern)`, a case-insensitive SQL `LIKE` match for text columns, as in `fns.ilike(f.displayName, '%alice%')`. There is no `fns.like`, so write a case-sensitive `LIKE` in a [`fns.raw`](#fnsraw-and-returns) fragment that returns a boolean:
+On PostgreSQL, `fns` also has `ilike(expr, pattern)`, a case-insensitive SQL `LIKE` match for text columns, nullable ones included, as in `fns.ilike(f.displayName, '%alice%')`. There is no `fns.like`, so write a case-sensitive `LIKE` in a [`fns.raw`](#fnsraw-and-returns) fragment that returns a boolean:
 
 ```ts title="src/find-users.ts"
 const plan = db.sql.public.user

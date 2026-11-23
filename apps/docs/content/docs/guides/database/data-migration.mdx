@@ -64,12 +64,12 @@ model Post {
 }
 ```
 
-Emit the contract, plan the first migration, and apply it. `--advance-ref db` records where your development database is, so the next `migration plan` knows what to diff against:
+Emit the contract, plan the first migration, and apply it. `db migrate` also records where your development database is, in the `db` ref, so the next `migration plan` knows what to diff against:
 
 ```npm
 npx prisma contract emit
 npx prisma migration plan --name init
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -283,7 +283,7 @@ Commit `migration.ts`, `ops.json`, and `migration.json` together. Recompiling st
 Apply it to your development database. On PostgreSQL the whole run is one transaction, so the column, the constraint, and the backfill land together or not at all:
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -398,7 +398,7 @@ ALTER TABLE "public"."Post" DROP COLUMN "published";
 Nothing to edit this time. Apply it:
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -477,7 +477,7 @@ Do not use `db update` for this change. It reconciles the database with the cont
 
 :::note
 
-If `migration plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`, the `db` ref is missing. That happens when you applied a migration with plain `db migrate`. Either re-run `npx prisma db migrate --advance-ref db`, or pass `--from <migration-dir>` to the plan.
+If `migration plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`, the `db` ref is missing. That happens when you applied the migrations with `--db`, in CI, or with a release before `8.0.0-rc.25`. Point the ref at the last migration your database applied, with `npx prisma migration ref set db <migration-dir>`, or pass `--from <migration-dir>` to the plan.
 
 :::
 
@@ -502,11 +502,11 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Perform an expand-and-contract migration with Prisma ORM, following https://www.prisma.io/docs/guides/database/data-migration.md.
 
-1. In a project with a `Post` model that has a `published Boolean @default(false)` field, make sure Prisma ORM is set up (`npx prisma@latest orm init --yes --target postgres --authoring psl` if it is not), `DATABASE_URL` is in `.env`, and the current contract is applied as a migration (`npx prisma contract emit`, `npx prisma migration plan --name init`, `npx prisma db migrate --advance-ref db`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
+1. In a project with a `Post` model that has a `published Boolean @default(false)` field, make sure Prisma ORM is set up (`npx prisma@latest orm init --yes --target postgres --authoring psl` if it is not), `DATABASE_URL` is in `.env`, and the current contract is applied as a migration (`npx prisma contract emit`, `npx prisma migration plan --name init`, `npx prisma db migrate`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
 2. Expand: add `enum Status { @@type("pg/text@1") Draft = "Draft" InProgress = "InProgress" InReview = "InReview" Published = "Published" }` and `status Status @default(Draft)` to `Post`. Keep `published`. Run `contract emit` and `migration plan --name add_status`.
-3. Open the planned `migration.ts`. Above the class, add `const { sql: db, contract } = postgres({ contract: contractFromJson<End>(endContract) });`, importing `postgres` from `@prisma/orm-postgres/runtime` and `contractFromJson` from `@prisma/orm-postgres/static`, and append a `this.dataTransform(contract, 'backfill-post-status', { check, run })` operation whose queries use `db`: `check` selects `id` from `Post` where `published = true AND status != 'Published'` with `limit(1)`, `run` updates those rows to `status = 'Published'`. Recompile with `node <migration-dir>/migration.ts`, confirm `ops.json` contains a `data` operation, then apply with `npx prisma db migrate --advance-ref db`. Verify with a query that every row with `published = true` now has `status = 'Published'`.
+3. Open the planned `migration.ts`. Above the class, add `const { sql: db, contract } = postgres({ contract: contractFromJson<End>(endContract) });`, importing `postgres` from `@prisma/orm-postgres/runtime` and `contractFromJson` from `@prisma/orm-postgres/static`, and append a `this.dataTransform(contract, 'backfill-post-status', { check, run })` operation whose queries use `db`: `check` selects `id` from `Post` where `published = true AND status != 'Published'` with `limit(1)`, `run` updates those rows to `status = 'Published'`. Recompile with `node <migration-dir>/migration.ts`, confirm `ops.json` contains a `data` operation, then apply with `npx prisma db migrate`. Verify with a query that every row with `published = true` now has `status = 'Published'`.
 4. Update application code to read and write `status` instead of `published`.
-5. Contract: remove `published` from the contract, run `contract emit`, `migration plan --name drop_published --delete Post.published`, review the destructive warning, and apply with `npx prisma db migrate --advance-ref db`.
+5. Contract: remove `published` from the contract, run `contract emit`, `migration plan --name drop_published --delete Post.published`, review the destructive warning, and apply with `npx prisma db migrate`.
 6. For the production database, apply only the expand migration first: `npx prisma db migrate --db "$PRODUCTION_DATABASE_URL" --to <timestamp>_add_status`. Deploy the code that uses `status`. The old code writes `published` only, so ask me whether writes were paused between the first command and the deploy; if they were not, stop and show me the posts whose `status` and `published` disagree, and do not run the next command until I say how to settle them. Once nothing reads or writes `published`, apply the contract migration with `npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"`. Add `--show` to either command to preview the route first. Do not use `db update` against production.
 ```
 

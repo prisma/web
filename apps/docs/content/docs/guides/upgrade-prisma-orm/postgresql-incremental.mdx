@@ -21,7 +21,7 @@ This guide covers **PostgreSQL only**, and guidance for other databases will fol
 
 :::info
 
-Step 2.1 installs the latest Prisma ORM 8 packages. This guide was written for the Prisma ORM 8 CLI as of `8.0.0-rc.34` and `@prisma/orm-postgres` as of `8.0.0-rc.24`. The two packages have separate version numbers. The Prisma ORM 7 side of the app stays at `7.10.1` throughout.
+Step 2.1 installs the latest Prisma ORM 8 packages. This guide was written for the Prisma ORM 8 CLI as of `8.0.0-rc.34` and `@prisma/orm-postgres` as of `8.0.0-rc.25`. The two packages have separate version numbers. The Prisma ORM 7 side of the app stays at `7.10.1` throughout.
 
 :::
 
@@ -59,7 +59,7 @@ Write `prisma@latest`, because before this phase `npx prisma` runs version 7. Th
 
 Then continue with step 2.5. `orm init` has already added `"resolveJsonModule": true` to `tsconfig.json`, and it may have set `module` to `preserve`, so check `module` against the cases in step 2.5. In the CommonJS case, the `with { type: "json" }` to remove is in `src/prisma/db.ts`. An `include` that covers `src/**/*.ts` already sees `src/prisma/contract.d.ts`. In phase 3, import the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
 
-The command does not work yet if the `datasource` block lists `citext`, `vector`, `postgis` or `pg_search` in `extensions = [...]`, or a field uses `@db.Citext`. It then stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. By then it has installed `@prisma/orm-postgres` and `dotenv` and changed nothing else. Keep both packages, and do phase 1 and steps 2.1 to 2.4 by hand.
+The command does not work yet if the `datasource` block lists `citext`, `vector`, `postgis` or `pg_search` in `extensions = [...]`, or a field uses `@db.Citext`. It then stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. By then it has installed `@prisma/orm-postgres`, `dotenv` and `pg` and changed nothing else. Keep the packages, and do phase 1 and steps 2.1 to 2.4 by hand.
 
 ### 1.1. Confirm the application works
 
@@ -235,11 +235,11 @@ npx prisma7 migrate status
 ### 2.1. Install the Prisma ORM 8 packages
 
 ```npm
-npm install --save-dev prisma@latest
-npm install @prisma/orm-postgres
+npm install --save-dev prisma@latest @types/pg
+npm install @prisma/orm-postgres pg
 ```
 
-`prisma@latest` is the Prisma ORM 8 CLI, and its `prisma/config` subpath provides `definePrismaConfig` for the Prisma ORM 8 config file. Installing it locally (not only running it through `npx`) is what makes that import resolve. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import.
+`prisma@latest` is the Prisma ORM 8 CLI, and its `prisma/config` subpath provides `definePrismaConfig` for the Prisma ORM 8 config file. Installing it locally (not only running it through `npx`) is what makes that import resolve. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import. It takes `pg` 8.22 or newer as a peer dependency, so your app declares the driver, and `@types/pg` 8.20 or newer for TypeScript.
 
 After this install, `npx prisma <command>` runs the Prisma ORM 8 CLI and `npx prisma7 <command>` runs Prisma ORM 7:
 
@@ -247,7 +247,7 @@ After this install, `npx prisma <command>` runs the Prisma ORM 8 CLI and `npx pr
 npx prisma --version
 ```
 
-**Expected result:** the command prints `8.0.0-rc.34` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
+**Expected result:** the command prints `8.0.0-rc.35` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
 
 From now on, a Prisma ORM 7 command run through `prisma`, such as `npx prisma migrate dev` in a script you missed in step 1.4, stops with `CLI.V7_COMMAND`. The message names the Prisma ORM 8 commands that replace it and tells you to keep Prisma ORM 7 as `@prisma/prisma7`, which step 1.2 did, so run it as `prisma7 migrate dev` instead.
 
@@ -524,7 +524,7 @@ Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `
   "scripts": {
     "prisma7:generate": "prisma7 generate",
     "prisma7:migrate": "prisma7 migrate dev", // [!code --]
-    "prisma8:migrate": "prisma db migrate --advance-ref db" // [!code ++]
+    "prisma8:migrate": "prisma db migrate" // [!code ++]
   }
 }
 ```
@@ -548,11 +548,11 @@ Emit, plan, and apply:
 ```npm
 npx prisma contract emit
 npx prisma migration plan --name add_user_bio
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 npx prisma db verify
 ```
 
-**Expected result:** `migration plan` reports `Planned baseline (6 operation(s)) + 1 operation(s)`, with your own number for the baseline, and writes two packages under `migrations/app/`: a baseline that records the schema you adopted in step 4.1, and `add_user_bio` with the single operation `Add column "bio" to "User"`. `db migrate` skips the baseline, because the marker already records that state, and applies `add_user_bio`. `--advance-ref db` points the `db` ref at the new contract, so the next plan starts from it, and `db verify` reports that marker and schema match the contract.
+**Expected result:** `migration plan` reports `Planned baseline (6 operation(s)) + 1 operation(s)`, with your own number for the baseline, and writes two packages under `migrations/app/`: a baseline that records the schema you adopted in step 4.1, and `add_user_bio` with the single operation `Add column "bio" to "User"`. `db migrate` skips the baseline, because the marker already records that state, and applies `add_user_bio`. `db migrate` points the `db` ref at the new contract, so the next plan starts from it, and `db verify` reports that marker and schema match the contract.
 
 Restart the app: the Prisma ORM 8 route returns users with `bio`, and the Prisma ORM 7 route keeps working untouched. The Prisma ORM 7 client learns about the new column only when you run `npm run prisma7:generate`, which reads the same `schema.prisma`. Additive changes like nullable columns are safe next to legacy Prisma ORM 7 code. Be careful with renames or drops of columns that Prisma ORM 7 routes still read.
 

@@ -135,7 +135,7 @@ Set `contract` to a glob, such as `"./src/prisma/**/*.prisma"`, to write the con
 
 Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`.
 
-On PostgreSQL, `Int`, `BigInt`, `Float`, `Decimal`, `String`, `Boolean` and `Bytes` are convenience types, named for what the field means. Each becomes one explicit type, which is named after the database type and sets the column and the kind of value your code reads. Written bare, each gives the type in the first row for it below. For `Int`, `BigInt`, `Float` and `String`, the `storage` argument chooses another column. `Decimal`, `Boolean` and `Bytes` have only the one column shown. `as` chooses what your code reads from a `BigInt`:
+On PostgreSQL, `Int`, `BigInt`, `Float`, `Decimal`, `String`, `Boolean`, `Bytes` and `Json` are convenience types, named for what the field means. Each becomes one explicit type, which is named after the database type and sets the column and the kind of value your code reads. Written bare, each gives the type in the first row for it below. For `Int`, `BigInt`, `Float`, `String` and `Json`, the `storage` argument chooses another column. `Decimal`, `Boolean` and `Bytes` have only the one column shown. `as` chooses what your code reads from a `BigInt`:
 
 | Written | Becomes | Column | Your code reads |
 | --- | --- | --- | --- |
@@ -152,10 +152,28 @@ On PostgreSQL, `Int`, `BigInt`, `Float`, `Decimal`, `String`, `Boolean` and `Byt
 | `String(storage: char)` | `Char` | `char` | a `string` |
 | `Boolean` | `Bool` | `bool` | a `boolean` |
 | `Bytes` | `Bytea` | `bytea` | a `Uint8Array` |
+| `Json` | `PlainJson` | `json` | a JSON value |
+| `Json(storage: jsonb)` | `Jsonb` | `jsonb` | a JSON value |
 
-`Decimal` also takes `precision` and `scale`, and `String` with `storage: varchar` or `storage: char` takes `length`, as in `Decimal(precision: 10, scale: 2)` and `String(storage: varchar, length: 35)`. Write these three by name, because a positional argument fills `storage` first: `Decimal(10, 2)` is refused at `storage`. `String(length: 35)` is refused too, because a bare `String` is a `text` column, which has no length. The contract stores only the explicit type, so you can also write the explicit type itself, such as `Int2`, `Varchar(35)` or `NumericString(10, 2)`.
+`Decimal` also takes `precision` and `scale`, and `String` with `storage: varchar` or `storage: char` takes `length`, as in `Decimal(precision: 10, scale: 2)` and `String(storage: varchar, length: 35)`. Write `precision`, `scale` and `length` by name, because a positional argument fills `storage` first: `Decimal(10, 2)` is refused at `storage`. `String(length: 35)` is refused too, because a bare `String` is a `text` column, which has no length. The contract stores only the explicit type, so you can also write the explicit type itself, such as `Int2`, `Varchar(35)` or `NumericString(10, 2)`.
 
-You can also use one of these PostgreSQL types as the field type: `Uuid`, `Inet`, `Bit`, `Varbit`, `Xml`, `Oid`, `Money`, or one of the date and time types below. `Bit(8)` and `Varbit(64)` set a length, and `TimestamptzTemporal(3)` or `DateTime(precision: 6)` sets how many digits of a second are kept. Write each length, precision and scale as a whole number without quotes: `Varchar("35")` and `Varchar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Xml` reads and writes text and has no equality, so no filter can compare it. `Oid` reads a whole number from 0 to 4294967295. `Money` reads a decimal string with two fraction digits, such as `"-1234.56"`, whatever the database's locale.
+You can also use one of these PostgreSQL types as the field type: `Uuid`, `Inet`, `Bit`, `Varbit`, `Xml`, `Oid`, `Money`, or one of the date and time types below. `Bit(8)` and `Varbit(64)` set a length, and `TimestamptzTemporal(3)` or `DateTime(precision: 6)` sets how many digits of a second are kept. Write each length, precision and scale as a whole number without quotes: `Varchar("35")` and `Varchar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Xml` reads and writes text and has no equality, so no filter can compare it. `Oid` reads a whole number from 0 to 4294967295. `Money` reads a decimal string with two fraction digits, such as `"-1234.56"`.
+
+PostgreSQL prints a `money` value in the format of the locale its `lc_monetary` setting names, and Prisma ORM reads only the `C` format. So before you use a `Money` field, check that `lc_monetary` is `C`, `POSIX` or `en_US` for the role your app connects as. Run this as that role, outside Prisma ORM:
+
+```sql
+SHOW lc_monetary;
+```
+
+If it shows another locale, check whether your app wrote `Money` values under it since you upgraded to `8.0.0-rc.25`. Releases before `8.0.0-rc.25` set `lc_monetary` to `C` on their own connections, so the values they wrote are stored correctly. Under a locale with no or three fraction digits, such as `ja_JP`, PostgreSQL stored each value in that locale's units, so `1234.56` was stored as 1235. After the change those rows read back 100 times too small, or 10 times too large under a three-digit locale, with no error, so correct them before you change the setting. Then change it for the role:
+
+```sql
+ALTER ROLE <role> SET lc_monetary = 'C';
+```
+
+The new setting applies only to connections opened after the change, so restart your app, and behind a connection pooler wait until it replaces its connections. Then run `SHOW lc_monetary` again on a new connection, through the pooler if your app uses one, and use the field once it prints one of those locales.
+
+Under any other locale, reading a `Money` field fails with [`RUNTIME.LC_MONETARY_NOT_C`](/orm/reference/error-reference#RUNTIME.LC_MONETARY_NOT_C). So does a write that returns its row, such as `create()`, but only after PostgreSQL has run it, so a write that is a single statement outside a transaction is already stored. A `create()` with nested writes, or of a variant stored in its own table, runs in a transaction that Prisma ORM opens. In that transaction, or in one you open yourself, an error you do not catch rolls back the writes, so nothing is stored. Under a locale with no or three fraction digits, such as `ja_JP`, a write also stores a wrong amount. Before `8.0.0-rc.25`, Prisma ORM set `lc_monetary` on its own connections, which a pooled Prisma Postgres connection string refused.
 
 The names `SmallInt`, `BigIntNumber`, `Numeric`, `UnboundedInt`, `Real`, `VarChar` and `VarBit` are deprecated. They still work and give the same contract, but `contract emit` and the editor report the warning `PSL_DEPRECATED_SCALAR_NAME` where one is written, and they will be removed. Write the convenience type that gives the same type instead. `VarBit` has no convenience type, so write the explicit type `Varbit`:
 
@@ -168,6 +186,10 @@ The names `SmallInt`, `BigIntNumber`, `Numeric`, `UnboundedInt`, `Real`, `VarCha
 | `Real` | `Float(storage: float4)` |
 | `VarChar(12)` | `String(storage: varchar, length: 12)` |
 | `VarBit(16)` | `Varbit(16)` |
+
+On every SQL database, write a text column with a length as `sql.Varchar(n)`. It was written `sql.String(n)` before `8.0.0-rc.25`, and the old name still works, but it reports `PSL_DEPRECATED_SCALAR_NAME`, because `String` is now the convenience type for text.
+
+The same convenience types work on the other databases, each choosing that database's explicit type. On SQLite, `Int` is `IntegerNumber`, `BigInt` is `IntegerBigInt`, `Float` is `Real`, `Decimal` is `DecimalString`, `String` is `Text`, `Boolean` is `IntegerBoolean`, `Bytes` is `Blob` and `Json` is `PlainJson`. On MongoDB, `Int` is `Int32`, `BigInt` is `Int64BigInt`, `Float` is `Double`, `Decimal` is `Decimal128`, `Boolean` is `Bool`, `Bytes` is `Binary`, `String` is `BsonString` and `Json` is `PlainJson`. On MySQL and MariaDB, `Float`, `Decimal`, `Boolean`, `Bytes` and `Json` are available since `8.0.0-rc.25`.
 
 On PostgreSQL, a date or time field is written with one of four types named for what the field means. Each becomes one explicit type, which names the column and the kind of value your code reads. At their defaults they need no `Temporal`:
 
@@ -514,7 +536,7 @@ These members are refused:
 - A `mongo/int32@1` or `mongo/int64@1` member written with a fraction, such as `1.0`. Write `1`.
 - A `mongo/decimal128@1` member that a Decimal128 would round, such as one with more than 34 significant digits. It is read as a Double, so the error is `PSL_VALUE_TYPE_INCOMPATIBLE`.
 
-Do not use an enum on an Int64, Date, Decimal128, Binary or ObjectId type, or a Double enum with a `NaN` or infinite member, such as `Ratio` above. You can declare it, but it is refused when a collection Prisma ORM manages uses it, because the validator Prisma ORM writes for each collection cannot list those members.
+Do not use an enum on a BigInt, Date, Decimal128, Binary or ObjectId type, or a Double enum with a `NaN` or infinite member, such as `Ratio` above. You can declare it, but it is refused when a collection Prisma ORM manages uses it, because the validator Prisma ORM writes for each collection cannot list those members.
 
 Before `8.0.0-rc.20`, MongoDB read a quoted member as JSON, so `"NaN"` was a number. A contract emitted before `8.0.0-rc.20` with a Decimal128 member written with leading zeros, such as `"007.5"`, is refused when it loads: run `npx prisma contract emit` again.
 
@@ -524,7 +546,7 @@ On PostgreSQL, some types cannot hold enum members. JSON (`pg/json@1` and `pg/js
 
 At runtime, `db.enums` holds each member as a query returns it, such as a `bigint` for `pg/int8@1`.
 
-On PostgreSQL and SQLite, removing a member, or changing the value a member stores, changes rows that hold the old value, so `migration plan` and `db update` ask whether you renamed the member or want its value removed. [Renames and data loss](/cli/migration-plan#renames-and-data-loss) shows the answers.
+On PostgreSQL and SQLite, removing a member changes rows that hold its value, so `migration plan` and `db update` ask whether you renamed the member or want its value removed. A member that keeps its name and changes the value it stores has the value replaced in the rows, with nothing asked. [Renames and data loss](/cli/migration-plan#renames-and-data-loss) shows the answers.
 
 An `enum` block is not a PostgreSQL `enum` type: the column is text or an integer. For a PostgreSQL `enum` type, declare it in a `native_enum` block and type the field `pg.enum(Role)`:
 
@@ -731,7 +753,7 @@ Without the `map:`, both indexes in this model would be named `email_1`, and Mon
 
 :::note[Upgrading a MongoDB project from before `8.0.0-rc.23`]
 
-Index names are new in the contract, so every MongoDB contract with an index gets a new storage hash. An index without a name is named after its keys, such as `email_1`, which is the name earlier releases gave it in the database, so the database does not change. Earlier releases matched an index by its keys alone, so an index created under another name, such as by hand, also passed. It now fails `db verify` and `db sign`. Before you emit, list the names MongoDB holds, such as with `db.users.getIndexes()` in `mongosh`, and give each index whose name differs that name with `map:`, or with `name` in TypeScript. If two databases that share the contract hold one index under different names, one `map:` cannot match both, and MongoDB cannot rename an index: in one of them, drop the index and create it again under the contract's name, such as with `dropIndex` and `createIndex` in `mongosh`. Then run `npx prisma contract emit`, then run the `mongo-index-names` script from the [upgrade instructions](https://github.com/prisma/orm/blob/v8.0.0-rc.23/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.22-to-8.0.0-rc.23/) to add the names to the contract copies under `migrations/snapshots/`. Then run `npx prisma db sign`, or plan a migration, which has no operations, and apply it with `npx prisma db migrate --advance-ref db`. A script or test that matches an index operation id, such as `index.users.create(email:1)`, now matches the name, as in `index.users.create(email_1)`.
+Index names are new in the contract, so every MongoDB contract with an index gets a new storage hash. An index without a name is named after its keys, such as `email_1`, which is the name earlier releases gave it in the database, so the database does not change. Earlier releases matched an index by its keys alone, so an index created under another name, such as by hand, also passed. It now fails `db verify` and `db sign`. Before you emit, list the names MongoDB holds, such as with `db.users.getIndexes()` in `mongosh`, and give each index whose name differs that name with `map:`, or with `name` in TypeScript. If two databases that share the contract hold one index under different names, one `map:` cannot match both, and MongoDB cannot rename an index: in one of them, drop the index and create it again under the contract's name, such as with `dropIndex` and `createIndex` in `mongosh`. Then run `npx prisma contract emit`, then run the `mongo-index-names` script from the [upgrade instructions](https://github.com/prisma/orm/blob/v8.0.0-rc.23/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.22-to-8.0.0-rc.23/) to add the names to the contract copies under `migrations/snapshots/`. Then run `npx prisma db sign`, or plan a migration, which has no operations, and apply it with `npx prisma db migrate`. A script or test that matches an index operation id, such as `index.users.create(email:1)`, now matches the name, as in `index.users.create(email_1)`.
 
 :::
 
@@ -767,7 +789,7 @@ Field and model names are written bare, as `type` and `Task` are, while table na
 The discriminator field must be required and hold one value, so it cannot be optional (`?`) or a list (`[]`); since `8.0.0-rc.20` this holds on every database. It must also have a text type:
 
 - on PostgreSQL, `String`, `Char(n)` or `Varchar(n)`;
-- on SQLite, `String` or `sql.String(n)`, SQLite's text type with a length;
+- on SQLite, `String` or `sql.Varchar(n)`, SQLite's text type with a length;
 - on MongoDB, `String`.
 
 A [named type](#named-types) for one of these, such as `Kind = String` on MongoDB, can type a discriminator too. On PostgreSQL and SQLite, your code reads the discriminator field as one of its variants' values, such as `'bug' | 'feature'`, not as any `string`. On PostgreSQL, a table whose control policy is managed also gets a check on the discriminator column, named `<table>_<column>_check_<hash>`, that accepts only those values. A field that breaks a rule is refused at `@@discriminator` with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, as in `must be required, but it is optional. Remove the "?"`. When a text `enum` types the discriminator field, each `@@base` value must be the value a member stores, such as `"bug"` for `Bug = "bug"`, or `contract emit` lists the values you can write. A `@@base` value the field's type refuses, such as one longer than a `Varchar(5)` holds, is `PSL_VALUE_REFUSED`.
@@ -777,6 +799,8 @@ A variant can be in a different `namespace` block from its base, on PostgreSQL a
 You query a variant through the base model: `db.orm.public.Task.variant('bug')` returns the `Bug` rows only, and `public` here is the PostgreSQL schema. `variant()` takes the discriminator value from `@@base`, not the model name. Writing a row of a variant starts with the same `variant('bug')` call. See [`variant()`](/orm/reference/orm-client#variant).
 
 On a variant, `@@map` does more than rename: on PostgreSQL it chooses between two storage layouts. Give the variant its own `@@map`, as `Bug` has here, and its fields are in a table of their own that shares the base model's primary key. Leave `@@map` out and they are nullable columns in the base table. [Relational data modeling](/orm/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two.
+
+A variant without its own `@@map` shares the base model's table, so a unique or an index on it would cover the other variants' rows too. `@unique`, `@@unique`, and most `@@index` without `where:` on such a variant are refused with `PSL_UNSCOPED_INDEX_ON_STI_VARIANT`, and the message gives the partial index to write instead, one whose `where:` keeps it to the variant's rows. A relation on such a variant stores its foreign key and backing index in the shared table. Before `8.0.0-rc.25`, the uniques, indexes and foreign keys of such a variant were dropped from the contract without a warning.
 
 On MongoDB, a variant adds its fields to documents in the base model's collection, so it declares `@@base` but no `@@map` of its own. Because the variant's fields share documents with the base model's, a variant field stored under a name a base field uses, such as the discriminator's, is refused with `PSL_DUPLICATE_STORED_NAME`. A variant field that restates a base field with a different stored name, type, optionality or list shape is refused with `PSL_VARIANT_FIELD_DIFFERS_FROM_BASE`: restate it exactly as the base declares it, or leave it out.
 
