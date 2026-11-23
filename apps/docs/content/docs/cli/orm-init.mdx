@@ -28,7 +28,7 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 
 | Option | What it does |
 | --- | --- |
-| `--target <db>` | Sets the database target. Use `postgres` or `mongodb`, or, since `8.0.0-rc.25`, the name of a target package, such as `@prisma/orm-sqlite` or `@prisma/orm-mysql`. See [Any target package](#any-target-package). |
+| `--target <db>` | Sets the database target: `postgres`, `mongodb`, or the name of a target package, such as `@prisma/orm-sqlite` or `@prisma/orm-mysql`. See [Set up another database with a target package](#any-target-package). |
 | `--authoring <style>` | Sets the contract authoring style. Use `psl` or `typescript`. |
 | `--schema-path <path>` | Sets where the starter contract is written. |
 | `--from-prisma7-schema <path>` | Uses the Prisma ORM 7 schema at `<path>` as the contract source instead of writing a starter contract. PostgreSQL only. See [On a Prisma ORM 7 project](#on-a-prisma-orm-7-project). |
@@ -154,18 +154,21 @@ npx prisma@latest orm init --skip-install
 
 Without `--json`, standard output gets one line per file the command wrote: its path, relative to the working directory. The progress and the summary go to standard error. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the rules data lines follow.
 
-## Any target package
+## Set up another database with a target package [#any-target-package]
 
-Since `8.0.0-rc.25`, `--target` also takes the name of a target package. `orm init` installs that package and writes the project from what the package provides:
+Besides the short names `postgres` and `mongodb`, `--target` takes the name of a target package, the Prisma ORM library for a database. Use it to set up a database that has no short name, such as SQLite or MySQL:
 
 ```npm
 npx prisma@latest orm init --yes --target @prisma/orm-sqlite --authoring psl
 ```
 
-- `@prisma/orm-sqlite` and `@prisma/orm-mysql` are set up this way. They have no short name: `--target sqlite` names an unrelated package and is refused.
-- Before it installs a package that has no short name, `orm init` checks that the package lists the `prisma-orm-extension` keyword, and stops with `CLI.INIT_TARGET_PACKAGE_NOT_VERIFIED` when it does not.
-- When you run `orm init` without `--target`, the list of targets has an entry "Another target package", which asks for the package name.
-- With `--json`, the result has a `package` field with the name of the target package. `target` is `postgres` or `mongodb` for those two, and the package name for any other package.
+`orm init` installs the package and writes the project from what the package provides. Write the full package name: `--target sqlite` names an unrelated package called `sqlite`, which `orm init` refuses. Before it installs a package that has no short name, `orm init` checks that the package lists the `prisma-orm-extension` keyword in its `package.json`, and stops with `CLI.INIT_TARGET_PACKAGE_NOT_VERIFIED` when it does not.
+
+When you run `orm init` without `--target`, the list of databases it shows has an entry "Another target package", which asks for the package name.
+
+With `--json`, the result has a `package` field with the name of the target package. Its `target` field is `postgres` or `mongodb` for those two, and the package name for any other package.
+
+Target packages are accepted since `8.0.0-rc.25`.
 
 ## Exit codes
 
@@ -175,16 +178,14 @@ In a script, pass `--yes` with `--target` and `--authoring` (see [Options](#opti
 npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
-Since `8.0.0-rc.25`, `orm init` installs the target package first, with `dotenv` and, on PostgreSQL, `pg`, and writes the project from that package's `init` entrypoint, so the files come from the version you install.
-
-Its exit code says how far it got:
+`orm init` writes the project from the target package, so it installs that package, with `dotenv` and, on PostgreSQL, `pg`, before it writes any file. Its other installs run after the files are written. It has worked in this order since `8.0.0-rc.25`, and its exit code says how far it got:
 
 | Code | What happened | What to do |
 | --- | --- | --- |
 | `0` | It set up the project and emitted the contract. With `--skip-install`, it exits `0` without installing or emitting. | Nothing. After `--skip-install`, install the dependencies, then run `npx prisma contract emit`. |
 | `2` | It stopped because of one of the problems in the next table. Most of them stop it before it writes anything. | Fix the problem and run it again. |
 | `3` | You cancelled a prompt, for example with Ctrl-C ([`CLI.PROMPT_CANCELLED`](/cli/error-reference#CLI.PROMPT_CANCELLED)). | Run `orm init` again. In a script, pass the flags from the example above so that it asks nothing. |
-| `4` | Installing the dependencies failed ([`CLI.INIT_INSTALL_FAILED`](/orm/reference/error-reference#CLI.INIT_INSTALL_FAILED)). The first install, of the target package, runs before anything is written, because `orm init` writes the project from that package; when it fails, nothing is written yet. When a later install fails, the files are already written. A failed pnpm install is not run again with npm. | If files were written, run the install command it prints, then `npx prisma contract emit`. If none were, run `orm init` again once the dependencies install. |
+| `4` | Installing the dependencies failed ([`CLI.INIT_INSTALL_FAILED`](/orm/reference/error-reference#CLI.INIT_INSTALL_FAILED)). If the target package failed to install, nothing is written yet. If a later install failed, the files are already written. A failed pnpm install is not retried with npm. | If files were written, run the install command it prints, then `npx prisma contract emit`. If none were, run `orm init` again once the dependencies install. |
 | `5` | It wrote the files and installed the dependencies, but emitting the contract failed ([`CLI.INIT_EMIT_FAILED`](/orm/reference/error-reference#CLI.INIT_EMIT_FAILED)). | Fix the contract source that the message names, then run `npx prisma contract emit`. |
 
 Do not run `orm init` again over files it has written, because a second run replaces them and needs `--confirm`.

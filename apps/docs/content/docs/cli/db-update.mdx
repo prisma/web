@@ -65,13 +65,30 @@ Dropping an index, a unique or foreign-key constraint, a check, a default or a n
 
 ### A changed stored name [#a-changed-stored-name]
 
-On PostgreSQL and SQLite, a model, field or enum member that keeps its name in the contract is the same object, even when what it is stored as changes. When only its `@@map`, its `@map`, or the value an enum member stores changes, the update renames the table or column, with the constraints and indexes named after it, or replaces the stored value in the rows, and asks nothing. A table or column is renamed only when its control policy is `managed` in both contracts. A `--delete` for such a change fails with `CLI.CONSENT_UNUSED`, because nothing asks about it.
+On PostgreSQL and SQLite, a model, field or enum member keeps its identity as long as it keeps its name in the contract, even when the name it is stored under changes. So when you change only a model's `@@map`, a field's `@map`, or the value an enum member stores, the update keeps the data and asks nothing:
 
-To start with an empty table under the new name instead, make two changes, each applied before the next: remove the model and answer `--delete`, then add it back with its new `@@map`.
+```prisma title="contract.prisma"
+model User {
+  id    Int    @id
+  email String @map("email_address") // was @map("email")
+  @@map("accounts")                  // was @@map("users")
+}
+```
 
-Swaps, chains and takeovers are refused with `MIGRATION.PLANNING_FAILED`: two models or fields that trade tables or columns, one that moves to a name another frees, one that takes the storage of one the change removes, and enum members that trade stored values. Make the change in two steps through a name nothing uses, such as `prisma_swap_users`, applied one after the other.
+The update renames the table `users` to `accounts` and the column `email` to `email_address`, together with the constraints and indexes named after them. For an enum member that keeps its name but stores a new value, the update replaces the old value in the rows. A table or column is renamed only when its [control policy](/orm/contract-authoring/psl-syntax#control-policy) is `managed` in both contracts.
 
-MySQL and MongoDB plan these changes as before. Before `8.0.0-rc.25`, a changed `@@map` was planned as dropping the table and creating an empty one, and asked for `--delete`.
+Because nothing is asked, a `--delete` for such a change fails with `CLI.CONSENT_UNUSED`. If you want an empty table under the new name instead, make two changes, each applied before the next: remove the model and answer `--delete`, then add it back with its new `@@map`.
+
+Some changes cannot be made in one step, and are refused with `MIGRATION.PLANNING_FAILED`:
+
+- two models or fields that trade tables or columns;
+- a model or field that moves to a name another one gives up in the same change;
+- a model or field that takes over the table or column of one the change removes;
+- enum members that trade stored values.
+
+Make such a change in two steps, through a name nothing uses, such as `prisma_swap_users`, applied one after the other.
+
+On MySQL and MongoDB, these changes are planned as before. Before `8.0.0-rc.25`, a changed `@@map` was planned as dropping the table and creating an empty one, and asked for `--delete`.
 
 `db update` names each subject by model and field from the contract the database was last updated to, which it stores when it advances a ref. With `--db`, pass `--advance-ref <name>` on every run so that contract is stored for the next run. Without a stored contract, each subject is its storage name, and a run with `--rename` fails with `MIGRATION.STATEMENT_ORIGIN_UNKNOWN`. Adding `--advance-ref` to that run does not help, because the missing contract is the one the database is at before it. To store it, emit the contract the database is at, run `db update --advance-ref db --dry-run` with the same `--db`, and check that it plans no operations. Then run it again without `--dry-run`, which changes nothing in the database and stores the contract. Then emit the new contract and run the rename.
 

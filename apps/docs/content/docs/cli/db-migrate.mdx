@@ -6,11 +6,15 @@ metaTitle: db migrate | Prisma ORM CLI
 metaDescription: Learn how to apply pending Prisma ORM on-disk migrations with the db migrate command.
 ---
 
-`db migrate` applies the migrations on disk that the database has not run yet, including the ones that extension packages ship. It runs the extensions' migrations first, in alphabetical order of extension, and then yours. It never writes a new migration; [`migration plan`](/cli/migration-plan) does that. It obeys the database's [policies](/orm/migrations/database-policies): a database whose change policy does not include `migrate` refuses it, and one whose data protection policy forbids an operation in a pending migration refuses the whole run before it applies anything.
+`db migrate` applies the migrations on disk that the database has not run yet, including the ones that extension packages ship. It runs the extensions' migrations first, in alphabetical order of extension, and then yours. It never writes a new migration; [`migration plan`](/cli/migration-plan) does that.
+
+A database can record [policies](/orm/migrations/database-policies) that limit how it changes, and `db migrate` obeys them. When the database's change policy does not include `migrate`, the command refuses to run. When its data protection policy forbids an operation in one of the pending migrations, the command refuses the whole run before it applies anything.
 
 Prisma ORM keeps one migration history for your own models, called the `app` space, in `migrations/app/`, and one for each [extension package](/orm/extensions/using-extensions) that ships its own migrations, such as pgvector. Each of these histories is a [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page).
 
-In development, run `npx prisma db migrate`. Since `8.0.0-rc.25`, it also moves the `db` [ref](/cli/migration-ref) to the contract the database is now at, so that your next `migration plan` starts from what you just applied; [The `db` ref](#the-db-ref) says when. Before `8.0.0-rc.25`, that needed `--advance-ref db`. In CI and production, it replaces Prisma ORM 7's `migrate deploy`: run it from your deployment pipeline after the migrations have been reviewed, with `--db` or `--no-advance-ref`, so that the run changes no file. Plain `db migrate` applies migrations until the database matches `contract.json`. If you name the state each environment should reach with a ref, such as `prod`, run `db migrate --to prod` instead, as [Applying to a target](#applying-to-a-target) shows.
+In development, when you run `npx prisma db migrate`, the command applies your migrations and then points the `db` [ref](/cli/migration-ref) at the contract your database is now at, so your next `migration plan` starts from what you just applied. [The `db` ref](#the-db-ref) lists when it does this. This is the behavior since `8.0.0-rc.25`; before that release, you passed `--advance-ref db` to get it.
+
+In CI and production, `db migrate` replaces Prisma ORM 7's `migrate deploy`. Run it from your deployment pipeline after the migrations have been reviewed, and pass `--db` or `--no-advance-ref` so that the run changes no file in your repository. Plain `db migrate` applies migrations until the database matches `contract.json`. If you name the state each environment should reach with a ref, such as `prod`, run `db migrate --to prod` instead, as [Applying to a target](#applying-to-a-target) shows.
 
 ## Usage
 
@@ -24,8 +28,8 @@ npx prisma db migrate --db "$DATABASE_URL"
 | --- | --- |
 | `--db <url>` | Connects to the database. |
 | `--to <contract>` | Applies migrations up to a target contract state. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
-| `--advance-ref <name>` | After a successful run, points the named [ref](/cli/migration-ref) at the contract state the database now matches, also with `--db` and in CI. See [The `db` ref](#the-db-ref). |
-| `--no-advance-ref` | Changes no ref. Since `8.0.0-rc.25`. Passing it with `--advance-ref` fails with `CLI.ADVANCE_REF_ARG_CONFLICT`. |
+| `--advance-ref <name>` | After a successful run, points the named [ref](/cli/migration-ref) at the contract state the database now matches. Works with `--db` and in CI too. See [The `db` ref](#the-db-ref). |
+| `--no-advance-ref` | Changes no ref. Added in `8.0.0-rc.25`. Cannot be combined with `--advance-ref`. |
 | `--show` | Prints the migrations `db migrate` would run, and runs nothing. |
 | `--permit-policy-change` | With `--to <ref>`, checks the run against the ref's declared [policies](/orm/migrations/database-policies) and writes them into the database when it succeeds. Without it, a ref whose policies differ from the database's fails with `MIGRATION.POLICY_MISMATCH`. |
 | `--from <contract>` | Use it with `--show`, where it sets the starting state for the preview. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
@@ -34,23 +38,26 @@ npx prisma db migrate --db "$DATABASE_URL"
 
 ### The `db` ref [#the-db-ref]
 
-The `db` ref, `migrations/app/refs/db.json`, records which contract your development database is at, and `migration plan` starts from it. Since `8.0.0-rc.25`, `db migrate` moves it after a successful run, as `db init` and `db update` do, when the connection comes from `prisma.config.ts` and the command does not detect CI:
+The `db` ref is the file `migrations/app/refs/db.json`. It records which contract your development database is at, and `migration plan` starts from it when you do not pass `--from`.
 
-| Situation | Ref that moves |
+When you run `db migrate` with the connection from `prisma.config.ts`, and the command does not detect CI, it points the `db` ref at the contract the database is at after the run, as `db init` and `db update` do. In every other situation it leaves the `db` ref alone unless you pass `--advance-ref`:
+
+| Situation | Ref that `db migrate` updates |
 | --- | --- |
 | Connection from `prisma.config.ts`, CI not detected | `db` |
-| Connection from `prisma.config.ts`, CI detected | None, with the notice `MIGRATION.REF_NOT_ADVANCED_IN_CI` |
+| Connection from `prisma.config.ts`, CI detected | None. The command prints the notice `MIGRATION.REF_NOT_ADVANCED_IN_CI` |
 | `--db <url>` | None |
-| `--advance-ref <name>` | `<name>`, in every case above that does not end at the empty contract |
+| `--advance-ref <name>` | `<name>` |
 | `--no-advance-ref` | None |
-| The run ends at the empty contract, such as `--to @empty`, with neither flag | None. When a `db` ref exists, it is left as it is, with the warning `MIGRATION.REF_NOT_ADVANCED_TO_EMPTY` |
-| The run ends at the empty contract, with `--advance-ref <name>` | Refused before anything is applied, with `MIGRATION.REF_TARGET_EMPTY` |
+| The run ends at the empty contract, such as `--to @empty` | None. An existing `db` ref stays as it is, with the warning `MIGRATION.REF_NOT_ADVANCED_TO_EMPTY` |
 
-The command detects CI when the `CI` environment variable is set, or a variable that CI services set, such as `GITHUB_ACTIONS` or `BUILD_NUMBER`, is present. `CI=false` turns the detection off.
+A ref cannot name the empty contract, so a run that ends there with `--advance-ref <name>` is refused with `MIGRATION.REF_TARGET_EMPTY` before it applies anything. Passing `--advance-ref` and `--no-advance-ref` together fails with `CLI.ADVANCE_REF_ARG_CONFLICT`.
 
-A deploy that reads its connection from `prisma.config.ts` and runs where no CI is detected, such as a container's start command or a release command, would rewrite `migrations/app/refs/db.json`. Pass `--no-advance-ref` or `--db` there.
+The command detects CI when the `CI` environment variable is set, or when a variable that CI services set is present, such as `GITHUB_ACTIONS` or `BUILD_NUMBER`. Set `CI=false` to turn the detection off.
 
-When the ref cannot be written, for example on a read-only filesystem, the command warns with `MIGRATION.REF_NOT_WRITTEN` and still exits `0`, because the migrations have been applied.
+A deploy that is not a CI job, such as a container's start command or a release command, still reads its connection from `prisma.config.ts`, so a plain `db migrate` there would rewrite `migrations/app/refs/db.json`. Pass `--no-advance-ref`, or the connection string with `--db`, in those commands.
+
+If the ref file cannot be written, for example on a read-only filesystem, the command prints the warning `MIGRATION.REF_NOT_WRITTEN` and still exits `0`, because the migrations have been applied.
 
 ### Contract references [#contract-references]
 
