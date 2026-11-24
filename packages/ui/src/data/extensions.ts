@@ -51,6 +51,12 @@ export type ExtensionEntry = {
   author: { name: string; url: string };
   /** ISO date (YYYY-MM-DD) the entry was added to the registry. */
   addedAt: string;
+  /**
+   * `true` keeps the entry in the registry file but off the directory, its
+   * detail page, the sitemap, and the docs catalog tables. Delete the field to
+   * list the entry again.
+   */
+  hidden?: boolean;
 };
 
 export const EXTENSION_SOURCE_LABELS: Record<ExtensionSource, string> = {
@@ -176,6 +182,9 @@ export function validateExtensionEntry(input: unknown): string[] {
   if (!isNonEmptyString(entry.addedAt, 10) || !isCalendarDate(entry.addedAt)) {
     problems.push("addedAt must be a real ISO date (YYYY-MM-DD)");
   }
+  if (entry.hidden !== undefined && typeof entry.hidden !== "boolean") {
+    problems.push("hidden must be true or false when set");
+  }
   return problems;
 }
 
@@ -195,10 +204,23 @@ function loadRegistry(entries: unknown[], file: string): ExtensionEntry[] {
   });
 }
 
-export const officialExtensions: ExtensionEntry[] = loadRegistry(officialEntries, "official.json");
-export const communityExtensions: ExtensionEntry[] = loadRegistry(
-  communityEntries,
-  "community.json",
+const registeredOfficial = loadRegistry(officialEntries, "official.json");
+const registeredCommunity = loadRegistry(communityEntries, "community.json");
+
+/**
+ * Entries marked `hidden: true`. They are left out of every list below, so
+ * nothing public shows them, but their slug and package stay reserved.
+ */
+export const hiddenExtensions: ExtensionEntry[] = [
+  ...registeredOfficial,
+  ...registeredCommunity,
+].filter((entry) => entry.hidden === true);
+
+export const officialExtensions: ExtensionEntry[] = registeredOfficial.filter(
+  (entry) => entry.hidden !== true,
+);
+export const communityExtensions: ExtensionEntry[] = registeredCommunity.filter(
+  (entry) => entry.hidden !== true,
 );
 
 /** Every registry entry, official first, each group sorted by name. */
@@ -207,8 +229,8 @@ export const extensions: ExtensionEntry[] = [
   ...[...communityExtensions].sort((a, b) => a.name.localeCompare(b.name)),
 ];
 
-for (const entry of communityExtensions) {
-  if (officialExtensions.some((official) => official.slug === entry.slug)) {
+for (const entry of registeredCommunity) {
+  if (registeredOfficial.some((official) => official.slug === entry.slug)) {
     throw new Error(
       `Extension slug "${entry.slug}" exists in both official.json and community.json`,
     );

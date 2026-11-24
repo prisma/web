@@ -224,6 +224,8 @@ await db.orm.public.Post.where({ id: post.id }).update({
 });
 ```
 
+Inside `update()` you can also change or delete the tags a filter matches with `where(...).updateAll(...)` or `where(...).deleteAll()`, as [Create a record and its related records](/orm/fundamentals/writing-data#create-a-record-and-its-related-records) shows. On a many-to-many relation, `deleteAll()` deletes the tags themselves, not only the links, so it works only when the join table's foreign key to `Tag` cascades on delete. With the `PostTag` model above, it always fails and the whole update is rolled back. To allow it, add `onDelete: Cascade` to the `@relation(...)` attribute of `tag` in `PostTag`.
+
 `connect` and `disconnect` identify the tag by any primary key or `@unique` field, so `{ name: "typescript" }` works here because `Tag.name` is `@unique`. When that key is made of several columns, pass every one of them in the object. `update(...)` returns the updated post, or `null` when no post matched the filter. `create` always inserts a new tag record, so creating a tag whose name already exists fails on that same unique constraint. Use `connect` for tags that already exist.
 
 There is no `connectOrCreate` in Prisma ORM 8, so upsert the tag first, which creates it or leaves an existing one alone, then connect it:
@@ -239,7 +241,7 @@ await db.orm.public.Post.where({ id: post.id }).update({
 });
 ```
 
-The upsert is safe when two requests create the same tag at once, but the `connect` is not: if both requests also link that tag to the same post, the second fails with an error whose code is `ORM.RELATION_LINK_DUPLICATE`. Catch that code and treat it as done.
+Both steps are safe when two requests run them at once. The upsert creates the tag only once. Connecting a tag that is already linked to the post succeeds and writes nothing, because the join table's primary key is the two foreign keys.
 
 See [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet) for the rest of the gaps, and [Upsert a record](/orm/fundamentals/writing-data#upsert-a-record) for the top-level `.upsert(...)` call. These nested writes are for relational databases, so on MongoDB, write the parent document and the child document in two calls, and set the reference field yourself:
 
@@ -339,7 +341,7 @@ model Post {
 - On PostgreSQL, `.include(...)` takes an optional callback to filter and narrow the relation. On MongoDB it takes the relation name only. Reshape joined documents with the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) instead.
 - Relation filters (`.some(...)`, `.none(...)`, `.every(...)`) and nested writes on relations are for relational databases. They are not available on MongoDB.
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest -- my-app` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for your coding agent. The `prisma-8` skill covers both relation queries and the relation fields in your contract, so try prompts that map to each section:
 

@@ -22,7 +22,7 @@ It uses the `hono` template so you get a small API you can verify with curl at e
 
 :::note[Already have an app?]
 
-Keep your code and add a small Prisma Composer declaration next to it: a `service.ts` for each server and one `module.ts`. The server reads its port from `service.port()` and binds `0.0.0.0`; [Port an existing app](/composer/porting-an-app) lists the other changes and has an agent prompt that makes them, and [Bring an app you already have](/prisma-compute/deploy#bring-an-app-you-already-have) is a worked example. Once `npm run build` and `npx prisma dev` run it, continue at [step 5](#5-deploy-app-and-database-to-prisma-compute). SvelteKit and Deno apps do not deploy to Prisma Compute yet.
+Keep your code and add a small Prisma Composer declaration next to it: a `service.ts` for each server and one `module.ts`. The server reads its port from `service.port()` and binds `0.0.0.0`; [Port an existing app](/composer/porting-an-app) lists the other changes and has an agent prompt that makes them, and [Bring an app you already have](/prisma-compute/deploy#bring-an-app-you-already-have) is a worked example. A SvelteKit app needs `@sveltejs/adapter-node`, and its `service.ts` sets `build: node({ module: import.meta.url, dir: "./build", entry: "index.js", dependencies: "external" })`, with `node` imported from `@prisma/composer/node`; adapter-node's server reads the port from `PORT` itself, so it needs no `service.port()` call. Once `npm run build` and `npx prisma dev` run it, continue at [step 5](#5-deploy-app-and-database-to-prisma-compute). Deno apps do not deploy to Prisma Compute yet.
 
 :::
 
@@ -64,28 +64,6 @@ The Free plan has no usage billing, so reaching a limit does not add a charge. O
 To see how much a database has used, run `npx prisma postgres usage <database>`, or track usage in the [Prisma Console](https://console.prisma.io); see [Billing and limits](/postgres#billing-and-limits). Usage reporting for Compute in the CLI and API is still being built.
 
 To go past a limit, move the workspace to a paid plan. Paid plans include more operations, storage, and requests, then bill usage beyond those amounts. Compute memory, CPU, and bandwidth are billed per use on paid plans, and a spend limit you set in the Console counts those charges and stops queries to the workspace's databases when it is reached. The [pricing page](https://www.prisma.io/pricing) has the rates.
-
-## Use with your agent
-
-If you would rather hand the work to a coding agent, this prompt runs the same journey as the one on the [getting started page](/), with the `hono` template chosen for you:
-
-The prompt uses npm and Node.js. On Bun, replace `npm create prisma@latest --` with `bun create prisma@latest`, `npx` with `bunx`, and `npm run` with `bun run`.
-
-<AgentPrompt>
-
-```text
-Create a new Hono API composed with Prisma Composer and Prisma ORM, run it locally, and deploy it to Prisma Compute.
-
-Check the Node.js version first: `node --version` must print 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer. For the nuxt template, it must print 22.22.3 or newer on the 22 line, 24.15 or newer on the 24 line, or 26 or newer, because Nuxt requires it. The npm that ships with your Node.js release works; on Node.js 22 that is npm 10.
-
-1. Scaffold: `npm create prisma@latest -- my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` to confirm the Prisma agent skills the scaffold installed are current, and use them.
-2. Read `module.ts` and `service.ts` first: the Composer module provisions the database and the service, and it is what `dev` and `deploy` operate on.
-3. Build and run locally: `npm run build`, then `npx prisma dev --detach`, which returns once the app answers and leaves it running. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify that `curl "$(npx prisma dev url my-app.app)/users"` returns the seeded users, then run `npx prisma dev stop`.
-4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login` (it opens a browser). The scaffold already wrote the baseline migration under `migrations/app/`; note its directory name, which ends in `_init`. The `composer` section of the scaffold's `prisma.config.ts` already sets the deploy region, so do not add one. Then run `npx prisma deploy` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
-5. Evolve the schema: add `role String @default("member")` to the User model in `src/prisma/contract.prisma`, run `npx prisma contract emit`, add `"role"` to the typed select and the returned object in `src/prisma/users.ts`, and plan the migration with `npx prisma migration plan --name add-user-role --from <the init migration directory>`. Then run `npm run build` and `npx prisma deploy` again, and verify the live /users now returns `role: "member"` with the same createdAt values as before.
-```
-
-</AgentPrompt>
 
 ## 1. Scaffold the app
 
@@ -270,14 +248,14 @@ Live apps outgrow their starter schema, so give users a role. Add one line to th
 // use prisma-8
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int                @id @default(autoincrement())
+  email     String             @unique
   username  String?
   name      String?
-  role      String   @default("member")
+  role      String             @default("member") // [!code ++]
   posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
+  createdAt DateTime           @default(now()) @onCreate(now())
+  updatedAt temporal.UpdatedAt
 }
 ```
 
@@ -288,12 +266,12 @@ npx prisma contract emit
 npx prisma migration plan --name add-user-role --from <timestamp>_init
 ```
 
-`--from` names the migration you are building on, and here it is required: a Composer deploy never sets the `db` ref that `migration plan` chains from by default, so a plan without it would describe every table again. The [`migration plan`](/cli/migration-plan) and [`migration ref`](/cli/migration-ref) references cover the default, the ref, and how to keep plans chaining on their own.
+`--from` names the migration you are building on, and here it is required: a Composer deploy never sets the `db` ref that `migration plan` chains from by default, so a plan without it stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. The [`migration plan`](/cli/migration-plan) and [`migration ref`](/cli/migration-ref) references cover the default, the ref, and how to keep plans chaining on their own.
 
 The plan is your change and nothing else. Review it like any other diff, with [`migration show`](/cli/migration-show) or by reading the generated package:
 
 ```text no-copy
-ALTER TABLE "public"."User" ADD COLUMN "role" text DEFAULT 'member' NOT NULL
+ALTER TABLE "public"."User" ADD COLUMN "role" text DEFAULT 'member' NOT NULL;
 ```
 
 Emitting also updated the query types, so include the new field in the route's typed select in `src/prisma/users.ts`, adding `"role"` to the `.select(...)` list and `role: user.role` to the returned object:
@@ -330,6 +308,28 @@ The project keeps running until you remove it. Deleting it removes the service a
 ```npm
 npx prisma project delete <project-id> --confirm <project-id>
 ```
+
+## Use with your agent
+
+If you would rather hand the work to a coding agent, this prompt runs the same journey as the one on the [getting started page](/), with the `hono` template chosen for you:
+
+<AgentPrompt>
+
+```text
+Create a new Hono API composed with Prisma Composer and Prisma ORM, run it locally, and deploy it to Prisma Compute.
+
+Check the Node.js version first: `node --version` must print 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer. For the nuxt template, it must print 22.22.3 or newer on the 22 line, 24.15 or newer on the 24 line, or 26 or newer, because Nuxt requires it. The npm that ships with your Node.js release works; on Node.js 22 that is npm 10.
+
+1. Scaffold: `npm create prisma@latest -- my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` to confirm the Prisma agent skills the scaffold installed are current, and use them.
+2. Read `module.ts` and `service.ts` first: the Composer module provisions the database and the service, and it is what `dev` and `deploy` operate on.
+3. Build and run locally: `npm run build`, then `npx prisma dev --detach`, which returns once the app answers and leaves it running. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify that `curl "$(npx prisma dev url my-app.app)/users"` returns the seeded users, then run `npx prisma dev stop`.
+4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login` (it opens a browser). The scaffold already wrote the baseline migration under `migrations/app/`; note its directory name, which ends in `_init`. The `composer` section of the scaffold's `prisma.config.ts` already sets the deploy region, so do not add one. Then run `npx prisma deploy` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
+5. Evolve the schema: add `role String @default("member")` to the User model in `src/prisma/contract.prisma`, run `npx prisma contract emit`, add `"role"` to the typed select and the returned object in `src/prisma/users.ts`, and plan the migration with `npx prisma migration plan --name add-user-role --from <the init migration directory>`. Then run `npm run build` and `npx prisma deploy` again, and verify the live /users now returns `role: "member"` with the same createdAt values as before.
+```
+
+</AgentPrompt>
+
+The prompt uses npm and Node.js. On Bun, replace `npm create prisma@latest --` with `bun create prisma@latest`, `npx` with `bunx`, and `npm run` with `bun run`.
 
 ## Next steps
 

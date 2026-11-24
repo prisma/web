@@ -35,10 +35,10 @@ Create a PostgreSQL client.
   const db = postgres({ contract, ...(url === undefined ? {} : { url }) });
   ```
 - `supabase(...)` from `@prisma/orm-extension-supabase/runtime` checks its database input the same way, but takes no `pg.Client`, because each role-bound query needs a connection of its own. A `pg.Client`, as `pg` or as a `binding` with `kind: 'pgClient'`, fails with an error whose `code` is `SUPABASE.CONFIG_INVALID`. `supabase(...)` checks only that the `pool` of a `{ kind: 'pgPool', pool }` binding is an object, so make sure it is a `pg.Pool`.
-- When you pass a `pg` pool or client, directly or as a `binding` with `kind: 'pgPool'` or `kind: 'pgClient'`, you own it: call `db.close()` first, then close it yourself with `pool.end()` for a pool or `client.end()` for a client. `db.close()` closes the client's runtime but leaves your pool or client open. The driver sets `DateStyle` to `ISO` on each connection of a pool or client you pass, before first use, so do not change `DateStyle` on those connections: a date or time read under another style fails with `RUNTIME.DATE_STYLE_NOT_ISO`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts with `poolOptions`, which has no effect on a pool you supply yourself.
+- When you pass a `pg` pool or client, directly or as a `binding` with `kind: 'pgPool'` or `kind: 'pgClient'`, you own it: call `db.close()` first, then close it yourself with `pool.end()` for a pool or `client.end()` for a client. `db.close()` closes the client's runtime but leaves your pool or client open. The driver sets `DateStyle` to `ISO` on each connection of a pool or client you pass, before first use, so do not change `DateStyle` on those connections: a date or time read under another style fails with `RUNTIME.DATE_STYLE_NOT_ISO`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts and its maximum number of connections with `poolOptions`, which has no effect on a pool you supply yourself. `poolOptions` takes only `connectionTimeoutMillis`, `idleTimeoutMillis` and `max`. For any other `pg.Pool` setting, such as `ssl`, create the pool yourself with the `pg` package's `Pool` class, `import { Pool } from 'pg'` and `new Pool({ connectionString, ssl: { rejectUnauthorized: true } })`, and pass it as `pg`.
 - Some types come from a PostgreSQL extension, such as a `pgvector.Vector(1536)` type in your `contract.prisma`. Run `npm install @prisma/orm-extension-pgvector` first. Then `import pgvector from '@prisma/orm-extension-pgvector/runtime'` and pass `extensions: [pgvector]`.
-- A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeEncode: (plan) => { if (plan.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the statement. Prisma ORM runs every statement and transaction as an activity: the lifecycle hooks are `activityStarted`, `activityEnded`, and `activityFinalized`, and the hooks that change or stop a statement are `beforeCompile`, `beforeEncode`, `intercept.onQuery`, `intercept.onExecute`, and `onRow`. See [How middleware works](/orm/middleware/how-middleware-works).
-- Migrations record in your database which contract it matches. With `verifyMarker: 'onFirstUse'`, the default, the first query checks that record and logs a warning on a mismatch, then runs anyway. If you see the warning, run `npx prisma db update`. `verifyMarker: false` skips the check.
+- A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeEncode: (plan) => { if (plan.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the statement. Prisma ORM runs every statement and transaction as an activity: the lifecycle hooks are `activityStarted`, `activityEnded`, and `activityFinalized`, and the hooks that change or stop a statement are `beforeCompile`, `beforeEncode`, `intercept.onQuery`, `intercept.onExecute`, and `onRow`. `intercept.onActivity` can return a result in place of running a whole ORM call, such as one `.first()`. See [How middleware works](/orm/middleware/how-middleware-works).
+- Migrations record in your database which contract it matches. With `verifyMarker: 'onFirstUse'`, the default, the first query checks that record. When the record is missing or does not match, the client logs a warning to `log` and runs the query anyway. Without `log`, nothing is printed, so pass `log: console` to see it. If you see the warning, apply your migrations with `npx prisma db migrate`, or run `npx prisma db update` on a database you change without migrations. `verifyMarker: false` skips the check.
 - `postgres(options)` does not open a connection. The client opens one on first use, so [`connect()`](#connect) is optional: call it to open the connection up front and fail early.
 - Without `cursor`, a read loads its whole result before it gives you the first row. With `cursor: { batchSize: 100 }`, reads go through a server-side cursor and fetch the rows in batches of that size, so a `for await` loop gets the first rows before the rest arrive. `cursor: {}` uses batches of 100. A `batchSize` that is not a positive integer makes `postgres(...)` throw an error whose `code` is `RUNTIME.ARGUMENT_INVALID`.
 - While a `for await` loop reads through a cursor, the cursor holds its database connection until the loop ends. A query inside the loop that needs the same connection waits forever. That happens when you loop over a query on a transaction's `tx` and query `tx` inside the loop, and on a client you created with one `pg` `Client`.
@@ -53,7 +53,7 @@ Pass exactly one of `url`, `pg`, and `binding`.
 | `url` | `string` | See note | A PostgreSQL connection string. |
 | `pg` | `Pool` or `Client` from the `pg` package | See note | An existing `pg` instance to use. You close it yourself. |
 | `binding` | `{ kind: 'url' \| 'pgPool' \| 'pgClient', ... }` | See note | The same three choices in one object. |
-| `poolOptions` | `{ connectionTimeoutMillis?: number; idleTimeoutMillis?: number }` | No | Timeouts for the pool the client creates from `url` (defaults `20000` / `30000`). |
+| `poolOptions` | `{ connectionTimeoutMillis?: number; idleTimeoutMillis?: number; max?: number }` | No | Settings for the pool the client creates from `url`: the two timeouts (defaults `20000` / `30000`), and `max`, the most connections the pool opens (default `10`, added in `8.0.0-rc.25`). See the note below the table. |
 | `extensions` | Array of extension runtimes, the default export of each package's `/runtime` subpath | No | The PostgreSQL extensions your contract's types need. Install each package, then import its `/runtime` subpath and put the default export in this array. |
 | `middleware` | Array of middleware | No | Code that runs around every query. See [How middleware works](/orm/middleware/how-middleware-works). |
 | `verifyMarker` | `'onFirstUse'` or `false` | No | Whether the first query checks that the database was set up for this contract. Defaults to `'onFirstUse'`. |
@@ -62,6 +62,8 @@ Pass exactly one of `url`, `pg`, and `binding`.
 | `mode` | `'strict'` or `'permissive'` | No | How middleware treats a rule violation. Defaults to `'strict'`. See [`mode`](#mode). |
 | `transactionOptions` | `{ isolationLevel?: IsolationLevel; timeout?: number \| null }` | No | Defaults for every [`db.transaction(...)`](#dbtransactioncallback) call: its isolation level and its time limit in milliseconds. Without it, transactions use the database's default level and have no time limit. |
 | `collections` | Object mapping model name to a collection class | No | Your own collection classes, used on `db.orm` and on every transaction's `tx.orm`. See [Custom collections](/orm/reference/orm-client#custom-collection-subclass). |
+
+Behind a server-side pooler, such as a pooled Prisma Postgres URL, `poolOptions: { max: 1 }` keeps the client to one connection, and queries take turns on it. With one connection, a query sent through `db` inside a `db.transaction(...)` callback waits for the transaction's own connection until it times out, so send such a query through `tx`.
 
 The type of the options object is `PostgresOptions<Contract>`, exported from `@prisma/orm-postgres/runtime`.
 
@@ -298,7 +300,7 @@ Create a serverless client.
 
 #### Remarks
 
-- It takes the options of `postgres(...)` that say how queries run: `contract`, `extensions`, `middleware`, `log`, `verifyMarker`, `cursor`, `mode`, and `collections`. The type of its options object is `PostgresServerlessOptions<Contract>`. It takes no database options. You pass the connection string to `connect()` instead.
+- It takes the options of `postgres(...)` that say how queries run: `contract`, `extensions`, `middleware`, `log`, `verifyMarker`, `cursor`, `mode`, `transactionOptions` (the defaults for each `transaction()` call on its connections), and `collections`. The type of its options object is `PostgresServerlessOptions<Contract>`. It takes no database options. You pass the connection string to `connect()` instead.
 - It has `sql`, `raw`, `enums`, `nativeEnums`, `contract`, and [`toSql()`](#dbtosqlplan), which need no connection, and `connect()`. It has no `orm`, `runtime()`, or `transaction()`. Those are on the connection.
 - As on `postgres(...)`, reads load the whole result unless you pass `cursor`. Behind Cloudflare Hyperdrive, reads through a cursor hang, so leave `cursor` out there.
 
@@ -389,7 +391,7 @@ import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
-export const db = mongo({ contract, url: process.env.MONGODB_URL!, dbName: 'app' });
+export const db = mongo({ contract, url: process.env.DATABASE_URL!, dbName: 'app' });
 ```
 
 ##### Share an existing `MongoClient`
@@ -402,7 +404,7 @@ import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 // `MongoClient` here is the driver's class; the `db` below is Prisma ORM's own MongoClient type
-const client = new MongoClient(process.env.MONGODB_URL!);
+const client = new MongoClient(process.env.DATABASE_URL!);
 const db = mongo({ contract: contractFromJson<Contract>(contractJson), mongoClient: client, dbName: 'app' });
 ```
 
@@ -413,7 +415,7 @@ Open a connection and return a runtime.
 #### Remarks
 
 - Returns a `Promise<MongoRuntime>`. You rarely need `connect()`: running a query connects the client. `connect()` without options is safe to call at any time, also after a query or a second time: it waits for a connection in progress, or resolves with the runtime the client's queries already use. `connect(options)` on a client that is already connected rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED` and whose message is `Mongo client is already bound`. A `connect()` still waiting when you call `close()` rejects with `DRIVER.NOT_CONNECTED`.
-- `connect()` takes the same database options as `mongo(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.MONGODB_URL!, dbName: 'app' })`.
+- `connect()` takes the same database options as `mongo(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.DATABASE_URL!, dbName: 'app' })`.
 
 #### Return type
 
@@ -500,7 +502,7 @@ The MongoDB client implements `Symbol.asyncDispose` too, so `await using` closes
 
 ```typescript
 {
-  await using db = mongo({ contract, url: process.env.MONGODB_URL!, dbName: 'app' });
+  await using db = mongo({ contract, url: process.env.DATABASE_URL!, dbName: 'app' });
   await db.connect();
   // ... run queries ...
 } // db is closed here
@@ -521,12 +523,14 @@ Run a callback inside a transaction. The transaction commits when the callback r
 - `timeout` is a whole number of milliseconds, from `1` to `2147483647`. There is no default timeout, and `timeout: null` on a call turns off the client's default. The clock starts after `BEGIN` and stops when the commit starts.
 - When a transaction runs out of time, the call rejects with an error whose `code` is `RUNTIME.TRANSACTION_TIMEOUT`, without waiting for your callback's code to finish, and none of the transaction's writes are committed. Prisma ORM destroys the connection instead of reusing it, so a client created from `url` or a `pg.Pool` takes a fresh connection for the next query, but a client created with one `pg.Client` must be created again. A query your callback runs on `tx` after that rejects with `RUNTIME.TRANSACTION_CLOSED`. The timeout does not stop JavaScript or side effects outside the database.
 - To put a time limit on the queries inside a transaction, pass a `signal` to each `tx.query(...)` and `tx.execute(...)` call, as the example below does. See [`RuntimeExecuteOptions`](#runtimeexecuteoptions).
-- `tx` has no `transaction()` method, so transactions do not nest. If a helper you call starts its own transaction, change it to take `tx` as a parameter instead. Type the helper's parameter as `PostgresTransactionContext<Contract>`, imported from `@prisma/orm-postgres/runtime`: `async function addTag(tx: PostgresTransactionContext<Contract>) { ... }`. `TransactionContext`, imported from `@prisma/orm-postgres/family-runtime`, has `query` and `execute` only, so a helper typed with it cannot use `tx.orm` or `tx.sql`.
+- `tx.transaction(callback)` runs a nested transaction in a savepoint, to any depth, on PostgreSQL, MySQL, MariaDB, SQLite and Supabase. When the inner callback throws, only its work is rolled back, the inner call rejects with the error, and `tx` stays usable. An error that ends the whole transaction, such as a deadlock on MySQL or MariaDB, is the exception, and the outer transaction cannot commit. Then `tx.transaction(...)` rejects with `RUNTIME.TRANSACTION_ROLLBACK_FAILED`, whose `cause` is the callback's error, and `tx` refuses every later statement with `RUNTIME.TRANSACTION_CLOSED`. The inner callback receives the same kind of `tx`, with `orm`, `sql` and the other members. While it runs, a statement on the outer `tx` is refused with `RUNTIME.TRANSACTION_SUSPENDED`. Available since `8.0.0-rc.25`; see [Nested transactions](/orm/fundamentals/transactions#nested-transactions) for an example.
+- Since `8.0.0-rc.25`, an ORM write of several statements on `tx.orm`, such as a `create()` with a nested relation, runs in a savepoint of its own. When it fails, none of its rows stay, and on PostgreSQL the transaction is not aborted. While such a write runs, other work on the same `tx` is refused with `RUNTIME.TRANSACTION_SUSPENDED`, so await each write before you send the next statement, and do not run them together in `Promise.all`.
+- A `db.transaction(...)` call inside the callback does not nest: it is a separate transaction. If a helper you call starts its own transaction with `db`, change it to take `tx` as a parameter instead. Type the helper's parameter as `PostgresTransactionContext<Contract>`, imported from `@prisma/orm-postgres/runtime`: `async function addTag(tx: PostgresTransactionContext<Contract>) { ... }`. `TransactionContext`, imported from `@prisma/orm-postgres/family-runtime`, has `query` and `execute` only, so a helper typed with it cannot use `tx.orm` or `tx.sql`.
 - `tx.sql` is a full SQL builder, keyed the same way as `db.sql`: use `tx.sql.public.<table>`, where `public` is the PostgreSQL schema.
 - Reads inside the transaction see the transaction's own uncommitted writes.
 - `tx.enums` and `tx.nativeEnums` are the same enum accessors the client has, and `.values` is the list of an enum's members.
 - The callback's return value passes through as the result of `db.transaction(...)`.
-- `tx.query(...)` returns an [`AsyncIterableResult`](#asynciterableresult) that works only while the transaction is open. Read it inside the callback. A result you return and then read after the transaction has ended rejects with an error whose `code` is `RUNTIME.TRANSACTION_CLOSED`. Calling a member of `tx` after the transaction has ended, such as `tx.query(...)`, `tx.execute(...)`, or an ORM call on `tx.orm`, rejects with the same error instead of throwing at the call. To act on a code, catch the error and compare `error.code` with the string. Every code is listed in the [error reference](/orm/reference/error-reference).
+- `tx.query(...)` returns an [`AsyncIterableResult`](#asynciterableresult) that works only while the transaction is open. Read it inside the callback. A result you return and then read after the transaction has ended rejects with an error whose `code` is `RUNTIME.TRANSACTION_CLOSED`. Calling a member of `tx` after the transaction has ended, such as `tx.query(...)`, `tx.execute(...)`, or an ORM call on `tx.orm`, rejects with the same error instead of throwing at the call. So does a statement that started inside the transaction but had not reached the database when the transaction committed or rolled back. Before `8.0.0-rc.25`, such a statement could run on its own after the `ROLLBACK`. To act on a code, catch the error and compare `error.code` with the string. Every code is listed in the [error reference](/orm/reference/error-reference).
 
 #### Options
 
@@ -762,7 +766,14 @@ const { affectedRows } = await promote.execute(runtime, { from: "new", to: "acti
 - Run a prepared query with `query(runtime, params)`, passing `await db.runtime()`, not the client. A prepared update or delete also has `execute(runtime, params)`, which resolves to `{ affectedRows }`.
 - `db.prepare(...)` opens no connection.
 - An unknown type id, a declared parameter the query does not use, and a parameter in a raw command fail at `prepare`. A missing value fails when the query runs. An ORM write refuses a parameter with `ORM.ARGUMENT_INVALID`.
-- Prepared ORM queries, the `.prepared.all()` and `.prepared.first()` that [PostgreSQL has](#prepared-statements-postgresql), are not available on MongoDB yet.
+- The callback can also return an ORM read that ends in `.prepared.all()`, `.prepared.first()` or `.prepared.firstOrThrow()`, with parameters in `where`, `limit` and `offset`, since `8.0.0-rc.25`. `.prepared.first()` resolves to the document or `null`, and `.prepared.firstOrThrow()` rejects with `RUNTIME.NO_ROWS` when nothing matches:
+
+  ```typescript
+  const byName = await db.prepare({ name: "mongo/string@1" }, (p) =>
+    db.orm.members.where({ name: p.name }).select("name").prepared.first(),
+  );
+  const member = await byName.query(await db.runtime(), { name: "Cid" });
+  ```
 - `limit(0)` fails when the query is built, with `ORM.ARGUMENT_INVALID`, because MongoDB requires a positive `$limit`.
 
 ## Prepared statements (PostgreSQL)
@@ -824,10 +835,11 @@ Prepare a statement on the client itself.
 #### Remarks
 
 - The callback takes one argument, the declared `params`, as it does on `runtime.prepare(...)`. Build the query with the client's own `db.sql` or `db.orm`.
-- The callback can return a built SQL query, or an ORM query that ends in `.prepared.all()`, `.prepared.first()`, or `.prepared.aggregate(...)`. `.prepared` always goes right before that last call, so a grouped aggregate is written `db.orm.public.Post.groupBy('userId').prepared.aggregate((agg) => ({ posts: agg.count() }))`.
+- The callback can return a built SQL query, or an ORM query that ends in `.prepared.all()`, `.prepared.first()`, `.prepared.firstOrThrow()`, or `.prepared.aggregate(...)`. `.prepared` always goes right before that last call, so a grouped aggregate is written `db.orm.public.Post.groupBy('userId').prepared.aggregate((agg) => ({ posts: agg.count() }))`.
 - The ORM query is built once. `db.prepare(...)` resolves to a prepared query, here called `ps`, and you run it with `ps.query(db.runtime(), values)`, where `values` holds a value for each declared parameter. A connection or a transaction also works in place of `db.runtime()`. Each run uses the new values and returns what the same call without `.prepared` returns:
   - `all()` returns the rows, as an [`AsyncIterableResult`](#asynciterableresult) that you `await` for an array.
   - `first()` returns a promise of one row, or of `null` when no row matches.
+  - `firstOrThrow()` returns a promise of one row, and rejects when no row matches, as [`firstOrThrow()`](/orm/reference/orm-client#firstorthrow) does.
   - `aggregate(...)` returns a promise of the aggregate object.
   - `groupBy(...)` followed by `aggregate(...)` returns a promise of an array with one object per group.
 - `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` resolves with the same runtime.

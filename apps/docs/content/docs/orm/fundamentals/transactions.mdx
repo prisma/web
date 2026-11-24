@@ -8,7 +8,7 @@ metaDescription: 'Group writes atomically with db.transaction() on PostgreSQL, a
 
 Run several writes as one unit with `db.transaction(...)`: they all commit together, or they all roll back.
 
-Prisma ORM 8 runs on PostgreSQL, SQLite, and MongoDB. MySQL is an early preview that reads data, and its `db.transaction(...)` runs reads and raw SQL. The examples on this page are PostgreSQL; `db.transaction(...)` works the same way on SQLite, and MongoDB is covered in [Transactions on MongoDB](#transactions-on-mongodb).
+The examples on this page are PostgreSQL. `db.transaction(...)` works the same way on SQLite and MySQL. MongoDB is covered in [Transactions on MongoDB](#transactions-on-mongodb).
 
 ## Run writes in a transaction
 
@@ -58,7 +58,39 @@ await db.transaction(async (tx) => {
 
 To type the helper's parameter, add this line to `src/prisma/db.ts`: `export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];`, then import `Tx` wherever a helper needs it. The package also exports a type for this, `PostgresTransactionContext<Contract>` from `@prisma/orm-postgres/runtime`, which the [reference](/orm/reference/transactions-and-runtime#dbtransactioncallback) describes.
 
-Do not open a second transaction inside the helper, because calling `db.transaction(...)` again inside a callback does not nest: the inner call is a separate transaction that commits or rolls back on its own, and the outer one cannot roll it back. Pass `tx` down instead.
+Do not call `db.transaction(...)` inside the helper: it does not nest, so the inner call is a separate transaction that commits or rolls back on its own, and the outer one cannot roll it back. Pass `tx` down instead.
+
+### Nested transactions
+
+Sometimes you want part of the work in a transaction to be allowed to fail without undoing the rest, such as creating a welcome post after you create a user. Run that part in a nested transaction with `tx.transaction(...)`:
+
+```typescript
+await db.transaction(async (tx) => {
+  const user = await tx.orm.public.User.create({ email: "jane@prisma.io", name: "Jane" });
+  try {
+    await tx.transaction(async (inner) => {
+      await createWelcomePost(inner, user.id);
+    });
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "RUNTIME.TRANSACTION_ROLLBACK_FAILED") {
+      throw error;
+    }
+    // only the welcome post is rolled back; the user is still created
+  }
+});
+```
+
+When the inner callback throws, only its work is rolled back: the inner call rejects with the error, and the outer `tx` stays usable, so the outer transaction can still commit.
+
+The exception is an error that ends the whole transaction, such as a deadlock on MySQL or MariaDB, and then the outer transaction cannot commit. In that case `tx.transaction(...)` rejects with `RUNTIME.TRANSACTION_ROLLBACK_FAILED`, and the error's `cause` is the error your callback threw. Every later statement on `tx` is refused with `RUNTIME.TRANSACTION_CLOSED`. The `catch` above rethrows the error in that case, so the whole transaction fails.
+
+The inner callback receives the same kind of `tx`, with `orm`, `sql` and the other members, and can nest again to any depth. While the inner callback runs, a statement sent on the outer `tx` is refused with `RUNTIME.TRANSACTION_SUSPENDED`.
+
+A nested transaction runs in a savepoint. It works on PostgreSQL, MySQL, MariaDB, SQLite and Supabase, since `8.0.0-rc.25`.
+
+### Await each call on `tx`
+
+Send the calls on `tx` one at a time, and await each before you send the next. Since `8.0.0-rc.25`, an ORM write that runs several statements, such as a `create()` with a nested relation, runs in a savepoint of its own, so a write that fails leaves none of its rows. While such a write runs, other work on the same `tx`, such as a second call in `Promise.all`, is refused with `RUNTIME.TRANSACTION_SUSPENDED`.
 
 ### Options and isolation level
 
@@ -285,7 +317,7 @@ await db.transaction(async (tx) => {
 
 Queries on `db` run on their own connection, outside the open transaction, so they commit immediately and won't roll back with the rest of the callback. Use `tx` for every query inside the callback: `tx.orm` for models, `tx.sql` and `tx.execute` for the SQL query builder.
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for coding agents, and in an existing project you run `npx prisma skills sync` to add them. The `prisma-8` skill covers transactions, so try prompts that map to each section:
 

@@ -40,20 +40,20 @@ Your contract is the `contract.prisma` file that replaced `schema.prisma`: it is
 
 You can write `.where`, `.select`, `.orderBy`, `.limit`, and `.offset` in any order, but `.cursor(...)` must come after `.orderBy(...)`.
 
-For Prisma ORM 7 users, `findMany` and `findFirst` / `findUnique` map directly onto `.all()` and `.first()` ([Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) maps the rest of the API):
+For Prisma ORM 7 users, `findMany` maps onto `.all()`, and `findFirst` and `findUnique` map onto `.first()` ([Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) maps the rest of the API):
 
 ```diff
 - const posts = await prisma.post.findMany({ where: { published: true } });
 + const posts = await db.orm.public.Post.where({ published: true }).all();
 
 - const user = await prisma.user.findUnique({ where: { email } });
-+ const user = await db.orm.public.User.where({ email }).first();
++ const user = await db.orm.public.User.whereUnique({ email }).first();
 
 - const page = await prisma.post.findMany({ take: 20, skip: 20 });
 + const page = await db.orm.public.Post.limit(20).offset(20).all();
 ```
 
-`.first()` asks the database for one row. `findUnique` and `findFirst` both become `.first()`, so if several records match you get one of them, in no guaranteed order; add `.orderBy(...)` to choose.
+`.first()` asks the database for one row. After `.where(...)`, as for `findFirst`, several records can match, and you get one of them in no guaranteed order; add `.orderBy(...)` to choose. After `.whereUnique(...)`, as for `findUnique`, TypeScript checks that you named a primary key or unique field, so at most one record matches, and it rejects a call that could return many rows after it, such as `.all()` or `.limit(10)`. `.whereUnique(...)` is not available on MongoDB yet, so there use `.where(...)`.
 
 ## Example schema
 
@@ -156,7 +156,7 @@ const user = await db.orm.public.User.firstOrThrow({ email });
 
 `.firstOrThrow()` reads one row, as `.first()` does, and throws an error with code `RUNTIME.NO_ROWS` when nothing matches. The error is an `Error` with a `code` property, so check `"code" in error` before you read it. On MongoDB it takes no argument, so write `db.orm.users.where({ email }).firstOrThrow()`.
 
-On PostgreSQL, `.whereUnique(...)` says that a lookup names one row by its primary key or a unique constraint, as `findUnique` did: `db.orm.public.User.whereUnique({ email }).first()`. A field that is not part of such a key is a type error, and so is a call that could return many rows after it, such as `.all()` or `.limit(10)`.
+To read one record by its primary key or a unique field, use `.whereUnique(...)` before `.first()` or `.firstOrThrow()`, as the comparison with `findUnique` at the top of this page shows. On MongoDB, which has no `.whereUnique(...)` yet, use `.where(...)` instead. The [`whereUnique()` reference](/orm/reference/orm-client#whereunique) has the details.
 
 ## Filter records
 
@@ -228,7 +228,7 @@ const junePosts = await db.orm.posts
   .all();
 ```
 
-Each value goes through the field's type, as in a write, so pass the value your code reads from that field. For an `Int64` field that is a `bigint`, which a filter takes wrapped in a `MongoParamRef` from `@prisma/orm-mongo/value`, as in `MongoFieldFilter.gt("views", new MongoParamRef(5n))`. A value the field's type refuses throws an error whose `code` is `RUNTIME.ENCODE_FAILED` before the query runs.
+Each value goes through the field's type, as in a write, so pass the value your code reads from that field. For a `BigInt` field that is a `bigint`, which a filter takes wrapped in a `MongoParamRef` from `@prisma/orm-mongo/value`, as in `MongoFieldFilter.gt("views", new MongoParamRef(5n))`. A value the field's type refuses throws an error whose `code` is `RUNTIME.ENCODE_FAILED` before the query runs.
 
 Chained `.where(...)` calls combine with AND, the same as on PostgreSQL. Call `.not()` on a filter to invert it, and use `MongoOrExpr.of([...])` from the same import to combine filters with OR:
 
@@ -480,7 +480,7 @@ const posts = await db.orm.public.Post.all();
 // posts is a plain array now; read it as often as you like
 ```
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the Prisma ORM skills for your coding agent, and in an existing project you run `npx prisma skills sync` to add them. Skills are instruction files a coding agent reads, and the [`prisma-8` skill](/ai/tools/skills#available-skills-for-prisma-8) covers everything on this page, so try prompts that map to each section:
 

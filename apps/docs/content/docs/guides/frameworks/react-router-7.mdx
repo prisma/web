@@ -10,7 +10,7 @@ metaDescription: 'Add Prisma ORM and Prisma Postgres to a React Router framework
 
 This guide shows you how to use Prisma ORM in a [React Router](https://reactrouter.com/) app running in framework mode. There is no `create-prisma` template for React Router, so you start from `create-react-router` and add Prisma ORM to the existing project with `orm init`. You then define a contract for users and posts, seed the database, read it from route loaders, and write to it from a form action.
 
-`create-react-router@latest` scaffolds React Router 8. The route APIs this guide uses (`loader`, `action`, `routes.ts`, and the generated `Route` types) are the same in React Router 7, and the finished app was run on both majors.
+`create-react-router@latest` scaffolds React Router 8, but the route APIs this guide uses (`loader`, `action`, `routes.ts`, and the generated `Route` types) are the same in React Router 7, and the finished app was run on both versions.
 
 Every command, page, and response below was run end to end against a local PostgreSQL database.
 
@@ -22,7 +22,7 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended)
+- [Node.js](https://nodejs.org) 22.22 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended). Prisma ORM itself runs on Node.js 22.18 or newer on the 22 line, but `create-react-router` and React Router 8 require Node.js 22.22 or newer
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
 ## 1. Set up your project
@@ -66,21 +66,34 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 `--target postgres` selects PostgreSQL, `--authoring psl` keeps the schema in Prisma Schema Language, and `--yes` accepts the default contract path. Run [`orm init`](/cli/orm-init) without flags for the guided version that asks the same questions.
 
 ```text no-copy
-Updated tsconfig.json with required compiler options.
-npm add @prisma/orm-postgres dotenv
-npm add -D prisma@latest
-npm add -D @prisma/cli-engine@0.10.0
-Emit the contract
+✔ Emit the contract
+│  target:     postgres
+│  authoring:  psl
+│  schema:     src/prisma/contract.prisma
 
-filesWritten: src/prisma/contract.prisma, prisma.config.ts, src/prisma/db.ts,
-              prisma-8.md, .env.example, tsconfig.json, .gitignore,
-              .gitattributes, package.json
-contractEmitted: true
+written
+├─ src/prisma/contract.prisma
+├─ prisma.config.ts
+├─ src/prisma/db.ts
+├─ prisma-8.md
+├─ .env.example
+├─ tsconfig.json
+├─ .gitignore
+├─ .gitattributes
+└─ package.json
+installed
+├─ @prisma/orm-postgres
+├─ dotenv
+├─ pg
+├─ prisma@latest (dev)
+└─ @prisma/cli-engine@0.10.4 (dev)
+
+✔ Done. Open prisma-8.md to get started.
 ```
 
-The command installs `@prisma/orm-postgres` (the Postgres runtime) and `dotenv`, adds the `prisma` CLI as a dev dependency, and writes:
+The command installs `@prisma/orm-postgres` (the Postgres runtime), `dotenv` and `pg`, the PostgreSQL driver, adds the `prisma` CLI as a dev dependency, and writes:
 
-- `prisma.config.ts`: the CLI configuration. It loads `.env` and points at your contract.
+- `prisma.config.ts`: the CLI configuration. `orm init` writes it with an `import 'dotenv/config'` line, so it loads `.env`, and it points at your contract.
 - `src/prisma/contract.prisma`: your schema, with starter `User` and `Post` models.
 - `src/prisma/db.ts`: the Prisma ORM client your loaders import.
 - `src/prisma/contract.json` and `src/prisma/contract.d.ts`: emitted from the contract; the runtime validates against the first and your queries are typed by the second.
@@ -135,10 +148,7 @@ npx prisma contract emit
 ```
 
 ```text no-copy
-"files": {
-  "json": "src/prisma/contract.json",
-  "dts": "src/prisma/contract.d.ts"
-}
+✔ Emitted contract.json and contract.d.ts
 ```
 
 ### 2.4. Initialize the database
@@ -150,10 +160,18 @@ npx prisma db init
 ```
 
 ```text no-copy
-"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+✔ Applied 5 operation(s) across 1 contract space
+
+App space
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker ff76f1ab2ab66b25e03a5d5234e7b68af09ed4da6d55d9622eb51b6de4164a04
 ```
 
-The five operations are the `user` and `post` tables, the unique constraint on `email`, the index on `authorId`, and the foreign key. If you change the contract later, run `npx prisma contract emit` followed by `npx prisma db update`, or plan a checked-in migration with [`migration plan`](/cli/migration-plan). There is no `prisma migrate dev`.
+The five operations are the `User` and `Post` tables, the unique constraint on `email`, the index on `authorId`, and the foreign key. If you change the contract later, run `npx prisma contract emit` followed by `npx prisma db update`, or plan a checked-in migration with [`migration plan`](/cli/migration-plan). There is no `prisma migrate dev`.
 
 ### 2.5. Seed the database
 
@@ -270,7 +288,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 }
 ```
 
-Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. `select` narrows the columns and `all()` runs the query. The `Route.ComponentProps` type carries the loader's return type into the component, so `users` is typed without any annotation.
+On PostgreSQL, you reach a model through the database schema it is in: `db.orm.public.User` is the `User` model in the `public` schema. `select` narrows the columns and `all()` runs the query. The `Route.ComponentProps` type carries the loader's return type into the component, so `users` is typed without any annotation.
 
 The template's `app/welcome` directory is no longer imported; delete it.
 
@@ -285,7 +303,7 @@ npm run dev
   ➜  Network: use --host to expose
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The page lists Alice and Bob.
+When you open [http://localhost:5173](http://localhost:5173), the page lists Alice and Bob.
 
 :::note
 
@@ -295,7 +313,7 @@ If your editor reports an error on `import type { Route } from "./+types/home"`,
 
 ## 4. Add a posts list page
 
-Create `app/routes/posts/home.tsx`. The loader includes each post's author so the page can show the name:
+Create `app/routes/posts/home.tsx`, whose loader includes each post's author so the page can show the name:
 
 ```tsx title="app/routes/posts/home.tsx"
 import type { Route } from "./+types/home";
@@ -345,7 +363,7 @@ Open [http://localhost:5173/posts](http://localhost:5173/posts): three posts, ea
 
 ## 5. Add a post detail page
 
-Create `app/routes/posts/post.tsx`. The loader reads the post by primary key and throws a 404 when there is none:
+Create `app/routes/posts/post.tsx`, whose loader reads the post by primary key and throws a 404 when there is none:
 
 ```tsx title="app/routes/posts/post.tsx"
 import type { Route } from "./+types/post";
@@ -390,11 +408,11 @@ export default [
 ] satisfies RouteConfig;
 ```
 
-Open [http://localhost:5173/posts/1](http://localhost:5173/posts/1) and [http://localhost:5173/posts/2](http://localhost:5173/posts/2). Then try [http://localhost:5173/posts/999](http://localhost:5173/posts/999): the template's root `ErrorBoundary` renders the 404.
+Open [http://localhost:5173/posts/1](http://localhost:5173/posts/1) and [http://localhost:5173/posts/2](http://localhost:5173/posts/2) to see each post. When you then try [http://localhost:5173/posts/999](http://localhost:5173/posts/999), the template's root `ErrorBoundary` renders the 404.
 
 ## 6. Add a create page with an action
 
-Create `app/routes/posts/new.tsx`. The `action` receives the form submission, inserts the post, and redirects to its detail page:
+Create `app/routes/posts/new.tsx`, whose `action` receives the form submission, inserts the post, and redirects to its detail page:
 
 ```tsx title="app/routes/posts/new.tsx"
 import type { Route } from "./+types/new";
@@ -460,7 +478,7 @@ export default function NewPost({ actionData }: Route.ComponentProps) {
 
 `create` returns the inserted row with its generated `id`, `published: false` default, and timestamps, so the redirect target is known without another query. The post is attributed to user `1` (Alice from the seed) to keep the example short; a real app takes the author from the session.
 
-Register the route. React Router ranks static segments above dynamic ones, so `/posts/new` reaches this route and not `posts/:postId`, whichever order you list them in:
+Add the route to `app/routes.ts`, before or after `posts/:postId`: React Router ranks static segments above dynamic ones, so `/posts/new` always reaches this route, whichever order you list them in:
 
 ```tsx title="app/routes.ts"
 export default [

@@ -22,6 +22,42 @@ npx prisma telemetry status
 | `telemetry enable`  | Enable anonymous CLI telemetry                          |
 | `telemetry disable` | Disable anonymous CLI telemetry                         |
 
+## What is collected
+
+Each `prisma` run sends one event when the command starts. It contains:
+
+- a random installation id, created on this machine by the first run with telemetry on
+- the `prisma` version
+- the command you ran, such as `db migrate`, without its arguments
+- the names of the flags you typed, such as `db` for `--db`, without their values
+- the JavaScript runtime and its version: Node.js, Bun, or Deno
+- the operating system and processor architecture, such as `darwin` and `arm64`
+- the package manager and its version, such as `pnpm/10.27.0`: the first word of the `npm_config_user_agent` variable that your package manager sets when the command runs through it
+- the `typescript` version that your project's `package.json` lists, if any, without a leading `^` or `~`
+- the AI coding agent that ran the command, if any. When the `AI_AGENT` environment variable is set, its value is sent as it is, which can include the agent's version. Otherwise the CLI sends a fixed name, such as `claude` or `cursor`, when it recognizes a variable that the agent sets.
+
+The event has two more fields, for your database and your extensions, and this version always leaves them empty. Nothing else is sent: no file contents, paths, or connection strings. `AI_AGENT` and the first word of `npm_config_user_agent` are the only environment variable values the event can contain.
+
+The `telemetry` commands themselves send no event.
+
+## When nothing is sent
+
+Telemetry is off when any of these is true:
+
+1. The run is in CI. The CLI recognizes the `CI` variable and the variables that CI providers set; see [Environment variables](/cli/environment-variables).
+2. `PRISMA_DISABLE_TELEMETRY` is set to `1` (any value except empty, `0` or `false` works), or `DO_NOT_TRACK` is `1`.
+3. You ran `prisma telemetry disable`.
+
+## The first-run notice
+
+The first run with telemetry on prints this notice on stderr:
+
+```text
+Prisma collects anonymous CLI usage data, enabled by default. What's collected and why: https://www.prisma.io/docs/cli. Opt out: run "prisma telemetry disable", set DO_NOT_TRACK=1 or PRISMA_DISABLE_TELEMETRY=1.
+```
+
+You see it once per machine. If you run `prisma telemetry disable` before any other `prisma` command, it never prints.
+
 ## Where the preference is stored
 
 `telemetry enable` and `telemetry disable` write `config.json` in the CLI's config directory: `$XDG_CONFIG_HOME/prisma/` if that variable is set, otherwise `~/.config/prisma/` on macOS and Linux and `%APPDATA%\prisma\` on Windows. The same file holds the random installation id that the first enabled telemetry run creates, right after it prints the notice. `telemetry status` prints the path it is using. The ORM commands mounted in the unified CLI share this preference; there is no second store to change.

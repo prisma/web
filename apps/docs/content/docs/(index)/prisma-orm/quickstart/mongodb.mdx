@@ -29,7 +29,7 @@ npm create prisma@latest -- --provider mongodb --no-deploy
 
 The command preselects MongoDB and prompts you for the project name, the template, the language you write your contract in (the contract is what Prisma ORM 7 called the schema, and you write it in Prisma Schema Language, as in `schema.prisma`, or in TypeScript), your package manager, and whether to install agent skills. If you would rather add Prisma ORM to a project by hand, without the generated template, follow [Set up Prisma ORM from scratch](/prisma-orm/from-scratch), which uses PostgreSQL.
 
-Setup gives you the app template, a starter contract, `prisma-8.md` (a short quick reference for writing your first typed query), project-level Prisma ORM skills for your coding agent, and package scripts for the database steps below. Answer no at the skills prompt, or pass `--skills none`, to skip the agent skill files; to remove them later, see [`skills sync`](/cli/skills) and the [`skills` config section](/cli/configuration#agent-skills). Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
+Setup gives you the app template, a starter contract, `prisma-8.md` (a short quick reference for writing your first typed query), project-level Prisma ORM skills for your coding agent, and package scripts for the database steps below. Answer no at the skills prompt, or pass `--skills none`, to skip the agent skill files; to remove them later, see [`skills sync`](/cli/skills) and the [`skills` config section](/cli/configuration#agent-skills). Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step. When the project folder is new or empty and is not already inside a Git repository, setup also creates a Git repository with one commit, `Initial commit from create-prisma`.
 
 ## 1. Set the database connection
 
@@ -59,19 +59,19 @@ Create the first migration plan from the starter contract.
 npm run migration:plan -- --name init
 ```
 
-The output reports the planned operations: creating the `users` and `posts` collections and a unique index on `users.email`.
+The output reports the planned operations. With a PSL contract, it plans 3: it creates the `posts` and `users` collections and a unique index named `email_1` on `users.email`. The TypeScript starter contract declares no unique field, so with it the plan has 2 operations and no index.
 
 ## 3. Apply the migration
 
 Apply the planned migration to MongoDB:
 
 ```npm
-npm run migrate -- --advance-ref db
+npm run migrate
 ```
 
-`--advance-ref db` writes `migrations/app/refs/db.json`, the `db` ref, which records the contract state your development database is now at. Your next `migration plan` starts from it. Without it, the next `npm run migration:plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`, because migrations exist but nothing says which one your database has.
+`db migrate` also writes `migrations/app/refs/db.json`, the `db` ref, which records the contract state your development database is now at. Your next `migration plan` starts from it.
 
-The output includes `Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)` and ends with a line starting `Advanced ref "db"`. If it fails with a connection error, confirm `DATABASE_URL` is exported in this shell and points at a running MongoDB server.
+The output includes `Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)`, or `(2 operation(s))` with the TypeScript starter, and a line starting `Advanced ref "db"`. If it fails with a connection error, confirm `DATABASE_URL` is exported in this shell and points at a running MongoDB server.
 
 The `1 contract space` in the summary is the migration history for your own models. Prisma ORM calls it the `app` [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page), and its migrations are in `migrations/app/`.
 
@@ -87,6 +87,6 @@ Use the URL or terminal output shown by your template. You should see the seeded
 
 ## Next steps
 
-- Open `src/prisma/contract.prisma` or `src/prisma/contract.ts` and change the starter model. Then run `npm run contract:emit`, `npm run migration:plan -- --name <name>`, and `npm run migrate -- --advance-ref db`. Without `contract:emit`, `migration plan` reads the contract from before your change and reports `No changes detected`.
+- Open `src/prisma/contract.prisma` or `src/prisma/contract.ts` and change the starter model. In the `turborepo` template, the contract is in `packages/database/src/` instead. Then run `npm run contract:emit`, `npm run migration:plan -- --name <name>`, and `npm run migrate`. Without `contract:emit`, `migration plan` reads the contract from before your change and reports `No changes detected`.
 - If you already have an app, follow [Add Prisma ORM and MongoDB to an existing app](/prisma-orm/quickstart/existing-app/mongodb) when its database is empty, or [Add Prisma ORM to an existing MongoDB database](/prisma-orm/add-to-existing-project/mongodb) when the database already has collections.
 - Read the [Prisma ORM overview](/orm) when you want the concepts behind contracts, query APIs, and migrations.

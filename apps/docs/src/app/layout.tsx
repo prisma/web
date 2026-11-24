@@ -13,6 +13,7 @@ import Script from "next/script";
 import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 import { OpenAiPixel } from "@prisma-docs/ui/components/openai-pixel";
+import { FreebuffPixel } from "@prisma-docs/ui/components/freebuff-pixel";
 import { PromptwatchScript } from "@prisma-docs/ui/components/promptwatch-script";
 import { Banner } from "fumadocs-ui/components/banner";
 import { ArrowRightIcon } from "lucide-react";
@@ -97,6 +98,8 @@ export default function Layout({ children }: { children: ReactNode }) {
         <GoogleTagManager section="docs" />
         {/* ChatGPT ads pixel, consent-gated on the CookieYes advertisement category */}
         <OpenAiPixel />
+        {/* Freebuff ads pixel: queue stub always, tag only with advertisement consent */}
+        <FreebuffPixel />
         {/* Promptwatch visitor analytics — cookieless, loaded without a consent gate */}
         <PromptwatchScript />
         {/* FontAwesome — icons are non-critical; explicit strategy avoids

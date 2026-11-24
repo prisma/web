@@ -79,12 +79,16 @@ The [ref](/cli/migration-ref) named `db` is a file in your repository, `migratio
 
 ### Adopt an existing database
 
+Use this when the database already has tables and you want Prisma ORM to describe them instead of creating them. Run it in a project that `orm init` set up. `contract infer` reads the tables and writes them to `src/prisma/contract.prisma`, replacing the starter contract that `contract emit` reads, so commit or copy any changes you made to it first. In general, it writes `contract.prisma` in the folder where `contract emit` writes its files. If your contract is a `contract.ts` file, `contract emit` keeps reading that file until you set `contract` in `prisma.config.ts` to the new `contract.prisma`.
+
 ```npm
-npx prisma contract infer --db "$DATABASE_URL" --output ./prisma/contract.prisma
+npx prisma contract infer --db "$DATABASE_URL"
 npx prisma contract emit
 npx prisma db sign --db "$DATABASE_URL"
 npx prisma db verify --db "$DATABASE_URL"
 ```
+
+If you pass `--output` to write the file somewhere else, set `contract` in `prisma.config.ts` to the same path, or `contract emit` keeps reading the old file.
 
 `db sign` also sets the `db` ref to the signed contract, so the next `migration plan` starts from the database you adopted. Pass `--no-advance-ref` to sign without changing any ref.
 
@@ -98,7 +102,15 @@ npx prisma db migrate --db "$DATABASE_URL" --advance-ref db
 npx prisma db verify --db "$DATABASE_URL"
 ```
 
-`db migrate` changes no ref unless you pass `--advance-ref db`. Pass it in development, so that the next `migration plan` starts from what you just applied instead of planning the same change again. Leave it off in CI and deployments, which should not change the refs in your repository: there, run `npx prisma db migrate`, or `npx prisma db migrate --to <ref>` if you name the state each environment should reach with a ref.
+When `db migrate` takes its connection from `prisma.config.ts` and does not detect CI, it updates the `db` ref, so the next `migration plan` starts from what you just applied. With `--db`, as above, or in CI, it changes no ref unless you pass `--advance-ref db`.
+
+A deployment should not change the refs in your repository. If it reads its connection from `prisma.config.ts` and does not run as a CI job, pass `--no-advance-ref`:
+
+```npm
+npx prisma db migrate --no-advance-ref
+```
+
+If you keep a ref for each environment, such as `prod`, run `npx prisma db migrate --to <ref> --no-advance-ref` instead.
 
 ## Agent skills
 

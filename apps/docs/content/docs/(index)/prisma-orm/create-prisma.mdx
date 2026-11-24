@@ -6,7 +6,7 @@ metaTitle: Scaffold a Prisma ORM app with create-prisma
 metaDescription: Use npm create prisma@latest to create a Prisma ORM app from a framework template, pick PostgreSQL or MongoDB, choose PSL or TypeScript contract authoring, and deploy to Prisma.
 ---
 
-`create-prisma` creates a new Prisma ORM project from an app template. It installs Prisma ORM, emits the contract, and generates a deployable [Prisma Composer](/composer) app. PostgreSQL projects use Composer's native Prisma Postgres provider, including migrations and a typed runtime client.
+`create-prisma` creates a new Prisma ORM project from an app template. It installs Prisma ORM, emits the contract, and generates a deployable [Prisma Composer](/composer) app. PostgreSQL projects use Composer's native Prisma Postgres provider, including migrations and a typed runtime client. For PostgreSQL, the scaffold also plans the first migration from the starter contract, in `migrations/app/<timestamp>_init`. When the project folder is new or empty and is not already inside a Git repository, it creates a Git repository with one commit, `Initial commit from create-prisma`.
 
 Use it when you want to start from a working app. If you already have an app, follow [Add Prisma ORM to an existing PostgreSQL database](/prisma-orm/add-to-existing-project/postgresql) or [Add Prisma ORM to an existing MongoDB database](/prisma-orm/add-to-existing-project/mongodb) instead.
 
@@ -66,6 +66,12 @@ npm create prisma@latest -- my-app --template next --provider postgres --yes
 | `--verbose` | Shows the full command output during setup. Not compatible with `--json`. |
 | `--json` | Runs non-interactively and writes one JSON result object to stdout, for agents and automation. Deploys unless you pass `--no-deploy`. |
 
+If the project folder already exists and is not empty, `create-prisma` writes nothing, unless you pass `--force`. What it does instead depends on how you run it.
+
+With `--yes` or `--json`, it stops with a message. If the folder holds an app, which means it has a `package.json` and no `prisma.config.ts`, the message suggests running `npx prisma@latest orm init` in that folder to add Prisma ORM to the app. If the folder has a `prisma.config.ts`, as every Prisma ORM 7 project does, the message says it already holds a Prisma project and suggests using the Prisma CLI there.
+
+In a terminal without `--yes`, it asks what to do: create the project in a new folder with a free name, such as `my-app-1`, choose another name, or cancel. If the folder holds an app, it also offers **Add Prisma to the existing app**, which runs `prisma orm init` there and adds no starter app and no deploy setup. [Add Prisma ORM and PostgreSQL to an existing app](/prisma-orm/quickstart/existing-app/postgresql) and [Add Prisma ORM and MongoDB to an existing app](/prisma-orm/quickstart/existing-app/mongodb) walk through what `orm init` does.
+
 ## Templates
 
 | `--template` | App |
@@ -79,6 +85,7 @@ npm create prisma@latest -- my-app --template next --provider postgres --yes
 | `astro` | Astro |
 | `nuxt` | Nuxt (needs Node.js 22.22.3 or newer on the 22 line, 24.15 or newer on the 24 line, or 26 or newer) |
 | `tanstack-start` | TanStack Start |
+| `turborepo` | A Turborepo monorepo: a minimal Node.js server in `apps/server`, and the contract and database client in a shared package, `packages/database` |
 
 Every template supports PostgreSQL and MongoDB, PSL or TypeScript contract authoring, and npm, pnpm, Yarn, and Bun. Each [framework guide](/guides) walks the generated app from the first query to a deploy.
 
@@ -100,7 +107,7 @@ npm run db:init
 npm run dev
 ```
 
-Sample records are seeded on the app's first query. From there, change the contract under `src/prisma/`, run `npm run contract:emit`, plan the migration with `npm run migration:plan -- --name <name>`, and apply it with `npm run migrate -- --advance-ref db`. Keep `--advance-ref db` on every apply in development: it points the `db` ref at the state you applied, and the next `migration plan` starts from there. Without it, the next plan starts from the state before your last migration and plans its changes again, and `npm run migrate` then fails with `MIGRATION.PATH_UNREACHABLE`. [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql) covers that loop in detail, and [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) covers the MongoDB connection string.
+Sample records are seeded on the app's first query. From there, change the contract under `src/prisma/` (`packages/database/src/` in the `turborepo` template), run `npm run contract:emit`, plan the migration with `npm run migration:plan -- --name <name>`, and apply it with `npm run migrate`. Each apply points the `db` ref at the state you applied, and the next `migration plan` starts from there. [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql) covers that loop in detail, and [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) covers the MongoDB connection string.
 
 ### Generated scripts
 

@@ -944,7 +944,7 @@ const config = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'none'; script-src 'self' https://www.googletagmanager.com https://bzrcdn.openai.com; connect-src https://*.google-analytics.com https://*.analytics.google.com https://*.doubleclick.net https://www.google.com https://www.google.es https://bzr.openai.com https://bzrcdn.openai.com; img-src https:; frame-ancestors https://console.prisma.io; base-uri 'none'; form-action 'none'",
+              "default-src 'none'; script-src 'self' https://www.googletagmanager.com https://bzrcdn.openai.com https://freebuff.com; connect-src https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://*.doubleclick.net https://www.google.com https://www.google.es https://bzr.openai.com https://bzrcdn.openai.com https://freebuff.com; img-src https:; frame-ancestors https://console.prisma.io; base-uri 'none'; form-action 'none'",
           },
           { key: "Referrer-Policy", value: "origin" },
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
@@ -955,4 +955,3 @@ const config = {
 };
 
 export default withMDX(config);
-

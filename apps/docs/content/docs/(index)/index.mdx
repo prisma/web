@@ -45,14 +45,14 @@ full: true
 
 <IconGrid>
   <IconLink href="/prisma-orm/quickstart/postgresql" title="I'm creating a new app" description="Start from a template" icon={<Rocket />} />
-  <IconLink href="/prisma-orm/quickstart/existing-app/postgresql" title="I have an app, no database yet" description="Add Prisma ORM, then create the tables" icon={<FolderPlus />} />
+  <IconLink href="/prisma-orm/quickstart/existing-app/postgresql" title="I have an app, no database" description="Add Prisma ORM, then create the tables" icon={<FolderPlus />} />
   <IconLink href="/prisma-orm/add-to-existing-project/postgresql" title="I have a database already" description="Start from the tables you have" icon={<Database />} />
   <IconLink href="/guides/upgrade-prisma-orm" title="I have a Prisma 6 or 7 app" description="Upgrade to Prisma 8" icon={<Milestone />} />
 </IconGrid>
 
 </SectionRow>
 
-<SectionRow title="Pick your framework" description="Each guide covers the same steps: scaffold, connect Prisma Postgres, run a query, deploy. SvelteKit and Deno stop at a local run for now.">
+<SectionRow title="Pick your framework" description="Each guide covers the same steps: scaffold, connect Prisma Postgres, run a query, deploy. Deno stops at a local run for now.">
 
 <IconGrid columns={5} tiles>
   <IconLink href="/guides/frameworks/nextjs" title="Next.js" src="/img/technologies/nextjs.svg" invertDark />
@@ -120,13 +120,13 @@ Using MongoDB? Follow the [MongoDB quickstart](/prisma-orm/quickstart/mongodb).
 ```text
 Create a new [framework] application with Prisma ORM against my existing PostgreSQL database.
 
-If I have not given you a connection string, stop and ask; do not invent one. Valid --template values: minimal (the default), next, hono, nuxt, astro, nest, svelte, tanstack-start, elysia.
+If I have not given you a connection string, stop and ask; do not invent one. Valid --template values: minimal (the default), next, hono, nuxt, astro, nest, svelte, tanstack-start, elysia, turborepo (a monorepo: the server is in apps/server, and the contract, seed and database client are in packages/database/src).
 
 Check the Node.js version first: `node --version` must print 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer. For the nuxt template, it must print 22.22.3 or newer on the 22 line, 24.15 or newer on the 24 line, or 26 or newer, because Nuxt requires it. The npm that ships with your Node.js release works; on Node.js 22 that is npm 10.
 
 1. Scaffold: `npm create prisma@latest -- my-app --template [framework] --provider postgres --yes`.
-2. Export my connection string as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`. From the project directory: `npm run db:init`, then start `npm run dev` in the background and verify the sample query returns data. Sample users are seeded automatically on the app's first query; there is no separate seed script.
-3. Evolve the starter contract under `src/prisma/` into my schema, then run `npm run contract:emit`, `npx prisma migration plan`, and `npx prisma db migrate --yes`.
+2. Export my connection string as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`. From the project directory: `npm run db:init`, then start `npm run dev` in the background and verify the sample query returns data. The app seeds sample users on its first query, from `src/prisma/seed.ts` (`packages/database/src/seed.ts` for turborepo); there is no seed command to run.
+3. Evolve the starter contract under `src/prisma/` (`packages/database/src/` for turborepo) into my schema, then run `npm run contract:emit`, `npx prisma migration plan --name <name>`, and `npx prisma db migrate --yes`. `db migrate` also points the `db` ref at the state you applied, so that the next `migration plan` starts from there.
 
 Do not provision any hosted database. Use the installed Prisma ORM skills and https://www.prisma.io/docs/llms.txt for current docs.
 ```
@@ -166,10 +166,10 @@ Deploy an app you already have to Prisma Compute: declare it with Composer, chec
 ```text
 Deploy this app to Prisma Compute using `npx prisma@latest`.
 
-Compute runs apps declared with Prisma Composer: your server code plus a small TypeScript declaration. Port the app following https://www.prisma.io/docs/composer/porting-an-app.md. SvelteKit and Deno are not supported yet; if the app is one of those, stop and tell me.
+Compute runs apps declared with Prisma Composer: your server code plus a small TypeScript declaration. Port the app following https://www.prisma.io/docs/composer/porting-an-app.md. Deno is not supported yet; if the app runs on Deno, stop and tell me.
 
 1. Install `@prisma/composer` and `@prisma/composer-prisma-cloud`, and install `prisma` as a dev dependency. Do not pin `effect`: Composer pins it. Only if another dependency pins a different `effect` and `prisma.config.ts` fails with `CLI.CONFIG_UNREADABLE`, add the override from https://www.prisma.io/docs/composer/deploying#when-prismaconfigts-fails-on-an-effect-version-conflict. Then install the Composer skill with `npx prisma skills sync`, and use it.
-2. Declare the app: a `service.ts` with `compute({ name, deps, build })`, a `module.ts` that provisions it, and a `prisma.config.ts` whose `composer` section names `module.ts` as the `entry` and lists the extensions and the state store (`definePrismaConfig` from `prisma/config`, `defineConfig as composer` from `@prisma/composer/config`). Read the port from `service.port()` and bind 0.0.0.0. Replace other `process.env` reads with the service input schema, binding credentials like DATABASE_URL with `envSecret`. Composer does not build: produce one self-contained entry file per service (for example `esbuild <server> --bundle --platform=node --format=esm --outfile=dist/server.mjs`), or use the framework build adapter (Next.js needs the `nextjs` adapter and `output: "standalone"`).
+2. Declare the app: a `service.ts` with `compute({ name, deps, build })`, a `module.ts` that provisions it, and a `prisma.config.ts` whose `composer` section names `module.ts` as the `entry` and lists the extensions and the state store (`definePrismaConfig` from `prisma/config`, `defineConfig as composer` from `@prisma/composer/config`). Read the port from `service.port()` and bind 0.0.0.0. Replace other `process.env` reads with the service input schema, binding credentials like DATABASE_URL with `envSecret`. Composer does not build: produce one self-contained entry file per service (for example `esbuild <server> --bundle --platform=node --format=esm --outfile=dist/server.mjs`), or use the framework build adapter (Next.js needs the `nextjs` adapter and `output: "standalone"`; SvelteKit needs `@sveltejs/adapter-node` and the directory form of the `node` build, `node({ module: import.meta.url, dir: "./build", entry: "index.js", dependencies: "external" })`, which ships the whole `build/` directory and the packages it imports (`node` is the default export of `@prisma/composer/node`); the adapter-node server reads the port from `PORT` itself, so do not add `service.port()` to a SvelteKit app).
 3. Verify locally: run the build, then `npx prisma dev --detach`, curl each service at the URL `npx prisma dev url <app>.<service>` prints, then run `npx prisma dev stop`.
 4. Confirm I am signed in with `npx prisma auth whoami`; if not, stop and ask me to run `npx prisma auth login` (it opens a browser).
 5. Deploy: run the build, then `npx prisma deploy` with the app's env values (like DATABASE_URL) exported in the shell; the first deploy copies input values up to the deployment. Verify the printed public URL with curl.

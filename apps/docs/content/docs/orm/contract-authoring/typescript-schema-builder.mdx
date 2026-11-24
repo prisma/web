@@ -15,7 +15,7 @@ In Prisma ORM 8, `schema.prisma` is replaced by a file called [the contract](/or
 - model definitions must be split, composed, or reused across ordinary TypeScript modules or packages
 - you want to build models in a loop from data you already keep in TypeScript, such as one model per entry in a list of table names
 
-If neither applies, write PSL, which is more compact and is what [`contract infer`](/cli/contract-infer) writes.
+If neither applies, write PSL, which is more compact and is what [`contract infer`](/cli/contract-infer) writes. On PostgreSQL, the builder cannot write [value objects](/orm/contract-authoring/psl-syntax#value-objects) or [base models with variants](/orm/contract-authoring/psl-syntax#base-models-and-variants), so a PostgreSQL contract that needs them stays in PSL.
 
 ## Point the config at the contract file
 
@@ -46,9 +46,11 @@ export default definePrismaConfig({
 });
 ```
 
+`prisma contract emit` loads `contract.ts` as an ES module, so the project's `package.json` must not declare `"type": "commonjs"`, which `npm init -y` writes and `orm init` keeps. With it, `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED` and `Cannot use import statement outside a module`. Set `"type": "module"` in `package.json`, and read [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) first if the rest of your app is CommonJS. Removing the `"type"` line also lets `contract emit` load the file, but Node.js then prints a `MODULE_TYPELESS_PACKAGE_JSON` warning each time a `prisma` command loads `contract.ts`, as `contract emit` and `contract print` do.
+
 ## A complete contract
 
-The builder comes from your database's package: `@prisma/orm-postgres/contract-builder` for PostgreSQL, `@prisma/orm-mongo/contract-builder` for MongoDB.
+The builder comes from your database's package: `@prisma/orm-postgres/contract-builder` for PostgreSQL, `@prisma/orm-mongo/contract-builder` for MongoDB. It must be the package your `prisma.config.ts` imports `defineConfig` from. A contract built with another database's builder, such as SQLite's in a PostgreSQL project, fails at `prisma contract emit` with `CONTRACT.TARGET_MISMATCH`, whose fix names the right module. Before `8.0.0-rc.25`, it was emitted and failed later, when the client loaded it.
 
 Export the contract under the name `contract`, as below, or as the file's default export, because those are the only two names `prisma contract emit` looks for. Run `npx prisma contract emit` again after every edit to the contract, and commit the contract file together with [`contract.json` and `contract.d.ts`](/orm/contract-authoring/the-contract-artifact).
 
@@ -132,7 +134,7 @@ The options object takes four more keys, all optional:
 | Option | What it does |
 | --- | --- |
 | `naming: { tables: "snake_case", columns: "snake_case" }` | Derives table and column names from model and field names, so `createdAt` becomes `created_at` without a `.column(...)` call on every field. Set either key or both. |
-| `foreignKeyDefaults: { constraint: true, index: true }` | Gives every `rel.belongsTo` a foreign key constraint and an index in the database. Without this option a relation gets neither unless its own `.sql({ fk })` asks; see [Relations](#relations). |
+| `foreignKeyDefaults: { constraint: false, index: true }` | For every relation that has `.sql({ fk })`, sets whether the database gets a foreign key constraint and an index on its column. Both are `true` when you leave the option out. A relation's own `.sql({ fk: { constraint, index } })` overrides it. It does not add a foreign key to a relation without `.sql({ fk })`; see [Relations](#relations). |
 | `defaultControlPolicy: "managed"` | The [control policy](#control-policy) for every model that does not set its own. |
 | `namespaces: ["audit"]` | The PostgreSQL schemas other than `public` that models may use; see [Namespaces](#namespaces). |
 
@@ -141,7 +143,7 @@ Take `field`, `model`, `rel`, `type`, and `gen` from the function's one argument
 On MongoDB, `defineContract` also accepts a single object holding `models`, as above, and you import `field`, `model`, `rel`, and `type` from the package instead. If your own code needs the types, that object is a `ContractInput`, which you import from `@prisma/orm-mongo/contract-builder`, as on SQL, and a model of the built contract is a `ContractModel<MongoModelStorage>`, with `ContractModel` from `@prisma/orm-mongo/contract/types` and `MongoModelStorage` from `@prisma/orm-mongo/family-contract`. The MongoDB builder differs from the PostgreSQL one in how it handles the primary key, field helpers, collection names, relations, indexes, and validators:
 
 - The field stored as `_id` is always the primary key, so you never mark it with `.id()` and there is no `.attributes(...)` on MongoDB. Declare it as `id: field.scalar(type.ObjectId()).mongo({ field: "_id" })` to name it `id` in your code, as `id ObjectId @id @map("_id")` does in PSL, or as `_id: field.scalar(type.ObjectId())` to keep the name `_id`. `.mongo({ field })` sets the name a field is stored under in its documents, for any field of a model. A model without an `_id` field gets one from MongoDB, an ObjectId, on every insert.
-- A scalar field is `field.scalar(type.X())`, where `type` has a constructor for each MongoDB type PSL can write, by the same name: `type.ObjectId()`, `type.String()`, `type.Int32()`, `type.Double()`, `type.Bool()`, `type.DateTime()`, `type.Date()`, `type.Int64()`, `type.Decimal128()`, `type.Binary()`, `type.Json()`, `type.Bson()`, `type.Vector()` and others. The imported `type` has these built-in constructors only: a constructor that an extension pack adds is on the `type` that the `defineContract` function receives. `type.DateTime()` is an instant read as a JavaScript `Date`; `type.Date()` is a calendar date, stored at midnight UTC and read as a string such as `"2024-02-29"`. `field.scalar` takes only a type, not a type id such as `"mongo/string@1"`. Before `8.0.0-rc.24`, MongoDB fields were written with helpers such as `field.objectId()` and `field.date()`; the [upgrade guide](https://github.com/prisma/orm/blob/v8.0.0-rc.24/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.23-to-8.0.0-rc.24/) ships a script that rewrites them.
+- A scalar field is `field.scalar(type.X())`, where `type` has a constructor for each MongoDB type PSL can write, by the same name: `type.ObjectId()`, `type.String()`, `type.Int32()`, `type.Double()`, `type.Bool()`, `type.DateTime()`, `type.Date()`, `type.Int64BigInt()`, `type.Decimal128()`, `type.Binary()`, `type.Json()`, `type.Bson()`, `type.Vector()` and others. The [convenience types](/orm/data-modeling/mongodb#field-types) have helpers too, such as `type.Int()`, `type.BigInt()`, `type.Float()` and `type.Boolean()`. `type.Int64()` is removed since `8.0.0-rc.25`; call `type.BigInt()` or `type.Int64BigInt()`. The imported `type` has these built-in constructors only: a constructor that an extension pack adds is on the `type` that the `defineContract` function receives. `type.DateTime()` is an instant read as a JavaScript `Date`; `type.Date()` is a calendar date, stored at midnight UTC and read as a string such as `"2024-02-29"`. `field.scalar` takes only a type, not a type id such as `"mongo/string@1"`. Before `8.0.0-rc.24`, MongoDB fields were written with helpers such as `field.objectId()` and `field.date()`; the [upgrade guide](https://github.com/prisma/orm/blob/v8.0.0-rc.24/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.23-to-8.0.0-rc.24/) ships a script that rewrites them.
 - The collection name is an inline option on the model rather than a chained call, and relations are inline as well.
 - Relations name the field on each side. `rel.hasMany` takes `{ from, to }` on MongoDB and `{ by }` on PostgreSQL. `to` accepts either the field name as a string or a typed reference such as `User.ref("id")`, and both forms mean the same thing. PostgreSQL writes that reference as `User.refs.id`.
 - Indexes are an `indexes` option on the model, built with the `index` helper the same package exports, as in `indexes: [index({ email: 1 }, { unique: true })]`. The `1` is ascending, MongoDB's own index syntax.
@@ -201,9 +203,11 @@ A field is `field.column(...)` with a type from `type`, the function's other arg
 | UUID stored in a `uuid` column | `field.column(type.Uuid())` |
 | UUID stored in a `character(36)` column | `field.column(type.UuidString())` |
 
-On PostgreSQL, `type.DateTime()`, `type.Date()`, `type.Time()` and `type.Duration()` are the [convenience date and time types](/orm/contract-authoring/psl-syntax#models-and-fields). Each takes one optional object with the keys its PSL type takes: `as`, `storage` and `precision` for `type.DateTime()`, `type.Time()` and `type.Duration()`, and `as` for `type.Date()`, such as `type.DateTime({ as: 'string' })` or `type.Time({ precision: 3 })`. `type.Int()`, `type.BigInt()`, `type.Float()`, `type.Decimal()`, `type.String()`, `type.Boolean()` and `type.Bytes()` are the [convenience types](/orm/contract-authoring/psl-syntax#models-and-fields) for numbers, text, booleans and bytes, and take their PSL arguments in the same way, such as `type.Int({ storage: 'int2' })`, `type.BigInt({ as: 'number' })`, `type.Decimal({ precision: 10, scale: 2 })` or `type.String({ storage: 'varchar', length: 64 })`. The other helpers take the arguments their PSL types take, such as `type.Varchar(64)`, `type.NumericString(10, 2)` and `type.TimeTemporal(3)`. `field.column(type)` and the chained `.column(...)` below are different calls: `field.column(type)` builds a field from a type, and `.column(name)` on an existing field sets its column name. Extension packs add helpers of their own, such as `type.pgvector.Vector(1536)`.
+On PostgreSQL, `type.DateTime()`, `type.Date()`, `type.Time()` and `type.Duration()` are the [convenience date and time types](/orm/contract-authoring/psl-syntax#models-and-fields). Each takes one optional object with the keys its PSL type takes: `as`, `storage` and `precision` for `type.DateTime()`, `type.Time()` and `type.Duration()`, and `as` for `type.Date()`, such as `type.DateTime({ as: 'string' })` or `type.Time({ precision: 3 })`. `type.Int()`, `type.BigInt()`, `type.Float()`, `type.Decimal()`, `type.String()`, `type.Boolean()`, `type.Bytes()` and `type.Json()` are the [convenience types](/orm/contract-authoring/psl-syntax#models-and-fields) for numbers, text, booleans, bytes and JSON, and take their PSL arguments in the same way, such as `type.Int({ storage: 'int2' })`, `type.Json({ storage: 'jsonb' })`, `type.BigInt({ as: 'number' })`, `type.Decimal({ precision: 10, scale: 2 })` or `type.String({ storage: 'varchar', length: 64 })`. The other helpers take the arguments their PSL types take, such as `type.Varchar(64)`, `type.NumericString(10, 2)` and `type.TimeTemporal(3)`. `field.column(type)` and the chained `.column(...)` below are different calls: `field.column(type)` builds a field from a type, and `.column(name)` on an existing field sets its column name. Extension packs add helpers of their own, such as `type.pgvector.Vector(1536)`.
 
-`type.SmallInt()`, `type.BigIntNumber()`, `type.Numeric(...)`, `type.UnboundedInt()`, `type.Real()`, `type.VarChar(...)` and `type.VarBit(...)` are deprecated, like their PSL names. They still compile, and nothing warns where they are called, but they will be removed together with the PSL names. Call the convenience helper that gives the same type instead, such as `type.String({ storage: 'varchar', length: 64 })` for `type.VarChar(64)`, or `type.Varbit(16)` for `type.VarBit(16)`, which has no convenience helper.
+`type.SmallInt()`, `type.BigIntNumber()`, `type.Numeric(...)`, `type.UnboundedInt()`, `type.Real()`, `type.VarChar(...)` and `type.VarBit(...)` are deprecated, like their PSL names. They still compile, and nothing warns where they are called, but they will be removed together with the PSL names. Call the convenience helper that gives the same type instead, such as `type.String({ storage: 'varchar', length: 64 })` for `type.VarChar(64)`, or `type.Varbit(16)` for `type.VarBit(16)`, which has no convenience helper. `type.sql.String(n)` is deprecated too, on every SQL database; call `type.sql.Varchar(n)`.
+
+The column helpers from `adapter/column-types` are named after the explicit type each gives. Since `8.0.0-rc.25`, PostgreSQL's `jsonColumn` is `plainJsonColumn`, and SQLite's `integerColumn`, `bigintColumn` and `jsonColumn` are `integerNumberColumn`, `integerBigIntColumn` and `plainJsonColumn`. The old names are removed.
 
 For a column of a database type no helper covers, use ``type.Raw(sql`...`)``, with the type written the way the database reports it, as in ``path: field.column(type.Raw(sql`ltree`))``, with `sql` imported from the package. It works as [``Raw(sql`...`)`` in PSL](/orm/contract-authoring/psl-syntax#columns-of-any-database-type) does: your code reads and writes the value as `unknown`, and a default is a `sql` expression.
 
@@ -330,7 +334,7 @@ export const contract = defineContract({}, ({ field, model }) => {
 
 Relations are declared on the model builder with `.relations(...)` and the `rel` helpers, as the full example above shows.
 
-`rel.hasMany(Model, { by })` names the foreign key field on the other model, and `rel.hasOne(Model, { by })` is the same with at most one row on the other side. `rel.belongsTo(Model, { from, to })` maps the local foreign key field to the field it points at.
+`rel.hasMany(Model, { by })` names the foreign key field on the other model, and `rel.hasOne(Model, { by })` is the same with at most one row on the other side. For `rel.hasOne`, the `by` fields must be unique on the other model: its primary key, a unique constraint, or a unique index without `where` must cover exactly those fields. Otherwise `defineContract` and `prisma contract emit` fail with `CONTRACT.RELATION_INVALID`. Make the fields unique, or use `rel.hasMany`. `rel.belongsTo(Model, { from, to })` maps the local foreign key field to the field it points at.
 
 `rel.manyToMany(Model, { through, from, to })` goes through a join table: you declare the model for the join table yourself and pass it as `through`. Below, `PostTag` is that model, holding the two foreign key fields `postId` and `tagId`:
 
@@ -348,7 +352,7 @@ Post.relations({
 });
 ```
 
-`fk` takes `name`, `onDelete`, and `onUpdate`. `onDelete` and `onUpdate` each take `'noAction'`, `'restrict'`, `'cascade'`, `'setNull'`, or `'setDefault'`.
+`fk` takes `name`, `onDelete`, `onUpdate`, `constraint`, and `index`. `constraint: false` keeps the relation without a foreign key constraint in the database, and `index: false` without an index on its column; both override `foreignKeyDefaults`. `onDelete` and `onUpdate` each take `'noAction'`, `'restrict'`, `'cascade'`, `'setNull'`, or `'setDefault'`.
 
 Prisma ORM does not check that the column types on the two sides of a relation match, so choose a field helper that produces the same column type as the key you point at.
 
@@ -535,9 +539,13 @@ Configuration that legitimately varies per environment, such as the database URL
 
 TypeScript and [PSL](/orm/contract-authoring/psl-syntax) authoring produce the same `contract.json` and `contract.d.ts` for an equivalent contract, so you can move between the two forms without changing anything downstream. A project names exactly one contract file in its config.
 
-No command converts a `.prisma` contract into TypeScript, so to move an existing project, write the TypeScript file by hand, point `contract` in `prisma.config.ts` at it, and delete the `.prisma` file so the two can never disagree.
+On PostgreSQL, the TypeScript builder cannot write everything PSL can. It has no [value objects](/orm/contract-authoring/psl-syntax#value-objects), so the complete contract above stores `address` as a `Jsonb` column where PSL would declare `type Address`. It has no [base models and variants](/orm/contract-authoring/psl-syntax#base-models-and-variants) either. A PostgreSQL contract that uses one of them stays in PSL. The MongoDB builder has both, as `valueObject` and as `discriminator` and `base`.
 
-## Prompt your coding agent
+To move from TypeScript to PSL, run [`npx prisma contract print --output ./src/prisma/contract.prisma`](/cli/contract-print). It loads `contract.ts` and writes the same contract as PSL, starting with the `// use prisma-8` line. The hashes stay the same, so the database needs no migration and no `db sign`. On PostgreSQL, every `rel.belongsTo` needs a foreign key constraint for this, because PSL's `@relation` always creates one: give each one `.sql({ fk })`, and leave the constraint on, with no `constraint: false` in `foreignKeyDefaults` unless the relation's own `fk` sets `constraint: true`. Otherwise the command fails with `CONTRACT.PRINT_UNSUPPORTED`. Then set `contract` in `prisma.config.ts` to `"./src/prisma/contract.prisma"`, delete `contract.ts`, and run `npx prisma contract emit`.
+
+No command converts a `.prisma` contract into TypeScript, so to move the other way, write the TypeScript file by hand, point `contract` in `prisma.config.ts` at it, and delete the `.prisma` file so the two can never disagree.
+
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync` to add them. The `prisma-8` skill covers TypeScript authoring, so ask your agent to:
 

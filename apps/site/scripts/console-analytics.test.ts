@@ -3,11 +3,21 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import vm from "node:vm";
 import { OPENAI_ADS_PIXEL_ID, OPENAI_ADS_SDK_URL } from "@prisma-docs/ui/lib/openai-pixel";
+import { FREEBUFF_TAG_SRC } from "@prisma-docs/ui/lib/freebuff-pixel";
 
 const script = readFileSync(new URL("../public/console-analytics.js", import.meta.url), "utf8");
-function setup() {
+function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } = {}) {
   const messages: unknown[][] = [];
   const scripts: Record<string, unknown>[] = [];
+  // Pending timers by handle; handles are never reused, as in a browser.
+  const timers = new Map<number, () => void>();
+  let nextTimer = 1;
+  // The real tag replaces the queue stub with its own `freebuff` (v: 2) and
+  // drains the queue; the fake keeps the stub, so tests can read the queue.
+  const loadTag = (node: Record<string, any>) => {
+    if (window.freebuff) window.freebuff.v = 2;
+    node.onload?.();
+  };
   let receive: (event: unknown) => void = () => {};
   const parent = { postMessage: (...args: unknown[]) => messages.push(args) };
   const window: Record<string, any> = {
@@ -19,15 +29,36 @@ function setup() {
   vm.runInNewContext(script, {
     window,
     URL,
+    setTimeout: (callback: () => void) => {
+      const id = nextTimer++;
+      timers.set(id, callback);
+      return id;
+    },
+    clearTimeout: (id: number) => timers.delete(id),
     document: {
       createElement: () => ({}),
-      head: { appendChild: (node: Record<string, unknown>) => scripts.push(node) },
+      head: {
+        appendChild: (node: Record<string, any>) => {
+          scripts.push(node);
+          // The Freebuff tag loads at once unless a test drives it by hand.
+          if (freebuffLoad === "auto" && node.src === FREEBUFF_TAG_SRC) loadTag(node);
+        },
+      },
     },
   });
   return {
     window,
     scripts,
     messages,
+    /** Fires the `index`th Freebuff tag's load event after the tag took over. */
+    loadFreebuff: (index = 0) => loadTag(scripts.filter((s) => s.src === FREEBUFF_TAG_SRC)[index]!),
+    /** Fires every pending timer, as if its delay had passed. */
+    elapse: () => {
+      for (const [id, callback] of [...timers]) {
+        timers.delete(id);
+        callback();
+      }
+    },
     send: (
       data: unknown,
       origin = "https://console.prisma.io",
@@ -348,7 +379,7 @@ test("an invalid handoff is neither measured by the pixel nor acknowledged", () 
   assert.equal(app.messages.length, 1);
 });
 
-test("an ads-only login or a signup without a pixel id is not acknowledged", () => {
+test("an ads-only login is not acknowledged; a signup without an OpenAI id is, via Freebuff", () => {
   const app = setup();
   const adsOnly = { decided: true, analytics: false, advertisement: true };
   app.send({
@@ -356,11 +387,237 @@ test("an ads-only login or a signup without a pixel id is not acknowledged", () 
     consent: adsOnly,
     conversion: { id: "h-login", event: "login", method: "email" },
   });
+  assert.equal(app.messages.length, 1);
   app.send({
     ...grant,
     consent: adsOnly,
     conversion: { id: "h-anon", event: "sign_up", method: "email" },
   });
   assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 0);
+  assert.deepEqual(freebuffConversions(app), [
+    ["conversion", "signup_completed", { eventId: "signup_completed:h-anon" }],
+  ]);
+  assert.equal(app.messages.length, 2);
+  assert.equal(
+    JSON.stringify(app.messages[1]?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "h-anon" }),
+  );
+});
+
+const freebuffScripts = (app: ReturnType<typeof setup>) =>
+  app.scripts.filter((s) => s.src === FREEBUFF_TAG_SRC);
+function freebuffConversions(app: ReturnType<typeof setup>) {
+  const queue = (app.window.freebuff?.q ?? []) as ArrayLike<unknown>[];
+  return JSON.parse(JSON.stringify(queue.map((entry) => Array.from(entry)))) as unknown[][];
+}
+
+test("the relay frame loads the same Freebuff tag as the site", () => {
+  assert.ok(script.includes(`freebuffTagUrl = "${FREEBUFF_TAG_SRC}"`));
+});
+
+test("loads the Freebuff tag only with advertising consent", () => {
+  for (const consent of [
+    undefined,
+    {},
+    { advertisement: true },
+    { decided: true, analytics: true, advertisement: false },
+  ]) {
+    const app = setup();
+    app.send({ ...grant, consent });
+    assert.equal(freebuffScripts(app).length, 0);
+    assert.equal(app.window.freebuff, undefined);
+  }
+  const app = setup();
+  app.send({ ...grant, consent: { decided: true, analytics: false, advertisement: true } });
+  app.send({ ...grant, consent: { decided: true, analytics: false, advertisement: true } });
+  assert.equal(freebuffScripts(app).length, 1);
+  assert.equal(freebuffScripts(app)[0]?.async, true);
+});
+
+test("reports a signup to Freebuff once, with a namespaced handoff id and nothing else", () => {
+  const app = setup();
+  app.send(grant);
+  app.send(grant);
+  app.send({ ...grant, conversion: { ...grant.conversion, id: "handoff-2" } });
+  assert.deepEqual(freebuffConversions(app), [
+    ["conversion", "signup_completed", { eventId: "signup_completed:handoff-1" }],
+    ["conversion", "signup_completed", { eventId: "signup_completed:handoff-2" }],
+  ]);
+  assert.doesNotMatch(JSON.stringify(freebuffConversions(app)), /private@|a1b2c3|google/);
+});
+
+test("waits for the Freebuff tag before acknowledging an ads-only signup", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  const adsOnly = { ...grant, consent: { decided: true, analytics: false, advertisement: true } };
+  const signup = { ...adsOnly, conversion: { id: "h-wait", event: "sign_up", method: "email" } };
+  app.send(signup);
+  assert.equal(app.messages.length, 1, "no acknowledgement while the tag is loading");
+  assert.equal(freebuffConversions(app).length, 1, "the signup is queued for the tag");
+  app.loadFreebuff();
+  app.send(signup);
+  assert.equal(freebuffConversions(app).length, 1, "a retry is not queued twice");
+  assert.equal(
+    JSON.stringify(app.messages[1]?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "h-wait" }),
+  );
+});
+
+test("holds every destination's acknowledgement while the Freebuff tag is loading", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
   assert.equal(app.messages.length, 1);
+  assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
+  app.loadFreebuff();
+  app.send(grant);
+  assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
+  assert.equal(app.messages.length, 2);
+});
+
+test("reloads a failed Freebuff tag once, keeps the queued signup, then stops waiting", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  const adsOnly = { ...grant, consent: { decided: true, analytics: false, advertisement: true } };
+  const signup = { ...adsOnly, conversion: { id: "h-fail", event: "sign_up", method: "github" } };
+  const fail = (index: number) =>
+    (freebuffScripts(app)[index] as { onerror: () => void }).onerror();
+
+  app.send(signup);
+  fail(0);
+  app.send(signup);
+  assert.equal(freebuffScripts(app).length, 2, "the next handoff retries the load");
+  assert.equal(app.messages.length, 1);
+  assert.equal(freebuffConversions(app).length, 1, "the queued signup waits for the reload");
+
+  fail(1);
+  app.send(signup);
+  assert.equal(freebuffScripts(app).length, 2, "no third attempt");
+  // Freebuff no longer holds the handoff back. With no other destination for an
+  // ads-only signup without an OpenAI id, nothing acknowledges it.
+  assert.equal(app.messages.length, 1);
+
+  app.send({ ...signup, consent: grant.consent });
+  assert.equal(app.messages.length, 2, "analytics still acknowledges after Freebuff gave up");
+});
+
+test("a Freebuff tag load that hangs counts as failed and stops holding acknowledgements", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  assert.equal(app.messages.length, 1, "held while the tag is loading");
+  app.elapse();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 2, "the hung load is retried once");
+  assert.equal(app.messages.length, 1);
+  app.elapse();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 2, "no third attempt");
+  assert.equal(
+    JSON.stringify(app.messages.at(-1)?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "handoff-1" }),
+  );
+  assert.equal(freebuffConversions(app).length, 1, "the signup stays queued, not re-queued");
+});
+
+test("a tag that loads in time clears its timeout", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  app.loadFreebuff();
+  app.elapse();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 1);
+  assert.equal(app.messages.length, 2);
+});
+
+test("late events from a timed-out Freebuff load do not clobber the retry", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  const signup = (id: string) => ({
+    ...grant,
+    conversion: { ...grant.conversion, id, openaiEventId: `e-${id}` },
+  });
+  const fire = (index: number, event: "onerror" | "onload") =>
+    (freebuffScripts(app)[index] as Record<string, () => void>)[event]();
+
+  app.send(signup("a"));
+  app.elapse();
+  app.send(signup("b"));
+  assert.equal(freebuffScripts(app).length, 2);
+  fire(0, "onerror");
+  app.send(signup("c"));
+  assert.equal(app.messages.length, 1, "the retry still holds acknowledgements");
+  app.loadFreebuff(1);
+  app.send(signup("c"));
+  assert.equal(
+    JSON.stringify(app.messages.at(-1)?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "c" }),
+  );
+});
+
+test("a stale error does not cancel the retry's timeout", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  app.elapse();
+  app.send(grant);
+  (freebuffScripts(app)[0] as Record<string, () => void>).onerror();
+  app.send(grant);
+  assert.equal(app.messages.length, 1, "the retry is still loading");
+  app.elapse();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 2, "no third attempt");
+  assert.equal(
+    JSON.stringify(app.messages.at(-1)?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "handoff-1" }),
+    "the retry's own timeout fired and released the acknowledgement",
+  );
+});
+
+test("a load event without the tag taking over is a failure, not ready", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  (freebuffScripts(app)[0] as Record<string, () => void>).onload();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 2, "retried instead of treated as loaded");
+  assert.equal(app.messages.length, 1);
+});
+
+test("a late load from the timed-out attempt counts once the tag is running", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  app.elapse();
+  app.send(grant);
+  app.loadFreebuff(0);
+  (freebuffScripts(app)[1] as Record<string, () => void>).onerror();
+  app.send(grant);
+  assert.equal(
+    JSON.stringify(app.messages.at(-1)?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "handoff-1" }),
+  );
+});
+
+test("a revoked grant reaches a loaded Freebuff tag through Consent Mode", () => {
+  const app = setup();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 1);
+  app.send({
+    ...grant,
+    consent: { decided: true, analytics: true, advertisement: false },
+    conversion: { ...grant.conversion, id: "handoff-after-revoke" },
+  });
+  const updates = app
+    .commands()
+    .filter(([command, kind]) => command === "consent" && kind === "update");
+  assert.equal((updates.at(-1)?.[2] as { ad_storage: string }).ad_storage, "denied");
+  assert.deepEqual(freebuffConversions(app), [
+    ["conversion", "signup_completed", { eventId: "signup_completed:handoff-1" }],
+  ]);
+});
+
+test("logins, project creation and invalid handoffs are not Freebuff conversions", () => {
+  for (const conversion of [
+    { id: "h-login", event: "login", method: "github" },
+    { id: "h-project", event: "project_created" },
+    { ...grant.conversion, id: "" },
+    { ...grant.conversion, method: "unknown" },
+  ]) {
+    const app = setup();
+    app.send({ ...grant, conversion });
+    assert.deepEqual(freebuffConversions(app), []);
+  }
 });

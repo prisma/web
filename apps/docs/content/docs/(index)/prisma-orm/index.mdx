@@ -14,14 +14,14 @@ Pick the page that matches where you are starting from:
   <Card href="/prisma-orm/quickstart/postgresql" title="I'm creating a new app" icon={<Rocket className="text-primary" />}>
     Create an app from a template and run your first query.
   </Card>
-  <Card href="/prisma-orm/quickstart/existing-app/postgresql" title="I have an app, but no database yet" icon={<FolderPlus className="text-primary" />}>
+  <Card href="/prisma-orm/quickstart/existing-app/postgresql" title="I have an app, no database" icon={<FolderPlus className="text-primary" />}>
     Add Prisma ORM to your app, create the tables, and apply your first migration.
   </Card>
   <Card href="/prisma-orm/add-to-existing-project/postgresql" title="I have a database already" icon={<Database className="text-primary" />}>
-    Generate the file that holds your models from the tables you have, then make your next schema change.
+    Generate a Prisma schema from your existing tables, then change the schema and apply the change with a migration.
   </Card>
   <Card href="/guides/upgrade-prisma-orm" title="I have a Prisma 6 or 7 app" icon={<Milestone className="text-primary" />}>
-    Upgrade in one pass, or run Prisma ORM 7 and Prisma 8 side by side and move one route at a time.
+    Upgrade all at once, or run Prisma ORM 7 and Prisma ORM 8 side by side and move your code over one part at a time.
   </Card>
 </Cards>
 
@@ -33,18 +33,17 @@ For what release candidate means, when the final release is expected, and how to
 
 :::
 
-Prisma ORM 8 is the recommended starting point for new projects.
+Prisma ORM 8 is the recommended starting point for new projects, and this command creates one from a template:
 
 ```npm
 npm create prisma@latest
 ```
 
+Building an app you will deploy? Start on PostgreSQL so local development and production run the same database. Without a database yet, [`npx create-db@latest`](/postgres/npx-create-db) creates a temporary [Prisma Postgres](/postgres) database without an account; claim it with a free Prisma account to keep it past 24 hours. Step 1 of [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql) shows both routes, without an account and with one.
+
 <Cards>
   <Card href="/full-stack-tutorial" title="Start a TypeScript app with Postgres on Prisma for free" icon={<Rocket className="text-primary" />}>
     Scaffold, provision Prisma Postgres, query, and deploy to Prisma Compute in one sitting.
-  </Card>
-  <Card href="/getting-started" title="Choose a setup path" icon={<Milestone className="text-primary" />}>
-    Pick a new-project quickstart or add Prisma ORM to an existing app.
   </Card>
 </Cards>
 
@@ -104,16 +103,16 @@ Copy this prompt, replace the placeholders, and hand it to your coding agent. Ru
 ```text
 Create a new [framework] application with Prisma ORM, seed it, and run it locally.
 
-If I have not told you which framework, stop and ask before scaffolding. Valid --template values: minimal (the default), next, hono, nuxt, astro, nest, svelte, tanstack-start, elysia.
+If I have not told you which framework, stop and ask before scaffolding. Valid --template values: minimal (the default), next, hono, nuxt, astro, nest, svelte, tanstack-start, elysia, turborepo (a monorepo: the server is in apps/server, and the contract, seed and database client are in packages/database/src).
 
 Check the Node.js version first: `node --version` must print 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer. For the nuxt template, it must print 22.22.3 or newer on the 22 line, 24.15 or newer on the 24 line, or 26 or newer, because Nuxt requires it. The npm that ships with your Node.js release works; on Node.js 22 that is npm 10.
 
 1. Scaffold the app: `npm create prisma@latest -- my-app --template [framework] --provider postgres --yes`. Then run `npx prisma@latest init` in the project directory so the Prisma agent skills are installed and stay current, and use them.
-2. Get a database connection string: use the one I give you, or create a Prisma Postgres database in the project the app will deploy to: check `npx prisma auth whoami` (if I am not signed in, stop and ask me to run `npx prisma auth login`), then `npx prisma project create my-app` and `npx prisma postgres create mydb`, which prints the connection string once. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable.
-3. From the project directory, apply the starter contract: `npm run db:init`. Sample users are seeded automatically on the app's first query; there is no separate seed script.
-4. Edit the starter contract under `src/prisma/` into a small schema for my use case, then run `npm run contract:emit` and plan and apply the migration: `npx prisma migration plan`, then `npx prisma db migrate --yes`. Migration planning diffs the emitted contract, so the emit step is required.
-5. Update the seed script under `src/prisma/` and the app routes to query the new schema, start `npm run dev` in the background (with `DATABASE_URL` exported), and verify with a request against the running app. For the `nest` template, if routes return 500s with `reading 'findAll'` in the logs, add explicit `@Inject()` tokens as shown in https://www.prisma.io/docs/guides/frameworks/nestjs.md.
-6. Deploy with Prisma Compute. If the template is `svelte`, skip this step; Compute does not support SvelteKit yet. The scaffold declares the app for Prisma Composer in `module.ts` and `service.ts`, with the framework's build requirements (Next.js standalone output, Astro's node adapter, TanStack Start's Nitro build) already configured; the framework guide at https://www.prisma.io/docs/guides/frameworks/[guide].md has the details, where [guide] is the template name except: template `next` → guide `nextjs`, `nest` → `nestjs`. Check `npx prisma auth whoami`. If I am not signed in, stop and ask me to run `npx prisma auth login`, because that step opens a browser. Then run `npm run build` followed by `npx prisma deploy`, and verify the deployed URL with curl. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
+2. Get a database connection string: use the one I give you, or create a Prisma Postgres database: check `npx prisma auth whoami` (if I am not signed in, stop and ask me to run `npx prisma auth login`), then `npx prisma project create my-app-db` and `npx prisma postgres create mydb`, which prints the connection string once. Name that project differently from the app, so that it does not collide with the project the deploy in step 6 creates. Export the connection string as `DATABASE_URL` in the shell: in a project created with `npm create prisma`, the Prisma CLI scripts in package.json read the environment variable, not `.env`.
+3. From the project directory, apply the starter contract: `npm run db:init`. The app seeds sample users on its first query, from `src/prisma/seed.ts` (`packages/database/src/seed.ts` for turborepo); there is no seed command to run.
+4. Edit the starter contract under `src/prisma/` (`packages/database/src/` for turborepo) into a small schema for my use case, then run `npm run contract:emit` and plan and apply the migration: `npx prisma migration plan --name <name>`, then `npx prisma db migrate --yes`. Migration planning diffs the emitted contract, so the emit step is required. `db migrate` also points the `db` ref at the state you applied, so that the next `migration plan` starts from there.
+5. Update `src/prisma/seed.ts` (`packages/database/src/seed.ts` for turborepo) and the app routes to query the new schema, start `npm run dev` in the background (with `DATABASE_URL` exported), and verify with a request against the running app. For the `nest` template, if routes return 500s with `reading 'findAll'` in the logs, add explicit `@Inject()` tokens as shown in https://www.prisma.io/docs/guides/frameworks/nestjs.md.
+6. Deploy with Prisma Compute. The scaffold declares the app for Prisma Composer in `module.ts` and `service.ts`, with the framework's build requirements (Next.js standalone output, Astro's node adapter, SvelteKit's node adapter, TanStack Start's Nitro build) already configured; the framework guide at https://www.prisma.io/docs/guides/frameworks/[guide].md has the details, where [guide] is the template name except: template `next` → guide `nextjs`, `nest` → `nestjs`, `svelte` → `sveltekit`; `minimal` and `turborepo` have no framework guide. Check `npx prisma auth whoami`. If I am not signed in, stop and ask me to run `npx prisma auth login`, because that step opens a browser. Then run `npm run build` followed by `npx prisma deploy`, and verify the deployed URL with curl. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
 
 Use the installed Prisma ORM skills and the current Prisma docs: https://www.prisma.io/docs/llms.txt (append `.md` to any docs URL for a markdown version).
 ```

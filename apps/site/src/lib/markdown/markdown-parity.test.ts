@@ -113,6 +113,8 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
  * the platform section's comes from the page's `ProductPageContent`, so it is
  * an expression in the JSX and the content-object test below is what covers it.
  * /stack is the same: StackBento's own h2 is its only literal heading.
+ * /studio has none: every heading comes from app/studio/studio-content.ts,
+ * so the "/studio inherits its copy" test below covers it instead.
  */
 const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/": 6,
@@ -120,7 +122,7 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/postgres": 1,
   "/compute": 1,
   "/pricing": 5,
-  "/studio": 3,
+  "/studio": 0,
   "/stack": 1,
   "/enterprise": 3,
   "/mcp": 4,
@@ -307,6 +309,51 @@ test("the product pages inherit their copy from the page's own content object", 
         `${path}: CTA missing: ${cta.label} -> ${cta.href}`,
       );
     }
+  }
+});
+
+test("/studio inherits its copy from the page's own content module", async () => {
+  // Every heading and line page.tsx renders comes from studio-content.ts, so
+  // assert each one reaches the markdown.
+  const {
+    QUICK_ACCESS,
+    STUDIO_COMPARISON,
+    STUDIO_EMBED,
+    STUDIO_FAQ,
+    STUDIO_HERO,
+    STUDIO_TOUR,
+    OPEN_STUDIO_COMMAND,
+    TRY_STUDIO_STEPS,
+  } = await import("@/app/studio/studio-content");
+  const document = renderMarkdownDocument(markdownPages["/studio"], baseUrl);
+  const expect = (text: string, what: string) =>
+    assert.ok(document.includes(text), `/studio: ${what} missing: ${text}`);
+
+  expect(STUDIO_HERO.headline, "hero headline");
+  expect(STUDIO_HERO.subheadline, "hero subheadline");
+  expect(`## ${QUICK_ACCESS.title}`, "quick access heading");
+  expect(`### ${QUICK_ACCESS.local.title}`, "local path heading");
+  expect(`### ${QUICK_ACCESS.console.title}`, "console path heading");
+  for (const point of QUICK_ACCESS.console.points) expect(point, "console point");
+  expect(OPEN_STUDIO_COMMAND, "launch command");
+  for (const step of TRY_STUDIO_STEPS) expect(step, "example step");
+  expect(`## ${STUDIO_TOUR.title}`, "tour heading");
+  for (const stop of STUDIO_TOUR.stops) {
+    expect(`### ${stop.title}`, "tour stop heading");
+    expect(stop.description, "tour stop description");
+  }
+  expect(`## ${STUDIO_EMBED.title}`, "embed heading");
+  expect(STUDIO_EMBED.intro, "embed intro");
+  for (const useCase of STUDIO_EMBED.useCases) expect(useCase, "embed use case");
+  expect(STUDIO_EMBED.facts, "embed facts");
+  expect(STUDIO_EMBED.code, "embed snippet");
+  expect(`## ${STUDIO_COMPARISON.title}`, "comparison heading");
+  for (const row of STUDIO_COMPARISON.rows) {
+    expect(`| ${[row.label, ...row.cells].join(" | ")} |`, "comparison row");
+  }
+  for (const item of STUDIO_FAQ) {
+    expect(`### ${item.question}`, "FAQ question");
+    expect(item.answer, "FAQ answer");
   }
 });
 

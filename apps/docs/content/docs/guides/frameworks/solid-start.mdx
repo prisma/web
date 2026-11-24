@@ -44,7 +44,7 @@ npm init solid@latest my-solid-prisma-app -- -s --v2 -t basic --ts
 
 The flags skip the prompts: `-s` picks SolidStart, `--v2` picks the stable SolidStart 2 line, `-t basic` picks the template, and `--ts` picks TypeScript. Without them, the CLI asks the same questions interactively.
 
-The template ships a `pnpm-lock.yaml`. Delete it before you continue if you use npm; otherwise `orm init` reads the lockfile and installs Prisma with pnpm:
+The template ships a `pnpm-lock.yaml`, so if you use npm, delete it before you continue; otherwise `orm init` reads the lockfile and installs Prisma with pnpm:
 
 ```bash
 cd my-solid-prisma-app
@@ -68,14 +68,11 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
 ```text no-copy
-Updated tsconfig.json with required compiler options.
-✔ npm add @prisma/orm-postgres dotenv
-✔ npm add -D prisma@latest @types/node
-✔ npm add -D @prisma/cli-engine@0.10.0
 ✔ Emit the contract
 │  target:     postgres
 │  authoring:  psl
 │  schema:     src/prisma/contract.prisma
+
 written
 ├─ src/prisma/contract.prisma
 ├─ prisma.config.ts
@@ -86,40 +83,50 @@ written
 ├─ .gitignore
 ├─ .gitattributes
 └─ package.json
+installed
+├─ @prisma/orm-postgres
+├─ dotenv
+├─ pg
+├─ prisma@latest (dev)
+├─ @types/node (dev)
+└─ @prisma/cli-engine@0.10.4 (dev)
+
 ✔ Done. Open prisma-8.md to get started.
 ```
 
-The command installs the runtime, writes the Prisma ORM files into the SolidStart project, and emits `src/prisma/contract.json` and `src/prisma/contract.d.ts`, the artifacts your queries are type-checked against. Three files matter for the rest of this guide:
+The command installs the runtime, writes the Prisma ORM files into the SolidStart project, and emits `src/prisma/contract.json` and `src/prisma/contract.d.ts`, the files your queries are type-checked against. The rest of this guide works with these files:
 
 - `src/prisma/contract.prisma`: a starter contract with `User` and `Post` models and a one-to-many relation between them
 - `src/prisma/db.ts`: the Prisma ORM client, constructed once and imported by your routes
 - `prisma.config.ts`: tells the CLI where the contract lives and reads `DATABASE_URL` from `.env`
 
-The starter contract is the same shape the Prisma ORM 7 guide asked you to write by hand:
+The starter contract that `orm init` writes:
 
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int                @id @default(autoincrement())
+  email     String             @unique
   username  String?
   name      String?
   posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
+  createdAt DateTime           @default(now()) @onCreate(now())
+  updatedAt temporal.UpdatedAt
 }
 
 model Post {
-  id        Int      @id @default(autoincrement())
+  id        Int                @id @default(autoincrement())
   title     String
   content   String?
-  author    User     @relation(fields: [authorId], references: [id])
+  author    User               @relation(fields: [authorId], references: [id])
   authorId  Int
-  createdAt TimestamptzString @default(now())
-  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
+  createdAt DateTime           @default(now()) @onCreate(now())
+  updatedAt temporal.UpdatedAt
 }
 ```
+
+Both timestamp fields reach your code as a JavaScript `Date`: `updatedAt temporal.UpdatedAt` is a `DateTime` that Prisma ORM sets when the row is created and again on every update.
 
 And the scaffolded client is all the wiring the app needs. There is no `prisma generate`, no generated client directory, and no driver adapter; the emitted contract and the runtime package replace all three:
 
@@ -127,7 +134,7 @@ And the scaffolded client is all the wiring the app needs. There is no `prisma g
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
 import { contractFromJson } from '@prisma/orm-postgres/static';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.d.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -140,7 +147,7 @@ export const db = postgres({
 
 `orm init` also adds `"node"` to the `types` array and `resolveJsonModule` to `tsconfig.json` so the JSON contract import type-checks, and leaves the SolidStart settings (`jsx`, `jsxImportSource`, the `~/*` path alias) alone.
 
-Now set the database connection. Copy `.env.example` to `.env` and replace the placeholder with your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL; claim it with a free Prisma account to keep the database:
+Now set the database connection: copy `.env.example` to `.env` and replace the placeholder with your own PostgreSQL connection string, or with one from a Prisma Postgres database that you create with `npx create-db@latest`. That command prints a connection string and a claim URL, and you claim the database with a free Prisma account if you want to keep it:
 
 ```bash title=".env"
 DATABASE_URL="postgres://user:password@localhost:5432/mydb"
@@ -157,12 +164,6 @@ npx prisma db init
 ```
 
 ```text no-copy
-✔ Introspecting database schema
-✔ Planning migration
-✔ Initialising database across spaces
-│  contract:  src/prisma/contract.json
-│  database:  postgres://****@localhost:5432/mydb
-
 ✔ Applied 5 operation(s) across 1 contract space
 
 App space
@@ -171,14 +172,14 @@ App space
 ├─ Add unique constraint on "User" (email)
 ├─ Create index "Post_authorId_idx_e47547ed" on "Post"
 ├─ Add foreign key "Post_authorId_fkey" on "Post"
-└─ marker 91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
+└─ marker 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
 ```
 
 `db init` replaces `prisma migrate dev` from Prisma ORM 7 for the first apply: it creates what is missing and records the contract hash in the database. Later schema changes go through [`db update`](/cli/db-update) for a direct development update or [`migration plan`](/cli/migration-plan) for a checked-in migration. To confirm the database matches the contract at any time, run `npx prisma db verify`.
 
 ## 4. Seed the database
 
-Create `src/prisma/seed.ts`. It creates two users and their posts through the ORM API. `create()` returns the inserted row, so the user's `id` is available for the posts without a second query:
+Create `src/prisma/seed.ts`, which creates two users and their posts through the ORM API. `create()` returns the inserted row, so the user's `id` is available for the posts without a second query:
 
 ```typescript title="src/prisma/seed.ts"
 import { db } from "./db.ts";
@@ -242,7 +243,7 @@ export async function GET() {
 }
 ```
 
-Model access is namespace-qualified on PostgreSQL, so the `User` model is `db.orm.public.User`. `.include("posts")` eager-loads the relation and `.all()` returns the rows as an array.
+On PostgreSQL, you reach a model through the database schema it is in, so the `User` model in the `public` schema is `db.orm.public.User`. `.include("posts")` eager-loads the relation and `.all()` returns the rows as an array.
 
 Start the dev server:
 
@@ -251,7 +252,7 @@ npm run dev
 ```
 
 ```text no-copy
-  VITE v8.3.1  ready in 5509 ms
+  VITE v8.3.8  ready in 1135 ms
 
   ➜  Local:   http://localhost:3000/
   ➜  Network: use --host to expose
@@ -266,26 +267,26 @@ curl http://localhost:3000/api/users
 ```json no-copy
 [
   {
-    "createdAt": "2026-09-10T15:45:05.701722Z",
+    "createdAt": "2026-11-20T10:22:49.601Z",
     "email": "alice@prisma.io",
     "id": 1,
     "name": "Alice",
-    "updatedAt": "2026-09-10T15:45:04.523Z",
+    "updatedAt": "2026-11-20T10:22:49.601Z",
     "username": null,
     "posts": [
-      { "authorId": 1, "content": "https://pris.ly/discord", "createdAt": "2026-09-10T15:45:05.875837Z", "id": 1, "title": "Join the Prisma Discord", "updatedAt": "2026-09-10T15:45:05.874Z" },
-      { "authorId": 1, "content": "https://pris.ly/youtube", "createdAt": "2026-09-10T15:45:05.975729Z", "id": 2, "title": "Prisma on YouTube", "updatedAt": "2026-09-10T15:45:05.975Z" }
+      { "authorId": 1, "content": "https://pris.ly/discord", "createdAt": "2026-11-20T10:22:49.637Z", "id": 1, "title": "Join the Prisma Discord", "updatedAt": "2026-11-20T10:22:49.637Z" },
+      { "authorId": 1, "content": "https://pris.ly/youtube", "createdAt": "2026-11-20T10:22:49.643Z", "id": 2, "title": "Prisma on YouTube", "updatedAt": "2026-11-20T10:22:49.643Z" }
     ]
   },
   {
-    "createdAt": "2026-09-10T15:45:05.980593Z",
+    "createdAt": "2026-11-20T10:22:49.647Z",
     "email": "bob@prisma.io",
     "id": 2,
     "name": "Bob",
-    "updatedAt": "2026-09-10T15:45:05.979Z",
+    "updatedAt": "2026-11-20T10:22:49.647Z",
     "username": null,
     "posts": [
-      { "authorId": 2, "content": "https://www.twitter.com/prisma", "createdAt": "2026-09-10T15:45:05.984988Z", "id": 3, "title": "Follow Prisma on Twitter", "updatedAt": "2026-09-10T15:45:05.983Z" }
+      { "authorId": 2, "content": "https://www.twitter.com/prisma", "createdAt": "2026-11-20T10:22:49.652Z", "id": 3, "title": "Follow Prisma on Twitter", "updatedAt": "2026-11-20T10:22:49.652Z" }
     ]
   }
 ]
@@ -337,7 +338,7 @@ export default function Home() {
 }
 ```
 
-Three things to notice:
+What to notice in this page:
 
 - `"use server"` keeps the Prisma query and the database connection on the server. The browser only receives the rows.
 - The rows are typed by the contract: `user.name` and `user.posts` autocomplete without importing any generated types. The `User` and `Post` type imports from the Prisma ORM 7 guide are gone because `createAsync` infers the shape from the query.
@@ -398,9 +399,9 @@ project:  ~/my-solid-prisma-app
 check:    enabled
 
 Skill                          Package               Version      Installed into
-prisma-8                       @prisma/orm-postgres  8.0.0-rc.24  .claude/skills, .cursor/skills, .agents/skills, .devin/skills
-prisma-composer-core-concepts  @prisma/composer      0.29.1       .claude/skills, .cursor/skills, .agents/skills, .devin/skills
-prisma-platform-core-concepts  prisma                8.0.0-rc.34  .claude/skills, .cursor/skills, .agents/skills, .devin/skills
+prisma-8                       @prisma/orm-postgres  8.0.0-rc.25  .claude/skills, .cursor/skills, .agents/skills, .devin/skills
+prisma-composer-core-concepts  @prisma/composer      0.39.0       .claude/skills, .cursor/skills, .agents/skills, .devin/skills
+prisma-platform-core-concepts  prisma                8.0.0-rc.35  .claude/skills, .cursor/skills, .agents/skills, .devin/skills
 
 ⚠ [INIT.CONFIG_KEPT] prisma.config.ts already exists, so init left it alone instead of writing the skills section.
 → Add skills: { agents: ["claude", "cursor", "agents", "devin"] } to the object passed to definePrismaConfig in prisma.config.ts.
