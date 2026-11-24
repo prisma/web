@@ -10,6 +10,12 @@ function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } =
   const messages: unknown[][] = [];
   const scripts: Record<string, unknown>[] = [];
   const timers: (() => void)[] = [];
+  // The real tag replaces the queue stub with its own `freebuff` (v: 2) and
+  // drains the queue; the fake keeps the stub, so tests can read the queue.
+  const loadTag = (node: Record<string, any>) => {
+    if (window.freebuff) window.freebuff.v = 2;
+    node.onload?.();
+  };
   let receive: (event: unknown) => void = () => {};
   const parent = { postMessage: (...args: unknown[]) => messages.push(args) };
   const window: Record<string, any> = {
@@ -31,7 +37,7 @@ function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } =
         appendChild: (node: Record<string, any>) => {
           scripts.push(node);
           // The Freebuff tag loads at once unless a test drives it by hand.
-          if (freebuffLoad === "auto" && node.src === FREEBUFF_TAG_SRC) node.onload?.();
+          if (freebuffLoad === "auto" && node.src === FREEBUFF_TAG_SRC) loadTag(node);
         },
       },
     },
@@ -40,6 +46,8 @@ function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } =
     window,
     scripts,
     messages,
+    /** Fires the `index`th Freebuff tag's load event after the tag took over. */
+    loadFreebuff: (index = 0) => loadTag(scripts.filter((s) => s.src === FREEBUFF_TAG_SRC)[index]!),
     /** Fires every pending timer, as if its delay had passed. */
     elapse: () => timers.splice(0).forEach((callback) => callback()),
     send: (
@@ -436,7 +444,7 @@ test("waits for the Freebuff tag before acknowledging an ads-only signup", () =>
   app.send(signup);
   assert.equal(app.messages.length, 1, "no acknowledgement while the tag is loading");
   assert.equal(freebuffConversions(app).length, 1, "the signup is queued for the tag");
-  (freebuffScripts(app)[0] as { onload: () => void }).onload();
+  app.loadFreebuff();
   app.send(signup);
   assert.equal(freebuffConversions(app).length, 1, "a retry is not queued twice");
   assert.equal(
@@ -450,7 +458,7 @@ test("holds every destination's acknowledgement while the Freebuff tag is loadin
   app.send(grant);
   assert.equal(app.messages.length, 1);
   assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
-  (freebuffScripts(app)[0] as { onload: () => void }).onload();
+  app.loadFreebuff();
   app.send(grant);
   assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
   assert.equal(app.messages.length, 2);
@@ -502,11 +510,58 @@ test("a Freebuff tag load that hangs counts as failed and stops holding acknowle
 test("a tag that loads in time clears its timeout", () => {
   const app = setup({ freebuffLoad: "manual" });
   app.send(grant);
-  (freebuffScripts(app)[0] as { onload: () => void }).onload();
+  app.loadFreebuff();
   app.elapse();
   app.send(grant);
   assert.equal(freebuffScripts(app).length, 1);
   assert.equal(app.messages.length, 2);
+});
+
+test("late events from a timed-out Freebuff load do not clobber the retry", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  const signup = (id: string) => ({
+    ...grant,
+    conversion: { ...grant.conversion, id, openaiEventId: `e-${id}` },
+  });
+  const fire = (index: number, event: "onerror" | "onload") =>
+    (freebuffScripts(app)[index] as Record<string, () => void>)[event]();
+
+  app.send(signup("a"));
+  app.elapse();
+  app.send(signup("b"));
+  assert.equal(freebuffScripts(app).length, 2);
+  fire(0, "onerror");
+  app.send(signup("c"));
+  assert.equal(app.messages.length, 1, "the retry still holds acknowledgements");
+  app.loadFreebuff(1);
+  app.send(signup("c"));
+  assert.equal(
+    JSON.stringify(app.messages.at(-1)?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "c" }),
+  );
+});
+
+test("a load event without the tag taking over is a failure, not ready", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  (freebuffScripts(app)[0] as Record<string, () => void>).onload();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 2, "retried instead of treated as loaded");
+  assert.equal(app.messages.length, 1);
+});
+
+test("a late load from the timed-out attempt counts once the tag is running", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  app.elapse();
+  app.send(grant);
+  app.loadFreebuff(0);
+  (freebuffScripts(app)[1] as Record<string, () => void>).onerror();
+  app.send(grant);
+  assert.equal(
+    JSON.stringify(app.messages.at(-1)?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "handoff-1" }),
+  );
 });
 
 test("a revoked grant reaches a loaded Freebuff tag through Consent Mode", () => {

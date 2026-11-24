@@ -166,7 +166,10 @@
   // load that neither loads nor errors within 10 seconds counts as failed, so
   // a hung request cannot hold acknowledgements back either. A failed load is
   // retried on the next handoff; the queued signup is kept and drained by the
-  // tag when it loads.
+  // tag when it loads. Errors and timeouts of a superseded attempt are ignored,
+  // and a `load` from any attempt counts only once the tag has taken over
+  // `window.freebuff` (it marks itself `v: 2`), because that is what drains the
+  // queue.
   //
   // Consent revocation reaches a loaded tag through the Consent Mode update
   // pushed to `dataLayer` above, which the tag reads; it then stops sending and
@@ -181,15 +184,17 @@
       const script = document.createElement("script");
       script.async = true;
       script.src = freebuffTagUrl;
+      const attempt = freebuffAttempts;
       const fail = () => {
-        if (freebuffState !== "loading") return;
+        if (attempt !== freebuffAttempts || freebuffState !== "loading") return;
         freebuffState = "failed";
         script.remove?.();
       };
       const timeout = setTimeout(fail, 10000);
       script.onload = () => {
         clearTimeout(timeout);
-        freebuffState = "ready";
+        if (window.freebuff?.v === 2) freebuffState = "ready";
+        else fail();
       };
       script.onerror = () => {
         clearTimeout(timeout);
