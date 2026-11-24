@@ -1,0 +1,123 @@
+{
+  "name": "Prisma Postgres quick start",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Prisma Postgres quick start\n\nThis workflow creates a Prisma Postgres project with its first database, generates a connection for it, and runs a query on the new database.\n\n**Before you run it**\n\n1. Select your **Prisma API** credential on the two Prisma Postgres nodes.\n2. On the **Run a query** node, create a **Postgres** credential that reads its values from the incoming item. Switch each field to an expression:\n   - Host: `{{ $json.host }}`\n   - Database: `{{ $json.database }}`\n   - User: `{{ $json.user }}`\n   - Password: `{{ $json.password }}`\n   - Port: `{{ $json.port }}`\n   - SSL: Require\n\n**Afterwards**\n\nThe output of **Create connection** contains a database password. Delete the execution when you are done, or turn off saving of successful executions in the workflow settings.",
+        "width": 460,
+        "height": 560,
+        "color": 7
+      },
+      "id": "00000000-0000-4000-8000-000000005001",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "00000000-0000-4000-8000-000000005002",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "project",
+        "operation": "create",
+        "name": "n8n-quickstart",
+        "region": "us-east-1",
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000005003",
+      "name": "Create project and database",
+      "type": "@prisma/n8n-nodes-prisma.prismaPostgres",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "connection",
+        "operation": "create",
+        "databaseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.database.id }}"
+        },
+        "name": "n8n",
+        "endpointType": "pooled"
+      },
+      "id": "00000000-0000-4000-8000-000000005004",
+      "name": "Create connection",
+      "type": "@prisma/n8n-nodes-prisma.prismaPostgres",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS notes (\n  id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  body       text NOT NULL,\n  created_at timestamptz NOT NULL DEFAULT now()\n);\n\nINSERT INTO notes (body)\nVALUES ('Created from an n8n workflow')\nRETURNING id, body, created_at;",
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000005005",
+      "name": "Run a query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        660,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Create project and database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create project and database": {
+      "main": [
+        [
+          {
+            "node": "Create connection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create connection": {
+      "main": [
+        [
+          {
+            "node": "Run a query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
