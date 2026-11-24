@@ -177,7 +177,7 @@ function Database({
       <ellipse cx={cx} cy={top} rx={rx} ry={ry} fill="#FFFFFF" stroke={INK} strokeWidth={1.5} />
       <text
         x={cx}
-        y={top + height / 2 + 6}
+        y={top + height / 2 + 12}
         textAnchor="middle"
         fill={INK}
         fontFamily={HEADING}
@@ -185,16 +185,6 @@ function Database({
         fontWeight={600}
       >
         PostgreSQL
-      </text>
-      <text
-        x={cx}
-        y={top + height / 2 + 23}
-        textAnchor="middle"
-        fill={MUTED}
-        fontFamily={BODY}
-        fontSize={11.5}
-      >
-        version 17
       </text>
     </g>
   );
