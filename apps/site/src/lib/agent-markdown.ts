@@ -101,7 +101,7 @@ export const AGENT_MARKDOWN_VARY = "Accept, User-Agent";
  * `proxy-matcher.test.ts` checks the proxy end to end on every guide.
  */
 export const ANSWER_PAGE_RESERVED_SEGMENTS: Readonly<Record<string, readonly string[]>> = {
-  postgres: ["guides", "hipaa", "free-postgresql-hosting"],
+  postgres: ["guides", "hipaa", "free-postgresql-hosting", "connection-string"],
   compute: ["guides"],
 };
 
