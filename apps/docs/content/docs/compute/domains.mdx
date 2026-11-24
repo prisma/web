@@ -10,7 +10,7 @@ Configure custom domains that point to your app on any [branch](/compute/branchi
 
 A custom domain is a hostname, such as `shop.acme.com`, that routes to one app on one branch. It serves your app once your workspace's domain ownership record for the hostname is verified, the hostname's DNS points at Prisma, the app has a live deployment, and a TLS certificate has been issued. You do the first two by publishing DNS records. The platform issues the certificate.
 
-A domain ownership record is your workspace's claim to a hostname, proved by a TXT record. Adding a custom domain creates one for its exact hostname, unless the workspace already has a verified record that covers it. The CLI does not show or delete domain ownership records; workspace admins see them on the workspace's Domains settings page in the Console.
+A domain ownership record is your workspace's claim to a hostname, proved by a TXT record. Adding a custom domain creates one for its exact hostname, unless the workspace already has a record for that hostname, or a verified wildcard record such as `*.acme.com` that covers it. The CLI has no commands to list or delete domain ownership records; `show` prints the TXT record a custom domain still needs and when its record expires.
 
 ## Before you start
 
@@ -20,11 +20,11 @@ You'll need:
 - An app. You can add a custom domain before the app has a [live deployment](/compute/deployments); the custom domain starts serving once it has one.
 - Access to edit DNS records within your DNS provider.
 
-Without `--branch`, domain commands use the project's default branch, as other `service` commands do; see [How the CLI picks a branch](/compute/branching#how-the-cli-picks-a-branch). To use another branch, see [A domain on another branch](#a-domain-on-another-branch).
+Without `--branch`, domain commands pick a branch the same way as other `service` commands; see [How the CLI picks a branch](/compute/branching#how-the-cli-picks-a-branch). To use another branch, see [A custom domain on another branch](#a-custom-domain-on-another-branch).
 
 ## Add a custom domain
 
-### 1. Add the domain
+### 1. Add the custom domain
 
 ```npm
 npx prisma service domain add shop.acme.com --service web
@@ -50,7 +50,7 @@ Add both records at your DNS provider.
 | Type  | Name                                 | Value                          | TTL | What it does                               |
 | ----- | ------------------------------------ | ------------------------------ | --- | ------------------------------------------ |
 | TXT   | `_prisma-verification.shop.acme.com` | `prisma-verification=3f9a…`    | 300 | Verifies your domain ownership record      |
-| CNAME | `shop.acme.com`                      | `switchboard.cdg.prisma.build` | 300 | Points the domain at `switchboard.{region}.prisma.build` |
+| CNAME | `shop.acme.com`                      | `switchboard.cdg.prisma.build` | 300 | Points the hostname at `switchboard.{region}.prisma.build` |
 
 The CLI prints each record name as a full hostname. If your DNS provider expects a relative name, enter just the labels before your domain (`shop` and `_prisma-verification.shop`).
 
@@ -89,7 +89,7 @@ npx prisma service domain retry shop.acme.com --service web
 
 The platform looks your DNS up when you add a custom domain, once more ten minutes later if it found nothing, and after that only when you ask. `retry` asks it to check now: it looks the DNS records up again, and if the last certificate failed, it orders a new one. A workspace can order a limited number of new certificates per hour. When that limit or the API's rate limit is reached, `retry` fails with `SERVICE.DOMAIN_RETRY_RATE_LIMITED` and says when to run it again.
 
-## A domain on another branch
+## A custom domain on another branch
 
 To give a staging or preview app its own custom domain, pass `--branch` with the branch's name:
 
@@ -106,11 +106,11 @@ The custom domain belongs to the app on that branch, so pass the same `--branch`
 npx prisma service domain delete shop.acme.com --service web
 ```
 
-Deleting removes the custom domain from the app. The command asks you to type the hostname to confirm; pass `--confirm shop.acme.com` to run it without a prompt. Your workspace's domain ownership record for the hostname stays, and Prisma can't touch your DNS, so both DNS records stay behind. Keep the TXT record if you may add the same hostname again, for example to an app on another branch. Otherwise delete both records at your provider.
+Deleting removes the custom domain from the app. The command asks you to type the hostname to confirm; pass `--confirm shop.acme.com` to run it without a prompt. Your workspace's domain ownership record for the hostname stays, and Prisma can't touch your DNS, so both DNS records stay behind. Keep both records while another app in your workspace uses the same hostname, for example an app on another branch, or if you may add it again. Otherwise delete them at your provider.
 
 ## States
 
-A custom domain reports two fields. `status` is `pending` until the custom domain goes live, then `active`; it returns to `pending` if its domain ownership record expires or the app is deleted. `state` says what the custom domain is doing right now:
+A custom domain reports two fields. `status` is `pending` until the custom domain goes live, then `active`; it returns to `pending` when no domain ownership record keeps it serving any more (the record expired, another workspace's value was found in DNS, or the record was deleted) or when the app is deleted. `state` says what the custom domain is doing right now:
 
 | State                      | Meaning                                              | What to do                                     |
 | -------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
