@@ -9,6 +9,8 @@ export const answerPageSchema = z.object({
   date: z.iso.date(),
   updatedAt: z.iso.date(),
   readingTime: z.string().min(1),
+  /** Optional decorative background for the header. */
+  headerArt: z.enum(["ripple"]).optional(),
   faq: z
     .array(z.object({ question: z.string().min(1), answer: z.string().min(1) }))
     .min(3)
