@@ -77,7 +77,10 @@ export function BurstFill({ on }: { on: boolean }) {
     // time (otherwise a leftover value makes it pop in instantly).
     if (on) reveal.set(0);
     const controls = animate(reveal, on ? 100 : 0, {
-      duration: on ? 2.0 : 0.6,
+      // 0.5s in, 0.25s out (was 2s / 0.6s): the slow reveal made the CTAs
+      // feel sluggish to hover (client, 2026-11-22). Same ease-out curve, so
+      // it still blooms from the centre.
+      duration: on ? 0.5 : 0.25,
       ease: on ? [0.22, 1, 0.36, 1] : "easeIn",
     });
     return () => controls.stop();
@@ -90,7 +93,9 @@ export function BurstFill({ on }: { on: boolean }) {
       className="pointer-events-none absolute inset-0 block"
       style={{ maskImage, WebkitMaskImage: maskImage }}
       initial={{ opacity: 0 }}
-      animate={{ opacity: on && present ? 0.5 : 0 }}
+      // 0.35 (was 0.5): a glow rather than a firework (client, 2026-11-22:
+      // "feel more premium").
+      animate={{ opacity: on && present ? 0.35 : 0 }}
       transition={{ opacity: { duration: 0.12, ease: "easeOut" } }}
     >
       {present && (

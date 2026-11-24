@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils";
 const SPECTRUM =
   "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
 
+// Fast-out curve shared by the hover effects: quick to arrive, soft to settle.
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+
 const CONSOLE_HOST = "console.prisma.io";
 
 /**
@@ -65,12 +68,15 @@ type PrismButtonProps = {
    * 109x36, so a default-size hero CTA reads as a repeat of it rather than as
    * the page's action — client review flagged exactly that.
    */
-  size?: "default" | "lg";
+  size?: "default" | "lg" | "sm";
 };
 
+// `sm` is for dense layouts where the button sits among data, like the
+// pricing table's plan columns: a 36px pill that doesn't outweigh the numbers.
 const SIZES = {
   default: "px-6 py-3 text-[16px]",
   lg: "px-8 py-4 text-[17px]",
+  sm: "px-[18px] py-[7px] text-[14px]",
 } as const;
 
 // The outline pill gives a pixel of padding back to its border on each axis, so
@@ -78,6 +84,7 @@ const SIZES = {
 const OUTLINE_SIZES = {
   default: "px-[22px] py-[11px] text-[16px]",
   lg: "px-[30px] py-[15px] text-[17px]",
+  sm: "px-[17px] py-[6px] text-[14px]",
 } as const;
 
 // The brand's primary CTA, ported from the approved stylescape: a living
@@ -133,7 +140,7 @@ export function PrismButton({
             x: drift
               ? { duration: 7, repeat: Infinity, ease: "easeInOut" }
               : { duration: 0.6, ease: "easeOut" },
-            scaleY: { duration: 0.35, ease: "easeOut" },
+            scaleY: { duration: 0.2, ease: "easeOut" },
           }}
         />
       </span>
@@ -143,8 +150,8 @@ export function PrismButton({
         className="absolute inset-0 rounded-full blur-[10px]"
         style={{ backgroundImage: SPECTRUM }}
         initial={{ opacity: 0 }}
-        animate={{ opacity: burstOn ? 0.7 : 0 }}
-        transition={{ duration: 0.35 }}
+        animate={{ opacity: burstOn ? 0.5 : 0 }}
+        transition={{ duration: burstOn ? 0.15 : 0.25, ease: EASE_OUT }}
       />
 
       {/* button */}
@@ -158,12 +165,17 @@ export function PrismButton({
           onClick?.(event);
         }}
         className={cn(
-          "relative flex items-center justify-center overflow-hidden rounded-full bg-black cursor-pointer",
+          // Depth: a hairline of light along the top inside edge and a soft
+          // shadow beneath, so the pill reads as an object, not a flat shape.
+          "relative flex items-center justify-center overflow-hidden rounded-full bg-black cursor-pointer shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_1px_2px_rgba(0,0,0,0.18),0_8px_20px_-10px_rgba(0,0,0,0.45)]",
           SIZES[size],
           fullWidth && "w-full",
         )}
-        animate={{ scale: burstOn ? 1.04 : 1 }}
-        transition={{ type: "spring", stiffness: 380, damping: 26 }}
+        // A barely-there lift on hover and a press on click, on a firm
+        // spring (was a 4% grow on a bouncy one, which read as playful).
+        animate={{ scale: burstOn ? 1.015 : 1 }}
+        whileTap={reduce ? undefined : { scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 600, damping: 35 }}
       >
         {/* prismatic burst — erupts from the centre via an expanding radial reveal */}
         <BurstFill on={burstOn} />
@@ -171,7 +183,9 @@ export function PrismButton({
         {/* inline-flex nowrap keeps a label icon on the label's line. Preflight
             sets svg { display: block }, which stacks the icon above the text
             whenever this span is not a flex box, so the icon is forced back
-            to an inline-block that cannot grow the pill past its size. */}
+            to an inline-block that cannot grow the pill past its size.
+            relative z-10 keeps the label above the absolutely positioned
+            burst and glow layers, so hover never tints the text. */}
         <span className="relative z-10 inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-white [&_svg]:inline-block [&_svg]:shrink-0">
           {children}
         </span>
@@ -205,13 +219,61 @@ export function PrismButtonOutline({
         onClick?.(event);
       }}
       className={cn(
-        "spectrum-border flex items-center justify-center rounded-full border border-[#646567] cursor-pointer transition-colors duration-500 hover:border-transparent",
+        // Effects arrive fast and leave a little slower (150ms in, 250ms
+        // out), and the pill presses in on click.
+        "spectrum-border flex items-center justify-center rounded-full border border-[#646567] cursor-pointer transition-[border-color,transform] duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-transparent hover:duration-150 active:scale-[0.98] active:duration-75 motion-reduce:active:scale-100",
         OUTLINE_SIZES[size],
         className,
       )}
     >
       {/* Same row treatment as the filled pill's label. */}
       <span className="inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-foreground [&_svg]:inline-block [&_svg]:shrink-0">
+        {children}
+      </span>
+    </Comp>
+  );
+}
+
+// The same pill with no chrome: no spectrum glow, no burst, no depth shadow,
+// no spectrum ring on hover. For dense layouts where a row of glowing pills
+// would compete with the content, like the pricing table's plan columns
+// (client, 2026-11-24: "remove the chrome from the buttons"). `solid` is the
+// recommended action, `outline` the rest. Tracks cta_click like the others.
+export function PrismButtonPlain({
+  children,
+  className,
+  href,
+  onClick,
+  type = "button",
+  ctaLocation,
+  size = "default",
+  fullWidth = false,
+  target,
+  rel,
+  variant = "outline",
+}: PrismButtonProps & { variant?: "solid" | "outline" }) {
+  const Comp = href ? "a" : "button";
+  return (
+    <Comp
+      href={href}
+      target={href ? target : undefined}
+      rel={href ? rel : undefined}
+      type={href ? undefined : type}
+      onClick={(event: React.MouseEvent<HTMLElement>) => {
+        trackConsoleCta(href, children, ctaLocation);
+        onClick?.(event);
+      }}
+      className={cn(
+        "flex items-center justify-center rounded-full border cursor-pointer outline-none transition-[background-color,border-color,transform] duration-150 ease-out focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:duration-75 motion-reduce:active:scale-100",
+        variant === "solid"
+          ? "border-foreground bg-foreground text-white hover:border-foreground/85 hover:bg-foreground/85"
+          : "border-black/[0.14] bg-white text-foreground hover:border-black/[0.3] hover:bg-black/[0.02]",
+        OUTLINE_SIZES[size],
+        fullWidth && "w-full",
+        className,
+      )}
+    >
+      <span className="inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-medium leading-[1.5] [&_svg]:inline-block [&_svg]:shrink-0">
         {children}
       </span>
     </Comp>

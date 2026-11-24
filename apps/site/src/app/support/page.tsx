@@ -41,7 +41,7 @@ const ICON_GLOW =
   "radial-gradient(80% 55% at 20% 100%, color-mix(in srgb, var(--color-prism-cyan-300) 45%, transparent), transparent 70%),radial-gradient(70% 50% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 40%, transparent), transparent 68%),radial-gradient(75% 52% at 84% 100%, color-mix(in srgb, var(--color-prism-red-300) 42%, transparent), transparent 70%)";
 
 const outlineButton =
-  "spectrum-border flex items-center justify-center rounded-full border border-[#646567] cursor-pointer transition-colors duration-500 hover:border-transparent px-[22px] py-[11px] text-[16px]";
+  "spectrum-border flex items-center justify-center rounded-full border border-[#646567] cursor-pointer transition-colors duration-150 ease-out hover:border-transparent px-[22px] py-[11px] text-[16px]";
 const outlineButtonLabel = "whitespace-nowrap font-semibold leading-[1.5] text-foreground";
 
 function GlowIcon({ className, children }: { className?: string; children: ReactNode }) {

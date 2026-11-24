@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Marker } from "@/components/brand/marker";
+import { PrismButtonPlain } from "@/components/brand/prism-button";
 import {
   AppWindow,
   CheckBold,
@@ -11,17 +12,6 @@ import {
 } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
-
-// Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
-
-// The site's prismatic halo, lifted verbatim from hero-home.tsx. Conic rather
-// than linear is the whole point: it wraps the perimeter, so a single layer
-// gives an even glow on all four sides. An earlier attempt here stacked ten
-// radial gradients to fake that and read as separate coloured blobs.
-const HALO =
-  "conic-gradient(var(--color-prism-yellow-300), var(--color-prism-red-500) 32%, var(--color-prism-cyan-400) 64%, var(--color-prism-yellow-300))";
 
 // Detailed spec table — Shane (2026-07-29): "we'd need to bring back the
 // detailed spec tables further down the page, these tend to be quite
@@ -48,6 +38,20 @@ const HALO =
 // b41116959; the invalidation and purge rows were already restored from its
 // comparison table.
 const YES = "yes";
+
+// Words instead of a bare em dash (critique 2026-11-22: one dash meant three
+// different things, and at 2.1:1 it barely showed). Wording is the docs' own
+// (docs compute/pricing.mdx "Included usage by plan", checked 2026-11-22), so
+// the page and the docs say the same thing:
+//  - HARD_LIMIT ("No usage billing"): Free has monthly limits and no usage
+//    billing, so there is no overage price. (Postgres: queries stop at the
+//    Free allowance, docs postgres/faq.mdx. Compute: the docs don't say what
+//    happens at the limit, so the cell says only what they do say.)
+//  - NOT_AVAILABLE: the feature isn't on that plan (Free backups, cache tag
+//    invalidations on Free and Starter).
+const HARD_LIMIT = "No usage billing";
+const NOT_AVAILABLE = "Not available";
+const QUIET_VALUES = new Set([HARD_LIMIT, NOT_AVAILABLE, "—"]);
 
 type CellLink = { token: string; href: string };
 type Row = {
@@ -92,7 +96,7 @@ export const GROUPS: Group[] = [
       },
       {
         label: "Operation overage",
-        values: ["—", "$8 per million", "$2 per million", "$1 per million"],
+        values: ["No usage billing", "$8 per million", "$2 per million", "$1 per million"],
       },
       {
         label: "Storage included",
@@ -100,15 +104,18 @@ export const GROUPS: Group[] = [
       },
       {
         label: "Storage overage",
-        values: ["—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
+        values: ["No usage billing", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
       },
       { label: "Databases", values: ["50", "1,000", "1,000", "1,000"] },
       {
         label: "Data transfer",
         values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"],
       },
-      // Free has a spend limit too: it is fixed at $0 and the plan needs no card,
-      // so "Every plan includes: Spend limits" (pricing-includes.tsx) holds.
+      // The Console's spending limit is a paid-plan setting (docs
+      // console/more/billing.mdx). Free has no usage billing and its queries
+      // stop at the allowance, so its spending is capped at $0 in effect:
+      // "Fixed at $0" is true and is the fair reading (client, 2026-11-22).
+      // Pinned by pricing-claims.test.tsx.
       { label: "Spend limits", values: ["Fixed at $0, no card required", YES, YES, YES] },
     ],
   },
@@ -130,31 +137,36 @@ export const GROUPS: Group[] = [
       },
       {
         label: "Request price",
-        values: ["—", "$1 per million", "$1 per million", "$1 per million"],
+        values: ["No usage billing", "$1 per million", "$1 per million", "$1 per million"],
+      },
+      // One row per meter (client, 2026-11-22: "clear and honest, but not
+      // unnecessarily unfair to us"). Free shows its monthly allowance; paid
+      // plans show the rate they bill per use from the first unit (docs
+      // compute/pricing.mdx: paid plans include no memory, CPU or bandwidth).
+      // The earlier "included" + "price" pair put "Billed per use" under an
+      // "…included" label beside Free's allowance, which read as upgrading
+      // taking something away. Same facts, without the false downgrade.
+      {
+        label: "Provisioned memory",
+        values: [
+          "360 GB-hours / month",
+          "$0.006 per GB-hour",
+          "$0.006 per GB-hour",
+          "$0.006 per GB-hour",
+        ],
       },
       {
-        label: "Provisioned memory included",
-        values: ["360 GB-hours", "—", "—", "—"],
+        label: "Active CPU",
+        values: [
+          "4 vCPU-hours / month",
+          "$0.064 per vCPU-hour",
+          "$0.064 per vCPU-hour",
+          "$0.064 per vCPU-hour",
+        ],
       },
       {
-        label: "Provisioned memory price",
-        values: ["—", "$0.006 per GB-hour", "$0.006 per GB-hour", "$0.006 per GB-hour"],
-      },
-      {
-        label: "Active CPU included",
-        values: ["4 vCPU-hours", "—", "—", "—"],
-      },
-      {
-        label: "Active CPU price",
-        values: ["—", "$0.064 per vCPU-hour", "$0.064 per vCPU-hour", "$0.064 per vCPU-hour"],
-      },
-      {
-        label: "Outbound bandwidth included",
-        values: ["10 GB", "—", "—", "—"],
-      },
-      {
-        label: "Outbound bandwidth price",
-        values: ["—", "$0.025 per GB", "$0.025 per GB", "$0.025 per GB"],
+        label: "Outbound bandwidth",
+        values: ["10 GB / month", "$0.025 per GB", "$0.025 per GB", "$0.025 per GB"],
       },
       { label: "Scale to zero when idle", values: [YES, YES, YES, YES] },
     ],
@@ -220,7 +232,7 @@ export const GROUPS: Group[] = [
       },
       {
         label: "Operation overage",
-        values: ["—", "$0.018 per 1,000", "$0.008 per 1,000", "$0.006 per 1,000"],
+        values: ["No usage billing", "$0.018 per 1,000", "$0.008 per 1,000", "$0.006 per 1,000"],
       },
       {
         label: "Egress included",
@@ -228,7 +240,7 @@ export const GROUPS: Group[] = [
       },
       {
         label: "Egress overage",
-        values: ["—", "$0.09 per GiB", "$0.09 per GiB", "$0.08 per GiB"],
+        values: ["No usage billing", "$0.09 per GiB", "$0.09 per GiB", "$0.08 per GiB"],
       },
       // Live-page values, restored from the pre-rebrand table
       // (apps/site/src/app/pricing/pricing-data.ts at 528ab05fc^). Free and
@@ -236,8 +248,8 @@ export const GROUPS: Group[] = [
       {
         label: "Cache tag invalidations",
         values: [
-          "—",
-          "—",
+          "Not available",
+          "Not available",
           "$0.002 per 1,000, max 10,000 per day",
           "$0.001 per 1,000, max 100,000 per day",
         ],
@@ -262,7 +274,7 @@ export const GROUPS: Group[] = [
       {
         label: "Backups",
         values: [
-          "—",
+          "Not available",
           "Daily, 7-day retention",
           "Daily, 7-day retention",
           "Daily, 30-day retention",
@@ -298,30 +310,32 @@ export const GROUPS: Group[] = [
 ];
 
 const PLAN_NAMES = ["Free", "Starter", "Pro", "Business"];
+
+const SIGN_UP = "https://console.prisma.io/sign-up";
+// Same labels as the plan cards (pricing-plans.tsx), so the CTA reads the
+// same wherever someone decides. `short` is for the phone's 2×2 grid, where
+// "Start on Business" doesn't fit half a 343px column.
+const PLAN_CTAS = [
+  { plan: "free", label: "Start for free", short: "Start free" },
+  { plan: "starter", label: "Start on Starter", short: "Starter" },
+  { plan: "pro", label: "Start on Pro", short: "Pro" },
+  { plan: "business", label: "Start on Business", short: "Business" },
+];
 // Starter carries "Most popular" on the cards, so it reads as the lit column here too.
 const HIGHLIGHT = 1;
+const STARTER_TINT = "bg-[color-mix(in_srgb,var(--color-foreground)_3%,white)]";
 
-function Cell({
-  value,
-  highlight,
-  links,
-}: {
-  value: string;
-  highlight: boolean;
-  links?: CellLink[];
-}) {
+function Cell({ value, links }: { value: string; links?: CellLink[] }) {
   if (value === YES) {
-    return <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />;
+    // cyan-700, not -500: the lighter tick was 2.3:1 on white, under the 3:1
+    // a meaningful icon needs (WCAG 1.4.11).
+    return <CheckBold role="img" className="size-4 text-prism-cyan-700" aria-label="Included" />;
   }
   return (
     <span
       className={cn(
         "text-sm leading-relaxed",
-        value === "—"
-          ? "text-muted-foreground/50"
-          : highlight
-            ? "font-semibold text-foreground"
-            : "text-foreground",
+        QUIET_VALUES.has(value) ? "text-muted-foreground" : "text-foreground",
       )}
     >
       {links && links.length > 0 ? renderCellWithLinks(value, links) : value}
@@ -358,12 +372,12 @@ function renderCellWithLinks(value: string, links: CellLink[]) {
 function MobileRow({ row }: { row: Row }) {
   const uniform = row.values.every((v) => v === row.values[0]);
   return (
-    <div className="border-t border-black/[0.06] px-5 py-3.5 first:border-t-0">
+    <div className="border-t border-black/[0.06] py-3.5 first:border-t-0">
       {uniform ? (
         <div className="flex items-start justify-between gap-4">
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
           <dd className="shrink-0 text-right">
-            <Cell value={row.values[0]} highlight links={row.cellLinks?.[0]} />
+            <Cell value={row.values[0]} links={row.cellLinks?.[0]} />
           </dd>
         </div>
       ) : (
@@ -371,24 +385,12 @@ function MobileRow({ row }: { row: Row }) {
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
           <dd className="mt-2.5 grid grid-cols-2 gap-2">
             {row.values.map((v, i) => (
-              <div
-                key={PLAN_NAMES[i]}
-                className={cn(
-                  "rounded-lg px-3 py-2",
-                  // Recommended plan lifted on white, the rest recessed — the
-                  // site's before/after language from pricing-comparison.tsx.
-                  i === HIGHLIGHT ? "bg-white ring-1 ring-black/[0.09]" : "bg-foreground/[0.03]",
-                )}
-              >
+              <div key={PLAN_NAMES[i]} className="rounded-lg bg-foreground/[0.03] px-3 py-2">
                 <p className="text-[0.6875rem] font-medium text-muted-foreground">
                   {PLAN_NAMES[i]}
                 </p>
                 <div className="mt-1">
-                  <Cell
-                    value={v}
-                    highlight={i === HIGHLIGHT}
-                    links={row.cellLinks?.[i as 0 | 1 | 2 | 3]}
-                  />
+                  <Cell value={v} links={row.cellLinks?.[i as 0 | 1 | 2 | 3]} />
                 </div>
               </div>
             ))}
@@ -405,13 +407,13 @@ function DesktopRow({ row }: { row: Row }) {
     <tr className="border-t border-black/[0.06]">
       <th
         scope="row"
-        className="px-5 py-3.5 text-sm font-normal leading-relaxed text-muted-foreground"
+        className="py-3.5 pr-5 text-sm font-normal leading-relaxed text-muted-foreground"
       >
         {row.label}
       </th>
       {row.values.map((v, i) => (
         <td key={i} className="px-5 py-3.5 align-top">
-          <Cell value={v} highlight={i === HIGHLIGHT} links={row.cellLinks?.[i as 0 | 1 | 2 | 3]} />
+          <Cell value={v} links={row.cellLinks?.[i as 0 | 1 | 2 | 3]} />
         </td>
       ))}
     </tr>
@@ -423,7 +425,7 @@ function DesktopRow({ row }: { row: Row }) {
 // sideways. `clip` rather than `hidden` so it doesn't become a scroll container.
 export function PricingSpecTable() {
   return (
-    <section className="overflow-x-clip bg-white px-4 sm:px-8">
+    <section id="compare-plans" className="scroll-mt-24 overflow-x-clip bg-white px-4 sm:px-8">
       <div className="mx-auto max-w-site py-16 sm:py-24">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
@@ -436,28 +438,11 @@ export function PricingSpecTable() {
           </p>
         </Reveal>
 
-        {/* The table was the only block on the page with no brand presence at
-            all — bare white, while every other section sits in a panel with the
-            spectral wash. */}
         <Reveal delay={0.15} className="relative mt-10">
-          {/* The hero's prismatic halo — same two layers and geometry: a tight
-              inner edge plus a soft outer bloom, hugging the table rather than
-              spreading into the copy around it.
-              Opacity is a third of the hero's 60/40. The hero's card is the
-              focal point of the page and earns a bright halo; this is a dense
-              data table where the glow should only suggest the brand, so at the
-              hero's values it competed with the content. Dialled down twice on
-              the client's eye — don't "resync" it with the hero. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -inset-px rounded-2xl opacity-20 blur-[20px]"
-            style={{ background: HALO }}
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -inset-4 rounded-3xl opacity-10 blur-[56px]"
-            style={{ background: HALO }}
-          />
+          {/* Off the card (client, 2026-11-24: "remove the chrome here,
+              take it off the card"): no halo, no border box, no lit column.
+              The table sits on the page on its own hairlines, its labels on
+              the heading's left edge, like the plans table above it. */}
           {/* Mobile and tablet: every plan visible at once, nothing to open.
               The table is 832px wide against a ~356px viewport, so Pro and
               Business sat outside a horizontal scroller with nothing to signal
@@ -476,7 +461,10 @@ export function PricingSpecTable() {
               plus the section's 64px of gutter, so at md (768px) it still hid
               130px inside the scroller. It fits cleanly from ~900px, and lg is
               the first standard breakpoint past that. */}
-          <div className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white lg:hidden">
+          {/* overflow-clip, not -hidden: clip doesn't create a scroll
+              container, so the sticky group headings below stick to the
+              viewport rather than to this box. */}
+          <div className="relative overflow-clip lg:hidden">
             {/* Monthly price sits above the product groups, ungrouped — it's
                 the plan's price, not a Postgres or Compute feature. */}
             <div className="border-b border-black/[0.06]">
@@ -486,18 +474,26 @@ export function PricingSpecTable() {
             </div>
             {GROUPS.map((group) => (
               <div key={group.label} className="border-b border-black/[0.06] last:border-b-0">
-                <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-5 py-3 text-sm font-semibold text-foreground">
-                  <group.icon className={cn("size-4 shrink-0", group.color)} />
+                {/* No white band above it (it had one, to hide rows sliding
+                    behind the nav once stuck): at rest the band covered the
+                    Pro and Business prices in the row above.
+                    Sticky just under the floating nav (its pill ends at 68px on
+                    phones), so seven screens in you still
+                    know which group a row belongs to. A heading, so screen
+                    readers can jump between groups. Opaque paper rather than
+                    the old 3% wash, which showed rows through it once stuck. */}
+                <h3 className="sticky top-[4.5rem] z-10 flex items-center gap-2.5 border-b border-black/[0.06] bg-white py-3 text-sm font-semibold text-foreground">
+                  <group.icon aria-hidden className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
                   {group.note && (
                     <a
                       href={group.note.href}
-                      className="ml-auto shrink-0 text-xs font-normal text-muted-foreground underline underline-offset-2"
+                      className="ml-auto inline-flex min-h-6 shrink-0 items-center text-xs font-normal text-muted-foreground underline underline-offset-2"
                     >
                       {group.note.text}
                     </a>
                   )}
-                </p>
+                </h3>
                 <dl>
                   {group.rows.map((row) => (
                     <MobileRow key={row.label} row={row} />
@@ -505,56 +501,86 @@ export function PricingSpecTable() {
                 </dl>
               </div>
             ))}
+            {/* The table ends on a next step, not on the last row. */}
+            <div className="border-t border-black/[0.06] py-5">
+              <p className="text-sm font-semibold text-foreground">Get started</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {PLAN_CTAS.map((cta, i) => (
+                  <PrismButtonPlain
+                    key={cta.plan}
+                    href={SIGN_UP}
+                    fullWidth
+                    variant={i === HIGHLIGHT ? "solid" : "outline"}
+                    ctaLocation="pricing_compare_plans"
+                  >
+                    {cta.short}
+                  </PrismButtonPlain>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="relative hidden overflow-x-auto rounded-2xl border border-black/[0.06] bg-white lg:block">
-            <table className="w-full min-w-[52rem] border-collapse text-left">
+          {/* No overflow-x-auto here any more: a scroll container would make
+              the sticky header stick to this box instead of the viewport.
+              The table only renders from lg, where it fits (see above), and
+              overflow-clip keeps the rounded corners without scrolling. */}
+          <div className="relative hidden overflow-clip lg:block">
+            <table className="w-full border-collapse text-left">
               <caption className="sr-only">
                 Feature and limit comparison across the Free, Starter, Pro and Business plans
               </caption>
               <colgroup>
                 <col />
                 <col />
-                <col className="bg-paper" />
+                {/* Starter's column is tinted top to bottom (client,
+                    2026-11-24), the one highlight the table keeps. A 3% ink
+                    mix, opaque: brand paper is too close to white to see. */}
+                <col className={STARTER_TINT} />
                 <col />
                 <col />
               </colgroup>
               <thead>
+                {/* Sticky under the floating nav (its pill ends at 100px), so
+                    the plan names and prices stay in view for the whole
+                    2,000px of rows. Each cell is opaque so rows scroll under
+                    it cleanly; the inset shadow is the header's bottom rule.
+                    The ::before band whites out the strip above the stuck
+                    header, where rows otherwise show around the floating nav
+                    pill; overflow-clip on the wrapper hides it until the
+                    header is actually stuck. */}
                 <tr>
-                  <th scope="col" className="px-5 pb-4 pt-5">
+                  <th
+                    scope="col"
+                    className="sticky top-[6.25rem] z-10 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-[6.25rem] before:bg-white bg-white pb-4 pr-5 pt-5 shadow-[inset_0_-1px_0_rgba(21,21,21,0.08)]"
+                  >
                     <span className="sr-only">Feature</span>
                   </th>
                   {PLAN_NAMES.map((name, i) => (
-                    <th key={name} scope="col" className="relative px-5 pb-4 pt-5">
-                      {/* The lit column gets a spectrum cap rather than relying
-                          on the paper tint alone, which was almost invisible. */}
-                      {i === HIGHLIGHT && (
-                        <span
-                          aria-hidden
-                          className="absolute inset-x-0 top-0 h-[3px]"
-                          style={{ backgroundImage: SPECTRUM }}
-                        />
+                    <th
+                      key={name}
+                      scope="col"
+                      className={cn(
+                        "sticky top-[6.25rem] z-10 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-[6.25rem] before:bg-white px-5 pb-4 pt-5 shadow-[inset_0_-1px_0_rgba(21,21,21,0.08)]",
+                        // Opaque, so rows scroll under it cleanly when stuck.
+                        i === HIGHLIGHT ? STARTER_TINT : "bg-white",
                       )}
+                    >
                       <span className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "text-sm font-semibold",
-                            i === HIGHLIGHT ? "text-foreground" : "text-muted-foreground",
-                          )}
-                        >
-                          {name}
-                        </span>
+                        <span className="text-sm font-semibold text-foreground">{name}</span>
                         {i === HIGHLIGHT && <Marker>Most popular</Marker>}
+                      </span>
+                      {/* The price lives in the header now, so it stays in
+                          view; it replaces the old "Monthly price" row. */}
+                      <span className="mt-1 block font-heading text-xl font-medium tabular-nums text-foreground">
+                        {PLAN_ROW.values[i]}
+                        <span className="ml-1 text-sm font-normal text-muted-foreground">
+                          / month
+                        </span>
                       </span>
                     </th>
                   ))}
                 </tr>
               </thead>
-              {/* Monthly price sits above the product groups, ungrouped — it's
-                  the plan's price, not a Postgres or Compute feature. */}
-              <tbody>
-                <DesktopRow row={PLAN_ROW} />
-              </tbody>
               {GROUPS.map((group) => (
                 <tbody key={group.label}>
                   <tr>
@@ -563,12 +589,12 @@ export function PricingSpecTable() {
                         rule for the site's labels, and this table was the one
                         place still breaking it. */}
                     <th
-                      scope="colgroup"
+                      scope="rowgroup"
                       colSpan={5}
-                      className="border-t border-black/[0.06] bg-card px-5 py-3"
+                      className="border-t border-black/[0.06] py-3 pr-5"
                     >
                       <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
-                        <group.icon className={cn("size-4 shrink-0", group.color)} />
+                        <group.icon aria-hidden className={cn("size-4 shrink-0", group.color)} />
                         {group.label}
                         {group.note && (
                           <a
@@ -586,6 +612,28 @@ export function PricingSpecTable() {
                   ))}
                 </tbody>
               ))}
+              {/* The table ends on a next step: one button per plan, under its
+                  column, the same labels as the plan cards. */}
+              <tfoot>
+                <tr className="border-t border-black/[0.06]">
+                  <td className="py-6 pr-5 text-sm text-muted-foreground">Get started</td>
+                  {PLAN_CTAS.map((cta, i) => (
+                    <td key={cta.plan} className="px-5 py-6">
+                      <div className="w-full max-w-[10.5rem]">
+                        <PrismButtonPlain
+                          href={SIGN_UP}
+                          size="sm"
+                          fullWidth
+                          variant={i === HIGHLIGHT ? "solid" : "outline"}
+                          ctaLocation="pricing_compare_plans"
+                        >
+                          {cta.label}
+                        </PrismButtonPlain>
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
             </table>
           </div>
         </Reveal>
