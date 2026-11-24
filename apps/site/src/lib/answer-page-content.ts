@@ -29,6 +29,10 @@ export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
       .replace(
         /<EnvironmentDiagram\s*\/>/g,
         "Test: feature branch → own app and API → separate database with synthetic records.\n\nProduction: protected main → own app and API → customer database.\n\nEach app uses its own database credentials. The assistant gets access to the test environment.",
+      )
+      .replace(
+        /<ServerlessPathsDiagram\s*\/>/g,
+        "How apps reach Prisma Postgres: serverless functions and Prisma Compute apps → `pooled.db.prisma.io` (PgBouncer, transaction mode, TCP port 5432). Edge runtimes → serverless driver over HTTP and WebSockets. Migrations, Prisma Studio and `pg_dump` → `db.prisma.io` (direct connection, session state kept). All three reach one PostgreSQL 17 database in the region you chose.",
       ),
     "## Frequently asked questions",
     ...data.faq.map(({ question, answer }) => `### ${question}\n\n${answer}`),

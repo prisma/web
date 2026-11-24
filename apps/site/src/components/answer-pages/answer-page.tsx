@@ -14,6 +14,7 @@ import { getBaseUrl } from "@/lib/url";
 import { formatAnswerDate, type AnswerPage as AnswerPageContent } from "@/lib/answer-pages";
 import { getMDXComponents } from "@/mdx-components";
 import { EnvironmentDiagram } from "./environment-diagram";
+import { ServerlessPathsDiagram } from "./serverless-paths-diagram";
 import { getAnswerProduct } from "@/lib/answer-products";
 
 // Conversion Factory's article structure, using the site's brand components.
@@ -125,7 +126,7 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
 
         <div className="min-w-0 max-w-3xl">
           <div className="answer-prose prose max-w-none text-foreground prose-headings:scroll-mt-28 prose-headings:font-heading prose-headings:font-medium prose-headings:text-balance prose-h2:mt-14 prose-h2:text-2xl prose-h3:mt-8 prose-h3:text-xl prose-p:text-pretty prose-p:leading-[1.8] prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 prose-a:hover:text-prism-cyan-700 prose-strong:font-semibold prose-li:leading-[1.8] prose-code:break-words prose-th:text-left">
-            <Body components={getMDXComponents({ EnvironmentDiagram })} />
+            <Body components={getMDXComponents({ EnvironmentDiagram, ServerlessPathsDiagram })} />
           </div>
 
           <section id="faq" aria-labelledby="faq-heading" className="mt-16 scroll-mt-28">

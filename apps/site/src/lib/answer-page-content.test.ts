@@ -63,6 +63,10 @@ test("answer Markdown preserves the decision and custom diagram's meaning", () =
       assert.ok(markdown.includes("synthetic records"));
       assert.ok(markdown.includes("customer database"));
     }
+    if (entry.content.includes("<ServerlessPathsDiagram")) {
+      assert.ok(markdown.includes("pooled.db.prisma.io"));
+      assert.ok(markdown.includes("serverless driver"));
+    }
     for (const { title, href } of entry.data.related)
       assert.ok(markdown.includes(`[${title}](${href})`));
   }

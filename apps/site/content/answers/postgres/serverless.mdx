@@ -1,0 +1,171 @@
+---
+title: "What is serverless Postgres, and when should I use it?"
+description: "Serverless Postgres is PostgreSQL with no server to size: the provider scales it, pools connections and bills for usage. Here is how it works and when it fits."
+summary: "Serverless Postgres is a PostgreSQL database you reach through a connection string while the provider runs, scales and pools it for you, so you don't size an instance and you pay for usage. It fits apps with uneven traffic, serverless and edge functions, and many small databases. It fits less well for a constant heavy query load or work that needs long sessions. Prisma Postgres is serverless Postgres: managed PostgreSQL 17 with PgBouncer pooling on every plan, a serverless driver for edge runtimes and billing by operations and storage."
+author: "Martin Janse van Rensburg"
+authorUrl: "https://github.com/vanrensbird"
+date: "2026-11-24"
+updatedAt: "2026-11-24"
+readingTime: "7 min read"
+faq:
+  - question: "What is a serverless database?"
+    answer: "A serverless database is one you use without provisioning or managing servers. The provider handles capacity, scaling and connections, and you pay for what you use rather than for a fixed machine. Serverless Postgres is a serverless database that speaks standard PostgreSQL, so existing Postgres clients and tools work with it."
+  - question: "Is Prisma Postgres serverless?"
+    answer: "Yes. There is no instance to size or upgrade, connection pooling is built in, and you pay for operations and storage. Serverless functions connect over the pooled connection string, and edge runtimes connect through the [serverless driver](/docs/postgres/database/serverless-driver). Any Postgres client works, and Prisma ORM is optional."
+  - question: "Can I use Prisma Postgres from edge runtimes?"
+    answer: "Yes. On a runtime that can't open a PostgreSQL TCP connection, use the [serverless driver](/docs/postgres/database/serverless-driver), `@prisma/ppg`. It connects over HTTP and WebSockets, with your direct connection string as the credential."
+  - question: "What is the best serverless Postgres?"
+    answer: "The one whose billing and idle behaviour match your traffic. Check what you're billed for (queries, compute time or an instance), what happens when the database is idle, how connections are pooled, and whether you can host your app next to it. [Serverless Postgres compared](/blog/serverless-postgres) puts the main options side by side."
+related:
+  - title: "How does Postgres connection pooling work with serverless apps?"
+    href: "/postgres/connection-pooling"
+  - title: "What is the Postgres connection string format?"
+    href: "/postgres/connection-string"
+  - title: "Serverless Postgres compared"
+    href: "/blog/serverless-postgres"
+  - title: "Prisma Postgres serverless driver"
+    href: "/docs/postgres/database/serverless-driver"
+  - title: "Prisma Postgres connection pooling and limits"
+    href: "/docs/postgres/database/connection-pooling"
+  - title: "Traditional databases vs serverless databases"
+    href: "/dataguide/serverless/traditional-vs-serverless-databases"
+  - title: "Why the first request after idle is slow"
+    href: "/postgres/slow-first-request-after-idle"
+cta:
+  title: "Create a serverless Postgres database"
+  description: "Run npx create-db for a Prisma Postgres database and its connection string in seconds, with no account, or sign up and create one in the Console. Any Postgres client works."
+  label: "Get started"
+  href: "https://console.prisma.io/sign-up"
+---
+
+Pick serverless Postgres when your traffic is uneven, your code runs in serverless or edge functions, or you need many small databases, such as one per preview branch or agent task. Pick an always-on server you size yourself when the query load is heavy and constant, or when your workload depends on long-lived sessions.
+
+We make Prisma Postgres, Prisma ORM and Prisma Compute. Every Prisma Postgres claim on this page links to the Prisma docs, checked in November 2026.
+
+## What makes Postgres serverless?
+
+Serverless Postgres is a PostgreSQL database you reach through a connection string, while the provider runs the servers, scales them and handles connections for you. Three things separate it from a server you run or size yourself:
+
+- **No instance to size.** You don't pick CPU and memory up front, and you don't resize when traffic grows.
+- **Pooling in front of the database.** A function can start many copies of itself in a second, and each copy wants a database connection. A pooler lets those copies share a small set of real connections instead of running out of them.
+- **Usage billing.** You pay for what you use instead of for a machine that runs all day.
+
+To your app it is ordinary Postgres. Prisma ORM, `node-postgres`, `psql` and other Postgres clients all connect with the same connection string.
+
+## How Prisma Postgres works for serverless and edge apps
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17 that autoscales, so there is no instance to size or upgrade. It bills by operations and storage, where an [operation](/docs/postgres/faq#what-is-an-operation) is one query, read or write. Every database has a pooled connection string, a direct one, and a serverless driver for runtimes without TCP:
+
+<ServerlessPathsDiagram />
+
+### Connection pooling is built in
+
+Application traffic goes to the pooled host, `pooled.db.prisma.io`. It routes through a tenant-isolated PgBouncer instance in transaction mode: a real database connection is assigned for one transaction, then returned to the pool. Many short-lived functions share those connections instead of opening one each.
+
+Pooled connection limits depend on the plan: 10 on Free, 100 on Starter, 500 on Pro and 1,000 on Business. [How Postgres connection pooling works with serverless apps](/postgres/connection-pooling) covers the pooler in detail.
+
+### Direct connections for migrations and tools
+
+The direct host, `db.prisma.io`, skips the pooler. Use it for migrations, Prisma Studio, `pg_dump` and anything that needs session state, such as `LISTEN` and `NOTIFY`. The [Postgres connection string](/postgres/connection-string) guide breaks down both formats.
+
+### A serverless driver for edge runtimes
+
+Some runtimes can't open a PostgreSQL TCP connection. For those, the [serverless driver](/docs/postgres/database/serverless-driver), `@prisma/ppg`, talks to Prisma Postgres over HTTP and WebSockets. It takes your direct connection string as its credential but never opens a TCP connection:
+
+```ts title="src/query.ts"
+import { prismaPostgres, defaultClientConfig } from "@prisma/ppg";
+
+const ppg = prismaPostgres(defaultClientConfig(process.env.DATABASE_URL!));
+
+type User = { id: number; email: string };
+
+const users = await ppg.sql<User>`
+  SELECT id, email FROM "User" WHERE email = ${"ada@example.com"}
+`.collect();
+```
+
+### Regions
+
+You choose one of [six regions](/docs/postgres/faq#what-regions-is-prisma-postgres-available-in) when you create a database: San Francisco, North Virginia, Paris, Frankfurt, Tokyo or Singapore. The region can't be changed later. Every query travels from your function to that region and back, so run your functions in or near it.
+
+## How do I set up serverless Postgres with Prisma?
+
+Here is the whole path: Prisma ORM to model and query, Prisma Postgres to store, and Prisma Compute to deploy. The code uses [Prisma ORM 8](/docs/orm). Any other Postgres client works the same way with the connection string.
+
+### 1. Define your schema
+
+Your models live in a contract file. `npm create prisma@latest` writes one for a new app, and `npx prisma orm init` adds one to an app you already have.
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+}
+```
+
+### 2. Create a database
+
+Run [`create-db`](/docs/postgres/npx-create-db) to get a Prisma Postgres database and its connection string in seconds, with no account. Put the connection string it prints in `.env` as `DATABASE_URL`, then create the tables:
+
+```bash
+npx create-db@latest
+npx prisma contract emit
+npx prisma db init
+```
+
+`contract emit` writes the `contract.json` and `contract.d.ts` files your app imports, and `db init` creates the tables in the empty database. The database is deleted after 24 hours unless you open the claim URL from the output and keep it in your workspace.
+
+### 3. Query it from a serverless function
+
+For functions on Node.js or Bun, Prisma ORM has a [serverless client](/docs/orm/reference/transactions-and-runtime#serverless-client-on-postgresql). It holds no connection of its own, so you create it once, outside the handler, and open one connection per request with `connect()`. `await using` closes it when the request ends:
+
+```ts title="src/app/api/users/route.ts"
+import postgresServerless from "@prisma/orm-postgres/serverless";
+import { contractFromJson } from "@prisma/orm-postgres/static";
+import type { Contract } from "../../../prisma/contract.d";
+import contractJson from "../../../prisma/contract.json" with { type: "json" };
+
+const postgres = postgresServerless({ contract: contractFromJson<Contract>(contractJson) });
+
+export async function GET() {
+  await using db = await postgres.connect({ url: process.env.DATABASE_URL! });
+  const users = await db.orm.public.User.all();
+  return Response.json(users);
+}
+```
+
+In production, set `DATABASE_URL` to the pooled connection string from the Console, so every function instance goes through PgBouncer. On a runtime with no TCP support, query with the serverless driver shown above instead.
+
+### 4. Deploy on Prisma Compute
+
+[Prisma Compute](/compute) hosts Node.js, Bun and Next.js apps next to Prisma Postgres, in the same project. Add a [Composer declaration](/docs/prisma-compute/deploy) around your server code, then build and deploy:
+
+```bash
+npx prisma auth login
+npm run build
+npx prisma deploy
+```
+
+Store the connection string as a project [environment variable](/docs/compute/environment-variables), scoped to production or preview, with `npx prisma project env add DATABASE_URL=... --role production`. Values are write-only and resolve at the next deploy. You can also let the deploy create the database: a `rawPostgres()` dependency in the Composer module provisions a [Prisma Postgres database](/docs/composer/databases) with the app. Compute scales an idle app to zero and closes idle database connections, so keep your app's pool small and ready to reconnect.
+
+## Can coding agents set up serverless Postgres?
+
+Yes. Coding agents such as Claude Code, Cursor and Codex can create a Prisma Postgres database without a person signing up first. `npx create-db@latest --json` returns the connection string, the claim URL and the deletion time as JSON, and the [Prisma MCP server](/docs/ai/tools/mcp-server) lets an agent create databases, inspect the schema and run SQL with your Prisma sign-in.
+
+```bash
+npx create-db@latest --json --region eu-central-1
+```
+
+In [Scope's November 2026 benchmark](https://www.tryscope.com/leaderboard/databases) of AI agents signing up for a database and using it, Prisma Postgres ranked first of 18 providers, with an 88.3% success rate.
+
+## When is serverless Postgres the wrong choice?
+
+- **Sustained, heavy query volume.** Billing follows operations, so at a constant high query rate an always-on server can cost less. [Serverless Postgres compared](/blog/serverless-postgres) works through the crossover.
+- **Long queries and session state on the pooler.** Pooled connections stop queries after 10 minutes and don't keep session state such as `SET` commands, advisory locks or `LISTEN` and `NOTIFY`. Use the direct connection for those.
+- **Custom database roles.** Prisma Postgres doesn't support `CREATE ROLE`, so per-role access rules have to live in your app.
+- **Moving between regions.** A database's region is fixed when you create it. Moving means a new database and a copy with `pg_dump` and `pg_restore`.
+
+Every Prisma Postgres plan includes connection pooling. The Free plan includes 200,000 operations a month, 2 GB of storage and up to 50 databases, with no credit card. Paid plans add daily backups, more pooled connections and spend limits. Compare them on the [pricing page](/pricing).

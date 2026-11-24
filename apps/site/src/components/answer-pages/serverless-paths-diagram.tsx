@@ -1,4 +1,6 @@
-import { SERVERLESS_DIAGRAM_LABEL } from "./_content";
+/** Text alternative, also used for the guide's Markdown rendition. */
+export const SERVERLESS_PATHS_DIAGRAM_TEXT =
+  "How apps reach Prisma Postgres. Serverless functions and Prisma Compute apps connect over TCP to the pooled host, pooled.db.prisma.io, where PgBouncer in transaction mode shares a few database connections. Edge runtimes use the serverless driver over HTTP and WebSockets. Migrations, Prisma Studio and pg_dump use the direct host, db.prisma.io. All three paths reach one PostgreSQL 17 database in the region you chose.";
 
 // How apps reach Prisma Postgres: the pooled host, the serverless driver and
 // the direct host, as the docs describe them (postgres/database/
@@ -223,7 +225,7 @@ function WideDiagram() {
       className="hidden h-auto w-full md:block"
     >
       <title id="serverless-diagram-title">How apps reach Prisma Postgres</title>
-      <desc id="serverless-diagram-desc">{SERVERLESS_DIAGRAM_LABEL}</desc>
+      <desc id="serverless-diagram-desc">{SERVERLESS_PATHS_DIAGRAM_TEXT}</desc>
       <rect width={600} height={500} rx={20} fill="#FAFAFA" />
       <text x={24} y={44} fill={INK} fontFamily={HEADING} fontSize={18} fontWeight={600}>
         How apps reach Prisma Postgres
@@ -282,7 +284,7 @@ function WideDiagram() {
               h={h}
               title={row.left.title}
               lines={row.left.lines}
-              titleSize={15}
+              titleSize={14}
               lineSize={13}
             />
             <Box
@@ -328,7 +330,7 @@ function NarrowDiagram() {
       className="block h-auto w-full md:hidden"
     >
       <title id="serverless-diagram-title-sm">How apps reach Prisma Postgres</title>
-      <desc id="serverless-diagram-desc-sm">{SERVERLESS_DIAGRAM_LABEL}</desc>
+      <desc id="serverless-diagram-desc-sm">{SERVERLESS_PATHS_DIAGRAM_TEXT}</desc>
       <rect width={360} height={600} rx={18} fill="#FAFAFA" />
       <text x={12} y={34} fill={INK} fontFamily={HEADING} fontSize={16} fontWeight={600}>
         How apps reach Prisma Postgres
@@ -379,9 +381,10 @@ function NarrowDiagram() {
   );
 }
 
-export function ServerlessDiagram() {
+/** How serverless functions, edge runtimes and admin tools reach Prisma Postgres. */
+export function ServerlessPathsDiagram() {
   return (
-    <figure className="m-0 overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#FAFAFA]">
+    <figure className="not-prose my-10 overflow-hidden rounded-xl border border-border bg-[#FAFAFA]">
       <WideDiagram />
       <NarrowDiagram />
     </figure>
