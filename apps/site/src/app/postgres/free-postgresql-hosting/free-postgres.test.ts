@@ -52,7 +52,7 @@ test("title, meta and H1 match the brief", () => {
   assert.equal(FREE_POSTGRES_TITLE, "Free PostgreSQL Hosting | Prisma Postgres");
   assert.equal(
     FREE_POSTGRES_DESCRIPTION,
-    "Free PostgreSQL hosting on Prisma Postgres. Managed PostgreSQL 17 with 2 GB of storage, 200,000 operations a month and up to 50 databases. No credit card and no time limit.",
+    "Free PostgreSQL hosting on Prisma Postgres: managed PostgreSQL 17, 2 GB of storage, 200,000 operations a month, 50 databases. No credit card, no time limit.",
   );
   assert.equal(FREE_POSTGRES_H1, "Free PostgreSQL hosting");
   assert.equal(FREE_POSTGRES_PATH, "/postgres/free-postgresql-hosting");
