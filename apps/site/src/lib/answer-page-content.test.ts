@@ -64,10 +64,34 @@ test("answer Markdown preserves the decision and custom diagram's meaning", () =
       assert.ok(markdown.includes("customer database"));
     }
     if (entry.content.includes("<ServerlessPathsDiagram")) {
-      assert.ok(markdown.includes("pooled.db.prisma.io"));
-      assert.ok(markdown.includes("serverless driver"));
+      assert.ok(markdown.includes("How apps reach Prisma Postgres"));
+      assert.ok(markdown.includes("Edge runtimes → serverless driver"));
     }
     for (const { title, href } of entry.data.related)
       assert.ok(markdown.includes(`[${title}](${href})`));
+  }
+});
+
+/** GitHub-style heading anchor, as the guide pipeline generates for H2s. */
+function headingAnchor(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/`/g, "")
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .trim()
+    .replace(/\s/g, "-");
+}
+
+test("every tocLabels key names a real H2 anchor or the FAQ", () => {
+  for (const entry of getAnswerEntries()) {
+    const labels = entry.data.tocLabels;
+    if (!labels) continue;
+    const anchors = new Set(
+      [...entry.content.matchAll(/^## (.+)$/gm)].map((match) => headingAnchor(match[1])),
+    );
+    anchors.add("faq");
+    for (const key of Object.keys(labels)) {
+      assert.ok(anchors.has(key), `${entry.url}: tocLabels key "${key}" matches no heading`);
+    }
   }
 });

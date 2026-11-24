@@ -25,10 +25,6 @@ faq:
   - question: "What is the best serverless Postgres?"
     answer: "The one whose billing and idle behaviour match your traffic. Check what you're billed for (queries, compute time or an instance), what happens when the database is idle, how connections are pooled, and whether you can host your app next to it. [Serverless Postgres compared](/blog/serverless-postgres) puts the main options side by side."
 related:
-  - title: "How does Postgres connection pooling work with serverless apps?"
-    href: "/postgres/connection-pooling"
-  - title: "What is the Postgres connection string format?"
-    href: "/postgres/connection-string"
   - title: "Serverless Postgres compared"
     href: "/blog/serverless-postgres"
   - title: "Prisma Postgres serverless driver"
@@ -75,11 +71,11 @@ To your app it is ordinary Postgres. Prisma ORM, `node-postgres`, `psql` and oth
 
 Application traffic goes to the pooled host, `pooled.db.prisma.io`. It routes through a tenant-isolated PgBouncer instance in transaction mode: a real database connection is assigned for one transaction, then returned to the pool. Many short-lived functions share those connections instead of opening one each.
 
-Pooled connection limits depend on the plan: 10 on Free, 100 on Starter, 500 on Pro and 1,000 on Business. [How Postgres connection pooling works with serverless apps](/postgres/connection-pooling) covers the pooler in detail.
+Pooled connection limits depend on the plan: 10 on Free, 100 on Starter, 500 on Pro and 1,000 on Business. The [connection pooling docs](/docs/postgres/database/connection-pooling) cover the pooler in detail.
 
 ### Direct connections for migrations and tools
 
-The direct host, `db.prisma.io`, skips the pooler. Use it for migrations, Prisma Studio, `pg_dump` and anything that needs session state, such as `LISTEN` and `NOTIFY`. The [Postgres connection string](/postgres/connection-string) guide breaks down both formats.
+The direct host, `db.prisma.io`, skips the pooler. Use it for migrations, Prisma Studio, `pg_dump` and anything that needs session state, such as `LISTEN` and `NOTIFY`. [Connecting to your database](/docs/postgres/database/connecting-to-your-database) shows both formats.
 
 ### A serverless driver for edge runtimes
 
@@ -121,10 +117,11 @@ model User {
 
 ### 2. Create a database
 
-Run [`create-db`](/docs/postgres/npx-create-db) to get a Prisma Postgres database and its connection string in seconds, with no account. Put the connection string it prints in `.env` as `DATABASE_URL`, then create the tables:
+Run [`create-db`](/docs/postgres/npx-create-db) to get a Prisma Postgres database and its connection string in seconds, with no account. Export the connection string it prints as `DATABASE_URL`, then create the tables:
 
 ```bash
 npx create-db@latest
+export DATABASE_URL="<the connection string create-db printed>"
 npx prisma contract emit
 npx prisma db init
 ```
@@ -154,15 +151,17 @@ In production, set `DATABASE_URL` to the pooled connection string from the Conso
 
 ### 4. Deploy on Prisma Compute
 
-[Prisma Compute](/compute) hosts Node.js, Bun and Next.js apps next to Prisma Postgres, in the same project. Add a [Composer declaration](/docs/prisma-compute/deploy) around your server code, then build and deploy:
+[Prisma Compute](/compute) hosts Node.js, Bun and Next.js apps next to Prisma Postgres, in the same project. Add a [Composer declaration](/docs/prisma-compute/deploy) around your server code. Then create the project, set `DATABASE_URL` as a project [environment variable](/docs/compute/environment-variables) before the deploy that uses it, and build and deploy:
 
 ```bash
 npx prisma auth login
+npx prisma project create my-app --region eu-central-1
+npx prisma project env add DATABASE_URL=postgres://... --role production
 npm run build
 npx prisma deploy
 ```
 
-Store the connection string as a project [environment variable](/docs/compute/environment-variables), scoped to production or preview, with `npx prisma project env add DATABASE_URL=... --role production`. Values are write-only and resolve at the next deploy. You can also let the deploy create the database: a `rawPostgres()` dependency in the Composer module provisions a [Prisma Postgres database](/docs/composer/databases) with the app. Compute scales an idle app to zero and closes idle database connections, so keep your app's pool small and ready to reconnect.
+`my-app` is the app name your Composer module exports. Variable values are write-only and resolve at deploy time. You can also let the deploy create the database: a `rawPostgres()` dependency in the Composer module provisions a [Prisma Postgres database](/docs/composer/databases) with the app. Compute scales an idle app to zero and closes idle database connections, so keep your app's pool small and ready to reconnect.
 
 ## Can coding agents set up serverless Postgres?
 
