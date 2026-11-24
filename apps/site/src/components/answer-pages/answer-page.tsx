@@ -1,3 +1,4 @@
+import localFont from "next/font/local";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
@@ -15,7 +16,16 @@ import { formatAnswerDate, type AnswerPage as AnswerPageContent } from "@/lib/an
 import { getMDXComponents } from "@/mdx-components";
 import { ConnectionPoolingDiagram } from "./connection-pooling-diagram";
 import { EnvironmentDiagram } from "./environment-diagram";
+import { HeaderRipple } from "./header-ripple";
 import { getAnswerProduct } from "@/lib/answer-products";
+
+// The docs' code face, so guide code blocks match apps/docs.
+const monaSansMono = localFont({
+  src: "../../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF.woff2",
+  variable: "--font-code",
+  display: "swap",
+  weight: "200 900",
+});
 
 // Conversion Factory's article structure, using the site's brand components.
 // The reference's empty header image is deliberately absent.
@@ -31,7 +41,7 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
   ];
 
   return (
-    <article className="bg-background pb-24 pt-32 sm:pt-40">
+    <article className={`${monaSansMono.variable} bg-background pb-24 pt-32 sm:pt-40`}>
       <JsonLd
         id="answer-article-structured-data"
         data={{
@@ -65,42 +75,45 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
       />
 
       <header className="mx-auto max-w-site px-6 sm:px-8">
-        <div className="rounded-2xl bg-muted/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
-          <nav
-            aria-label="Breadcrumb"
-            className="mb-7 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
-          >
-            <Link href={product.path} className="hover:text-foreground">
-              {product.name}
-            </Link>
-            <ChevronRight className="size-3.5" aria-hidden />
-            <Link href={product.guidesPath} className="hover:text-foreground">
-              Guides
-            </Link>
-          </nav>
-          <h1 className="max-w-4xl text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
-            {data.title}
-          </h1>
-          <div className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-foreground">
-            {renderFaqAnswer(data.summary)}
-          </div>
-          <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-            <span>
-              By{" "}
-              <a
-                href={data.authorUrl}
-                className="font-medium text-foreground underline-offset-4 hover:underline"
-              >
-                {data.author}
-              </a>
-            </span>
-            <time dateTime={data.date}>{formatAnswerDate(data.date)}</time>
-            <span>{data.readingTime}</span>
-            {data.updatedAt !== data.date ? (
+        <div className="relative overflow-hidden rounded-2xl bg-muted/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
+          {data.headerArt === "ripple" ? <HeaderRipple /> : null}
+          <div className="relative">
+            <nav
+              aria-label="Breadcrumb"
+              className="mb-7 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+            >
+              <Link href={product.path} className="hover:text-foreground">
+                {product.name}
+              </Link>
+              <ChevronRight className="size-3.5" aria-hidden />
+              <Link href={product.guidesPath} className="hover:text-foreground">
+                Guides
+              </Link>
+            </nav>
+            <h1 className="max-w-4xl text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
+              {data.title}
+            </h1>
+            <div className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-foreground [&_code]:[overflow-wrap:anywhere]">
+              {renderFaqAnswer(data.summary)}
+            </div>
+            <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
               <span>
-                Updated <time dateTime={data.updatedAt}>{formatAnswerDate(data.updatedAt)}</time>
+                By{" "}
+                <a
+                  href={data.authorUrl}
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                >
+                  {data.author}
+                </a>
               </span>
-            ) : null}
+              <time dateTime={data.date}>{formatAnswerDate(data.date)}</time>
+              <span>{data.readingTime}</span>
+              {data.updatedAt !== data.date ? (
+                <span>
+                  Updated <time dateTime={data.updatedAt}>{formatAnswerDate(data.updatedAt)}</time>
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
       </header>
