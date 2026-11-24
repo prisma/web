@@ -23,5 +23,7 @@ export const answerPageSchema = z.object({
     description: z.string().min(1),
     label: z.string().min(1),
     href: z.string().min(1),
+    /** Optional one-line shell command shown as a copyable pill next to the button. */
+    command: z.string().min(1).optional(),
   }),
 });

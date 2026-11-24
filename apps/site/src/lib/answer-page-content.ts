@@ -36,7 +36,7 @@ export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
       ),
     "## Frequently asked questions",
     ...data.faq.map(({ question, answer }) => `### ${question}\n\n${answer}`),
-    `## ${data.cta.title}\n\n${data.cta.description}\n\n[${data.cta.label}](${data.cta.href})`,
+    `## ${data.cta.title}\n\n${data.cta.description}\n\n${data.cta.command ? `\`${data.cta.command}\`\n\n` : ""}[${data.cta.label}](${data.cta.href})`,
     "## Related guides",
     ...data.related.map(({ title, href }) => `- [${title}](${href})`),
   ].join("\n\n");
