@@ -532,7 +532,9 @@ const REF = `{
   "invariants": [],
   "policies": {
     "change": ["migrate"],
-    "dataProtection": { "dataLoss": "data-loss-forbidden" }
+    "dataProtection": {
+      "dataLoss": "data-loss-forbidden"
+    }
   }
 }`;
 
@@ -541,7 +543,9 @@ const REF_LOOSENED = `{
   "invariants": [],
   "policies": {
     "change": ["migrate", "reconcile"],
-    "dataProtection": { "dataLoss": "data-loss-forbidden" }
+    "dataProtection": {
+      "dataLoss": "data-loss-forbidden"
+    }
   }
 }`;
 
@@ -589,7 +593,7 @@ const POLICY_STEPS: StepSource[] = [
     filename: "migrations/app/refs/production.json",
     source: REF,
     lang: "json",
-    marks: [{ line: 5 }, { line: 6 }],
+    marks: [{ line: 5 }, { line: 7 }],
     terminal: [
       {
         kind: "cmd",
@@ -646,7 +650,7 @@ const POLICY_STEPS: StepSource[] = [
     filename: "migrations/app/refs/production.json",
     source: REF,
     lang: "json",
-    marks: [{ line: 6, tone: "stop" }],
+    marks: [{ line: 7, tone: "stop" }],
     terminal: [
       { kind: "cmd", text: 'npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"' },
       {
