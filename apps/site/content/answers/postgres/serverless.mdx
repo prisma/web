@@ -151,17 +151,23 @@ In production, set `DATABASE_URL` to the pooled connection string from the Conso
 
 ### 4. Deploy on Prisma Compute
 
-[Prisma Compute](/compute) hosts Node.js, Bun and Next.js apps next to Prisma Postgres, in the same project. Add a [Composer declaration](/docs/prisma-compute/deploy) around your server code. Then create the project, set `DATABASE_URL` as a project [environment variable](/docs/compute/environment-variables) before the deploy that uses it, and build and deploy:
+[Prisma Compute](/compute) hosts Node.js, Bun and Next.js apps next to Prisma Postgres, in the same project. Add a [Composer declaration](/docs/prisma-compute/deploy) around your server code, then build and deploy. The first deploy creates the project, named after the app your Composer module exports (`my-app` here), in the region you set:
 
 ```bash
 npx prisma auth login
-npx prisma project create my-app --region eu-central-1
-npx prisma project env add DATABASE_URL=postgres://... --role production
 npm run build
+PRISMA_REGION=eu-central-1 npx prisma deploy
+```
+
+Then link the directory to that project, store the connection string as a production [environment variable](/docs/compute/environment-variables), and deploy again so the app reads it:
+
+```bash
+npx prisma project link my-app
+npx prisma project env add DATABASE_URL=postgres://... --role production
 npx prisma deploy
 ```
 
-`my-app` is the app name your Composer module exports. Variable values are write-only and resolve at deploy time. You can also let the deploy create the database: a `rawPostgres()` dependency in the Composer module provisions a [Prisma Postgres database](/docs/composer/databases) with the app. Compute scales an idle app to zero and closes idle database connections, so keep your app's pool small and ready to reconnect.
+Variable values are write-only and resolve at deploy time. You can also let the deploy create the database: a `rawPostgres()` dependency in the Composer module provisions a [Prisma Postgres database](/docs/composer/databases) with the app. Compute scales an idle app to zero and closes idle database connections, so keep your app's pool small and ready to reconnect.
 
 ## Can coding agents set up serverless Postgres?
 

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import GithubSlugger from "github-slugger";
 import { getAnswerEntries, renderAnswerMarkdown } from "./answer-page-content";
 import { buildLlmsFullContent, buildLlmsIndexContent } from "../app/llms-content";
 import { answerProductIds, answerProducts, getAnswerProduct } from "./answer-products";
@@ -72,22 +73,17 @@ test("answer Markdown preserves the decision and custom diagram's meaning", () =
   }
 });
 
-/** GitHub-style heading anchor, as the guide pipeline generates for H2s. */
-function headingAnchor(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/`/g, "")
-    .replace(/[^\p{L}\p{N}\s-]/gu, "")
-    .trim()
-    .replace(/\s/g, "-");
-}
-
 test("every tocLabels key names a real H2 anchor or the FAQ", () => {
   for (const entry of getAnswerEntries()) {
     const labels = entry.data.tocLabels;
     if (!labels) continue;
+    // Same slugger, and same duplicate suffixing, as the heading ids fumadocs
+    // generates for the rendered page (fumadocs-core uses github-slugger).
+    const slugger = new GithubSlugger();
     const anchors = new Set(
-      [...entry.content.matchAll(/^## (.+)$/gm)].map((match) => headingAnchor(match[1])),
+      [...entry.content.matchAll(/^#{1,6} (.+)$/gm)].map((match) =>
+        slugger.slug(match[1].replace(/`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")),
+      ),
     );
     anchors.add("faq");
     for (const key of Object.keys(labels)) {
