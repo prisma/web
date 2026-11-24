@@ -1,15 +1,6 @@
-import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { RoleKicker } from "@/components/brand/role-kicker";
-import { Texture } from "@/components/brand/texture";
-import { CheckBold } from "@/components/icons/forma";
-import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
-import { cn } from "@/lib/utils";
 import { CostBar } from "./pricing-cost-bar";
-
-// Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
 
 // V2 copy verbatim, with "No connection limits" removed — Gregory confirmed
 // pooled limits do exist (10/100/500/1000).
@@ -198,213 +189,98 @@ function PendingBadge() {
   );
 }
 
-// "See how Prisma compares at scale" — wrapped prismatic panel (hero idiom:
-// beam fan and a turning glass prism cropped by the bottom edge).
-//
-// The comparison itself follows the site's established before/after language
-// from comparison.tsx: the alternative sits plain and muted with X marks, the
-// Prisma side is lifted on white with the always-on spectrum ring, the brand
-// cube pattern greyscaled behind it, and CheckBold in prism cyan. The monthly
-// cost leads each side at display size — the figure is the argument, so it
-// gets the emphasis rather than sitting in a table cell.
+// "See how Prisma compares at scale", quietened (client, 2026-11-24: "this is
+// too much, let's quieten this section by a whole bunch"). No panel, wash,
+// beams, glass prism, grain, cards, counting numbers, ticks or spectrum bar:
+// three plain columns on hairlines, like the Compare plans table, with the
+// heading on the page's left edge like the other sections. Prisma is marked
+// by its cyan dot only; the figures make the case.
 export function PricingComparison() {
+  const columns = [...ALTERNATIVES, { ...PRISMA, id: "prisma", pending: false, compareHref: null }];
   return (
-    <section id="compare" className="scroll-mt-24 bg-white px-3 py-16 sm:px-4 sm:py-24">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
-        {/* spectral bottom — wash plus the three brand beams */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[34rem] overflow-hidden"
-        >
-          <div
-            className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
-            style={{
-              background: [
-                "radial-gradient(52% 40% at 30% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 30%, transparent), transparent 68%)",
-                "radial-gradient(44% 36% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 24%, transparent), transparent 66%)",
-                "radial-gradient(42% 30% at 74% 100%, color-mix(in srgb, var(--color-prism-red-400) 26%, transparent), transparent 68%)",
-              ].join(","),
-            }}
-          />
-          <div className="absolute bottom-[-24rem] left-[12%] h-[60rem] w-40 origin-bottom rotate-[-26deg] bg-prism-cyan-300/45 blur-[80px]" />
-          <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-44 origin-bottom -translate-x-1/2 rotate-[4deg] bg-prism-yellow-200/50 blur-[72px]" />
-          <div className="absolute bottom-[-28rem] right-[12%] h-[60rem] w-40 origin-bottom rotate-[26deg] bg-prism-red-300/45 blur-[80px]" />
-          <div className="absolute inset-x-0 top-0 h-56 bg-gradient-to-t from-transparent via-white/60 to-white" />
-        </div>
+    <section id="compare" className="scroll-mt-24 bg-white px-4 py-16 sm:px-8 sm:py-24">
+      <div className="mx-auto max-w-site">
+        <Reveal>
+          <h2 className="max-w-[24ch] text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+            See how Prisma compares at scale
+          </h2>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">
+            At around 50K monthly active users, Prisma Pro can cost less than half as much as a
+            typical Neon + Vercel setup, with one bill, included database data transfer, and a hard
+            spend limit you set.
+          </p>
+        </Reveal>
 
-        {/* glass prism turning at the bottom edge, light concentrating behind it */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute bottom-[-6rem] right-[-4rem] h-[16rem] w-[24rem] rounded-full opacity-25 blur-[70px]"
-          style={{ backgroundImage: SPECTRUM }}
-        />
-        <GlassPrismSpin
-          shape="pentagon"
-          period={24}
-          initialAngle={0.7}
-          className="bottom-[-4.5rem] right-[-3.5rem] w-[14rem] max-md:bottom-[-3rem] max-md:right-[-2rem] max-md:w-[9rem]"
-        />
-        <Texture />
-
-        <div className="relative px-4 pb-12 pt-16 sm:px-8 sm:pb-14 sm:pt-24">
-          <div className="mx-auto max-w-site">
-            <Reveal>
-              <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
-                See how Prisma compares at scale
-              </h2>
-            </Reveal>
-            {/* One paragraph: the comparison claim. The former first
-                paragraph ("Prisma charges per operation… no surprises")
-                predated Compute and repeated the hero and "Free with every
-                plan" (client review, 2026-11-22). */}
-            <Reveal delay={0.1}>
-              <p className="mx-auto mt-6 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
-                At around 50K monthly active users, Prisma Pro can cost less than half as much as a
-                typical Neon + Vercel setup, with one bill, included database data transfer, and a
-                hard spend limit you set.
-              </p>
-            </Reveal>
-
-            {/* Columns stretch to a shared height so the three read as one
-                comparison rather than three stacks of different length. */}
-            <div className="mt-14 grid gap-5 lg:grid-cols-3 lg:gap-6">
-              {/* The alternatives. Recessed translucent glass rather than bare
-                  text: it gives the three columns one shared rhythm so they
-                  read as a comparison, and stays transparent enough for the
-                  spectral wash to carry through from the panel behind. */}
-              {ALTERNATIVES.map((alt, i) => (
-                <Reveal
-                  key={alt.id}
-                  delay={0.2 + i * 0.05}
-                  className={cn(
-                    "flex flex-col rounded-[1.25rem] border p-6 backdrop-blur-[2px]",
-                    alt.pending
-                      ? "border-dashed border-black/15 bg-white/25"
-                      : "border-black/[0.08] bg-white",
-                  )}
-                >
-                  <RoleKicker color="bg-foreground/20">{alt.name}</RoleKicker>
-                  {/* A pending column shows the badge at label size, not the
-                      price at display size — a 2.75rem "TBC" reads as a broken
-                      column rather than a reserved one. */}
-                  {alt.pending ? (
-                    <p className="mt-5 flex h-[clamp(2rem,3.4vw,2.75rem)] items-center">
-                      <PendingBadge />
-                    </p>
-                  ) : (
-                    <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
-                      <CountUp value={alt.cost} />
-                      <span className="ml-1.5 align-baseline text-base font-normal text-muted-foreground">
-                        /month
-                      </span>
-                    </p>
-                  )}
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {alt.pending ? "Awaiting figures" : "at ~50K MAU"}
+        {/* One shared grid of eight rows (name, price, basis, bar, three
+            facts, link); each column takes all eight as a subgrid, so every
+            row starts at the same height in all three columns however its
+            text wraps (client, 2026-11-24: "now let's fix this"). */}
+        <div className="mt-10 grid border-t border-black/[0.08] lg:grid-cols-3 lg:grid-rows-[repeat(8,auto)] lg:divide-x lg:divide-black/[0.06]">
+          {columns.map((col, i) => {
+            const prisma = col.id === "prisma";
+            return (
+              <div
+                key={col.id}
+                className="flex flex-col border-b border-black/[0.06] py-8 last:border-b-0 lg:row-span-8 lg:grid lg:grid-rows-subgrid lg:border-b-0 lg:px-8 lg:first:pl-0 lg:last:pr-0"
+              >
+                <RoleKicker color={prisma ? "bg-prism-cyan-400" : "bg-foreground/20"}>
+                  {col.name}
+                </RoleKicker>
+                {col.pending ? (
+                  <p className="mt-4 flex h-9 items-center">
+                    <PendingBadge />
                   </p>
-
-                  <CostBar
-                    className="mt-5"
-                    fraction={costFraction(alt.cost)}
-                    delay={0.3 + i * 0.05}
-                  />
-
-                  <dl className="mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
-                    {alt.rows.map((r) => (
-                      <div key={r.label}>
-                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
-                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-foreground">
-                          {alt.pending ? (
-                            <PendingBadge />
-                          ) : (
-                            <>
-                              {/* A neutral dot, not an ✗: these rows
-                                  describe what the other stack does, and
-                                  mostly it does have the thing (spend
-                                  notifications, a spend cap). The site
-                                  states competitors' strengths plainly. */}
-                              <span
-                                aria-hidden
-                                className="mt-[0.6rem] size-1.5 shrink-0 rounded-full bg-foreground/30"
-                              />
-                              {r.value}
-                            </>
-                          )}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                  {/* The fuller picture, including what this stack does well. */}
-                  <a
-                    href={alt.compareHref}
-                    className="mt-auto self-start rounded-sm pt-6 text-sm font-medium text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                  >
-                    Full comparison →
-                  </a>
-                </Reveal>
-              ))}
-
-              {/* Prisma — the same white card as the others (client review,
-                  2026-11-22: "the self promotion can be slightly more subtle").
-                  The always-on spectrum ring, the glow underneath, the cube
-                  pattern, the savings badge and the bold rows are gone; what
-                  marks it as ours is the cyan dot, the spectrum cost bar and
-                  the cyan checks. The numbers make the case. */}
-              <div className="relative">
-                <Reveal
-                  delay={0.3}
-                  className="relative flex h-full flex-col rounded-[1.25rem] border border-black/[0.08] bg-white p-6"
-                >
-                  <RoleKicker color="bg-prism-cyan-400">{PRISMA.name}</RoleKicker>
-                  <p className="relative mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
-                    <CountUp value={PRISMA.cost} />
-                    <span className="ml-1.5 align-baseline text-base font-normal text-muted-foreground">
-                      /month
-                    </span>
+                ) : (
+                  <p className="mt-4 font-heading text-3xl font-medium tracking-tight text-foreground">
+                    {col.cost}
+                    <span className="ml-1.5 text-sm font-normal text-muted-foreground">/month</span>
                   </p>
-                  <p className="relative mt-2 text-sm text-muted-foreground">at ~50K MAU</p>
+                )}
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {col.pending ? "Awaiting figures" : "at ~50K MAU"}
+                </p>
+                {/* Prisma's bar in the brand gradient, the others grey: the
+                    one highlight, on the figure that makes the case (client
+                    picked from five options, 2026-11-24). */}
+                <CostBar
+                  className="mt-4 self-center"
+                  fraction={costFraction(col.cost)}
+                  spectrum={prisma}
+                  delay={0.1 + i * 0.05}
+                />
 
-                  <CostBar
-                    className="relative mt-5"
-                    fraction={costFraction(PRISMA.cost)}
-                    spectrum
-                    delay={0.4}
-                  />
-
-                  <dl className="relative mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
-                    {PRISMA.rows.map((r) => (
-                      <div key={r.label}>
-                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
-                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-foreground">
-                          <CheckBold
-                            className="mt-1 size-4 shrink-0 text-prism-cyan-500"
-                            aria-hidden
-                          />
-                          {r.value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </Reveal>
-              </div>
-            </div>
-
-            {/* The estimate's basis, said on the page rather than only in
-                the code, with the date it was checked and a way to run your
-                own numbers in the calculator above. */}
-            <Reveal delay={0.35}>
-              <p className="mx-auto mt-10 max-w-3xl text-pretty text-center text-sm leading-relaxed text-muted-foreground">
-                {COMPARISON_BASIS}{" "}
+                {/* `contents`, so each fact is its own row of the shared grid. */}
+                <dl className="contents">
+                  {col.rows.map((r, k) => (
+                    <div key={r.label} className={k === 0 ? "mt-6" : "mt-4"}>
+                      <dt className="text-xs font-medium text-muted-foreground">{r.label}</dt>
+                      <dd className="mt-1 text-pretty text-sm leading-relaxed text-foreground">
+                        {col.pending ? <PendingBadge /> : r.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {/* Every column ends on a link, so the three end level:
+                    the others link to their full comparison, Prisma to the
+                    calculator (was "Try your own numbers" in the small print). */}
                 <a
-                  href="#estimate"
-                  className="whitespace-nowrap rounded-sm font-medium text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  href={col.compareHref ?? "/pricing/calculator"}
+                  className="mt-auto self-start justify-self-start rounded-sm pt-6 text-sm text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
-                  Try your own numbers →
+                  {col.compareHref ? "Full comparison →" : "Estimate your bill →"}
                 </a>
-              </p>
-            </Reveal>
-          </div>
+              </div>
+            );
+          })}
         </div>
+
+        {/* The estimate's basis, with the date it was checked and a way to
+            run your own numbers in the calculator above. */}
+        <p className="mt-6 max-w-3xl text-pretty text-xs leading-relaxed text-muted-foreground">
+          {COMPARISON_BASIS}
+        </p>
       </div>
     </section>
   );

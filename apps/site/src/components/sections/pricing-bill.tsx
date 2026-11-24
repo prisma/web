@@ -73,6 +73,18 @@ export function PricingBill({
   const recommended = estimates.find((e) => e.plan.id === recommendedId);
   const hasApp = profile.id !== "none";
   const free = !shown.plan.computeBilled;
+  // The collapsed Compute line says what the amount is for (client,
+  // 2026-11-24: "the calculator does not seem to take into account included
+  // requests"). It did; the line just said "570K requests" beside $1.25, which
+  // read as requests being billed. On paid plans the included requests cover
+  // the $1-per-million request fee only; memory, CPU and bandwidth are billed
+  // from the first request (docs compute/pricing.mdx), and that is the amount.
+  const included = shown.plan.requestsIncluded;
+  const computeHint = free
+    ? `${fmtOps(requests)} requests`
+    : requests <= included
+      ? "Requests included · billed for memory, CPU, bandwidth"
+      : `${fmtOps(requests - included)} extra requests · plus memory, CPU, bandwidth`;
   const postgresUsage = shown.opsOverage + shown.storageOverage;
   // Always to the cent, like every line below it: cents that came and went
   // with the amount read as inconsistent (client, 2026-11-22).
@@ -190,7 +202,7 @@ export function PricingBill({
         {hasApp ? (
           <DetailRow
             label="Compute"
-            hint={`${fmtOps(requests)} requests`}
+            hint={computeHint}
             amount={groupAmount(bill.compute, shown.compute.total, free)}
             warn={hasOver(bill.compute)}
           >

@@ -3,7 +3,6 @@ import { createPageMetadata } from "@/lib/page-metadata";
 import { CompareLinks } from "@/components/sections/compare-links";
 import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
 import { CtaBurst } from "@/components/sections/cta-burst";
-import { PricingCalculator } from "@/components/sections/pricing-calculator";
 import { PricingCostControls } from "@/components/sections/pricing-cost-controls";
 import { PricingComparison } from "@/components/sections/pricing-comparison";
 import { PricingFaq } from "@/components/sections/pricing-faq";
@@ -50,7 +49,6 @@ export default function PricingPage() {
           "Control your spending" pair (client, 2026-11-22): the worry about a
           runaway bill is answered next to the prices that raise it. */}
       <PricingCostControls />
-      <PricingCalculator />
       <PricingComparison />
       <PricingSpecTable />
       <TestimonialsReveal />

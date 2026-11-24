@@ -16,6 +16,13 @@ import {
   COST_CONTROLS,
   COST_CONTROLS_HEADING,
 } from "@/components/sections/pricing-ledger";
+import {
+  COMPUTE_USAGE_RATES,
+  FREE_COMPUTE_NOTE,
+  PLAN_SECTIONS,
+  PLANS as PRICING_PLANS,
+} from "@/components/sections/pricing-plans";
+import { PRICING_FAQS } from "@/components/sections/pricing-faq";
 import { renderCompareLinksMarkdown } from "./compare-links";
 import { renderTestimonialsMarkdown } from "./testimonials";
 
@@ -35,112 +42,69 @@ import { renderTestimonialsMarkdown } from "./testimonials";
 
 const SIGN_UP = "https://console.prisma.io/sign-up";
 
-export const PRICING_H1 = "Usage-based pricing with cost controls";
+export const PRICING_H1 = "Pay for what you use. Control your spend.";
 
 // The hero has no subhead paragraph of its own: it was removed on 2026-07-30
 // so the plan cards clear the fold. The Markdown page still opens with a
 // one-paragraph summary of what's metered (PRICING_FLOW_LEDE in
-// pricing-ledger.ts); on the page itself the hero title and the rates panel
-// under the plan cards say it.
+// pricing-ledger.ts); on the page itself the hero title and the plans table say it.
 export const PRICING_SUBHEADLINE = PRICING_FLOW_LEDE;
 
-/** Mirrors PLANS in components/sections/pricing-plans.tsx. `blurb` lives on that
- *  data but is deliberately never rendered, so it is not repeated here. */
-const PLANS = [
-  {
-    name: "Free",
-    price: "$0 / month",
-    note: "Free forever. No credit card required.",
-    compute: [
-      "1M requests / month",
-      "360 GB-hours provisioned memory / month",
-      "4 active vCPU-hours / month",
-      "10 GB outbound bandwidth / month",
-    ],
-    postgres: ["200k operations / month", "2 GB storage", "50 databases"],
-    platform: [],
-    cta: "Start for free",
-    popular: false,
-  },
-  {
-    name: "Starter",
-    price: "$10 / month",
-    note: null,
-    compute: [
-      "5M requests / month, then $1 per million",
-      "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hour",
-      "$0.025 per GB outbound bandwidth",
-    ],
-    postgres: [
-      "1M operations / month, then $8 per million",
-      "10 GB storage, then $2.00 per GB",
-      "1,000 databases",
-      "7-day daily backups",
-    ],
-    platform: ["Spend limits"],
-    cta: "Start on Starter",
-    popular: true,
-  },
-  {
-    name: "Pro",
-    price: "$49 / month",
-    note: null,
-    compute: [
-      "20M requests / month, then $1 per million",
-      "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hour",
-      "$0.025 per GB outbound bandwidth",
-    ],
-    postgres: [
-      "10M operations / month, then $2 per million",
-      "50 GB storage, then $1.50 per GB",
-      "1,000 databases",
-      "7-day daily backups",
-    ],
-    platform: ["Spend limits", "GDPR"],
-    cta: "Start on Pro",
-    popular: false,
-  },
-  {
-    name: "Business",
-    price: "$129 / month",
-    note: null,
-    compute: [
-      "100M requests / month, then $1 per million",
-      "$0.006 per GB-hour memory",
-      "$0.064 per active vCPU-hour",
-      "$0.025 per GB outbound bandwidth",
-    ],
-    postgres: [
-      "50M operations / month, then $1 per million",
-      "100 GB storage, then $1.00 per GB",
-      "1,000 databases",
-      "30-day backup retention",
-    ],
-    platform: ["Spend limits", "GDPR, [HIPAA with a BAA](/postgres/hipaa), SOC 2, ISO 27001"],
-    cta: "Start on Business",
-    popular: false,
-  },
-];
-
-// The four cards are one comparison in the HTML (a single grid, one row of
-// features per product group), so they render as a table. An empty Platform
-// group is an em dash, meaning "nothing extra on this plan". (The spec table
-// below spells its cells out in words instead: "No usage billing" and "Not
-// available".)
-function planTable(): string {
-  return table(
-    ["Plan", "Price", "Prisma Compute", "Prisma Postgres", "Platform", "Get started"],
-    PLANS.map((plan) => [
-      plan.popular ? `${plan.name} (Most popular)` : plan.name,
-      plan.note ? `${plan.price} — ${plan.note}` : plan.price,
-      plan.compute.join("; "),
-      plan.postgres.join("; "),
-      plan.platform.length > 0 ? plan.platform.join("; ") : "—",
-      link({ label: plan.cta, href: SIGN_UP }),
-    ]),
-  );
+// The plans table (components/sections/pricing-plans.tsx) is read from the
+// component's own data, so the figures cannot drift. On the page it is one
+// table in two sections, Prisma Compute and Prisma Postgres, each opening with
+// its rule. Here: the plans with their prices, then one table per section.
+// Compute's usage rates are one merged cell across the paid plans in the HTML;
+// Markdown has no merged cells, so they are a list under the section's rule.
+function planBlocks(): string[] {
+  const free = PRICING_PLANS[0];
+  return [
+    table(
+      ["Plan", "Price", "Get started"],
+      PRICING_PLANS.map((plan) => [
+        plan.popular ? `${plan.name} (Most popular)` : plan.name,
+        plan.note ? `${plan.price} / month. ${plan.note}` : `${plan.price} / month`,
+        link({ label: plan.cta, href: SIGN_UP }),
+      ]),
+    ),
+    heading(3, PLAN_SECTIONS.compute.title),
+    paragraphs(PLAN_SECTIONS.compute.rule),
+    table(
+      ["Plan", "Requests included"],
+      PRICING_PLANS.map((plan) => [plan.name, plan.requests]),
+    ),
+    paragraphs("Usage rates on Starter, Pro and Business:"),
+    bulletList(COMPUTE_USAGE_RATES.map(({ name, rate }) => `${name}: ${rate}`)),
+    paragraphs(`${free.name}: ${FREE_COMPUTE_NOTE}`),
+    heading(3, PLAN_SECTIONS.postgres.title),
+    paragraphs(PLAN_SECTIONS.postgres.rule),
+    table(
+      [
+        "Plan",
+        "Operations included",
+        "Extra operations",
+        "Storage included",
+        "Extra storage",
+        "Databases",
+        "Backups",
+      ],
+      PRICING_PLANS.map((plan) => [
+        plan.name,
+        plan.ops,
+        plan.opsRate ?? "No usage billing",
+        plan.storage,
+        plan.storageRate ?? "No usage billing",
+        plan.databases,
+        plan.backups ?? "Not available",
+      ]),
+    ),
+    heading(3, PLAN_SECTIONS.platform.title),
+    paragraphs(PLAN_SECTIONS.platform.rule),
+    table(
+      ["Plan", "Spend limits", "Compliance"],
+      PRICING_PLANS.map((plan) => [plan.name, plan.spendLimit, plan.compliance]),
+    ),
+  ];
 }
 
 // PRESETS in components/sections/calculator-options/calc.ts, with the usage
@@ -334,72 +298,19 @@ const SPEC_GROUPS: {
   },
 ];
 
-/** PRICING_FAQS in components/sections/pricing-faq.tsx, rendered through Faq.
- *  Accordion bodies are included even though only the first is open. */
-const FAQS = [
-  {
-    question: "What counts as an operation?",
-    answer:
-      "An operation is a single action against your Prisma Postgres database: a create, read, " +
-      "update, or delete. A simple write and a complex query with multiple joins each count as " +
-      "one operation.",
-  },
-  {
-    question: "Can I try Prisma Postgres without signing up?",
-    answer:
-      "Yes. Run `npx create-db` and you get a Postgres database in seconds, with no account and " +
-      "no credit card. It's temporary: it's deleted after 24 hours unless you sign in and claim " +
-      "it, and a claimed database stays on the Free plan. It's a database only; deploying an app " +
-      "to Prisma Compute needs an account. [How create-db works]" +
-      "(https://www.prisma.io/docs/postgres/npx-create-db).",
-  },
-  {
-    question: "Is Prisma ORM really free?",
-    answer:
-      "Yes. Prisma ORM is open source and will always be free. The paid plans cover Prisma " +
-      "Postgres (managed database hosting) and Prisma Compute (app hosting).",
-  },
-  {
-    question: "What happens if I exceed my plan's operations?",
-    answer:
-      "Overage rates kick in automatically at the per-million rate shown on your plan. You can " +
-      "set a spend limit on any paid plan to cap how much you're charged in a billing cycle.",
-  },
-  {
-    question: "Are there egress fees?",
-    answer:
-      "Not for your database. Unlimited data transfer is included with Prisma Postgres on all " +
-      "plans. Prisma Compute includes 10 GB of outbound bandwidth per month on Free. Paid plans " +
-      "bill outbound bandwidth at $0.025 per GB.",
-  },
-  {
-    question: "Can I change plans later?",
-    answer: "Yes. You can upgrade or downgrade your plan at any time.",
-  },
-  {
-    question: "What is Prisma Compute?",
-    answer:
-      "Prisma Compute is TypeScript app hosting built to run alongside Prisma Postgres. It runs " +
-      "on the same infrastructure, so your app and database are always next to each other. It's " +
-      "billed on usage across four meters (requests, provisioned memory, active CPU, and " +
-      "outbound bandwidth), and an idle app scales to zero and costs nothing.",
-  },
-  {
-    question: "Is there custom pricing for high-volume teams?",
-    answer:
-      "Yes. If your usage exceeds what the Business plan covers, get in touch and we'll work out " +
-      "the right plan for your team.",
-  },
-];
+// The FAQ is read from components/sections/pricing-faq.tsx (PRICING_FAQS),
+// so the two can't drift. Accordion bodies are included even though only the
+// first is open on the page.
+const FAQS = PRICING_FAQS;
 
 /** Markdown rendition of /pricing (src/app/pricing/page.tsx). */
 export function renderPricingMarkdown(): string {
   return joinBlocks([
-    // The plan cards sit inside the hero panel with no heading of their own
+    // The plans sit inside the hero panel with no heading of their own
     // (PricingHero takes them as children), so this H2 is structural — it is the
     // only block on the page without an HTML heading to carry it.
     heading(2, "Plans"),
-    planTable(),
+    ...planBlocks(),
     heading(3, "Need more?"),
     paragraphs("Custom pricing is available for high-volume teams."),
     ctaList([{ label: "Contact us", href: "/contact" }]),
@@ -415,11 +326,19 @@ export function renderPricingMarkdown(): string {
       ctaList([{ label: card.link.label, href: card.link.href }]),
     ]),
 
-    heading(2, "Estimate usage before you upgrade"),
+    // PricingCalculatorLink: the calculator has its own page now
+    // (/pricing/calculator); /pricing links to it from the footer line under
+    // the plans. How the calculator works is still described here, under its
+    // own heading, for readers of this rendition.
+    heading(2, "Estimate your bill"),
     paragraphs(
-      "Tell us what you're building and roughly how big it is, then fine-tune the numbers. " +
-        "You'll see the monthly bill on the cheapest plan that covers it, and you can set a spend " +
-        "limit on any paid plan.",
+      "Pick what you're building and roughly how big it is, and see the cheapest plan that covers it.",
+    ),
+    ctaList([{ label: "Open the calculator", href: "/pricing/calculator" }]),
+    paragraphs(
+      "On the calculator page, tell us what you're building and roughly how big it is, then " +
+        "fine-tune the numbers. You'll see the monthly bill on the cheapest plan that covers it, " +
+        "and you can set a spend limit on any paid plan.",
     ),
     // The calculator is four hinted steps: what you're building, how big it
     // is, the usage sliders, then the bill. Quantities and totals depend on

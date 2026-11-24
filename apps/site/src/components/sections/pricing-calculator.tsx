@@ -69,6 +69,11 @@ const clampT = (t: number) => Math.min(1, Math.max(0, t));
 // still lands on a reachable state.
 const Q = { app: "app", requests: "requests", ops: "ops", gb: "storage", plan: "plan" } as const;
 
+// The calculator is its own page, /pricing/calculator (client, 2026-11-24:
+// "an entirely new page for the calculator"). Its heading is the page's h1,
+// under a "Pricing" link back, with room for the fixed header. /pricing keeps
+// a short "Estimate your bill" section that links here
+// (pricing-calculator-link.tsx).
 export function PricingCalculator() {
   const [profileId, setProfileId] = useState<AppProfileId>(DEFAULT_APP);
   const [requests, setRequests] = useState<number>(PRESETS[0].requests);
@@ -192,11 +197,17 @@ export function PricingCalculator() {
 
   return (
     <section id="estimate" className="scroll-mt-24 bg-white px-4 sm:px-8">
-      <div className="mx-auto max-w-site py-12 sm:py-16">
+      <div className="mx-auto max-w-site pb-16 pt-32 sm:pb-24 sm:pt-40">
         <Reveal>
-          <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
-            Estimate usage before you upgrade
-          </h2>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <span aria-hidden>←</span> Pricing
+          </Link>
+          <h1 className="mt-5 max-w-[24ch] text-balance text-[clamp(2.25rem,3.4vw,3.125rem)] leading-[1.06]">
+            Estimate your bill
+          </h1>
         </Reveal>
         <Reveal delay={0.1}>
           {/* Says how to use it, not the heading again (audit, 2026-11-21). */}

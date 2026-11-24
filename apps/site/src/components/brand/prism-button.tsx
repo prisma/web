@@ -68,12 +68,15 @@ type PrismButtonProps = {
    * 109x36, so a default-size hero CTA reads as a repeat of it rather than as
    * the page's action — client review flagged exactly that.
    */
-  size?: "default" | "lg";
+  size?: "default" | "lg" | "sm";
 };
 
+// `sm` is for dense layouts where the button sits among data, like the
+// pricing table's plan columns: a 36px pill that doesn't outweigh the numbers.
 const SIZES = {
   default: "px-6 py-3 text-[16px]",
   lg: "px-8 py-4 text-[17px]",
+  sm: "px-[18px] py-[7px] text-[14px]",
 } as const;
 
 // The outline pill gives a pixel of padding back to its border on each axis, so
@@ -81,6 +84,7 @@ const SIZES = {
 const OUTLINE_SIZES = {
   default: "px-[22px] py-[11px] text-[16px]",
   lg: "px-[30px] py-[15px] text-[17px]",
+  sm: "px-[17px] py-[6px] text-[14px]",
 } as const;
 
 // The brand's primary CTA, ported from the approved stylescape: a living
@@ -222,6 +226,52 @@ export function PrismButtonOutline({
     >
       {/* Same row treatment as the filled pill's label. */}
       <span className="inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-foreground [&_svg]:inline-block [&_svg]:shrink-0">
+        {children}
+      </span>
+    </Comp>
+  );
+}
+
+// The same pill with no chrome: no spectrum glow, no burst, no depth shadow,
+// no spectrum ring on hover. For dense layouts where a row of glowing pills
+// would compete with the content, like the pricing table's plan columns
+// (client, 2026-11-24: "remove the chrome from the buttons"). `solid` is the
+// recommended action, `outline` the rest. Tracks cta_click like the others.
+export function PrismButtonPlain({
+  children,
+  className,
+  href,
+  onClick,
+  type = "button",
+  ctaLocation,
+  size = "default",
+  fullWidth = false,
+  target,
+  rel,
+  variant = "outline",
+}: PrismButtonProps & { variant?: "solid" | "outline" }) {
+  const Comp = href ? "a" : "button";
+  return (
+    <Comp
+      href={href}
+      target={href ? target : undefined}
+      rel={href ? rel : undefined}
+      type={href ? undefined : type}
+      onClick={(event: React.MouseEvent<HTMLElement>) => {
+        trackConsoleCta(href, children, ctaLocation);
+        onClick?.(event);
+      }}
+      className={cn(
+        "flex items-center justify-center rounded-full border cursor-pointer outline-none transition-[background-color,border-color,transform] duration-150 ease-out focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] active:duration-75 motion-reduce:active:scale-100",
+        variant === "solid"
+          ? "border-foreground bg-foreground text-white hover:border-foreground/85 hover:bg-foreground/85"
+          : "border-black/[0.14] bg-white text-foreground hover:border-black/[0.3] hover:bg-black/[0.02]",
+        OUTLINE_SIZES[size],
+        fullWidth && "w-full",
+        className,
+      )}
+    >
+      <span className="inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-medium leading-[1.5] [&_svg]:inline-block [&_svg]:shrink-0">
         {children}
       </span>
     </Comp>

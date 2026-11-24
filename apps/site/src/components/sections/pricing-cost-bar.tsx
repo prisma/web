@@ -18,7 +18,8 @@ type CostBarProps = {
   className?: string;
 };
 
-const TRACK = "h-2 w-full overflow-hidden rounded-full bg-foreground/[0.07]";
+// 3px: a fine line, not a bar (client, 2026-11-24: "make it finer").
+const TRACK = "h-[3px] w-full overflow-hidden rounded-full bg-foreground/[0.07]";
 
 // The monthly cost drawn to length, so the gap between the stacks is something
 // you see before you read it. Scales from the left edge with a transform rather
@@ -41,7 +42,7 @@ export function CostBar({ fraction, spectrum = false, delay = 0, className }: Co
     return (
       <div
         className={cn(
-          "h-2 w-full rounded-full border border-dashed border-black/15 bg-transparent",
+          "h-[3px] w-full rounded-full border-t border-dashed border-black/15 bg-transparent",
           className,
         )}
         aria-hidden

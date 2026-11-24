@@ -98,21 +98,24 @@ function ControlCard({
   prism: { shape: "triangle" | "hexagon" | "rect"; initialAngle: number };
 }) {
   return (
-    <article className="group relative isolate flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.08] bg-white p-5 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.2] hover:shadow-[0_12px_32px_-18px_rgba(21,21,21,0.2)] sm:p-6">
-      {/* The corner prism: glow, glass, grain. Decorative. */}
+    <article className="group relative isolate flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.08] bg-white p-6 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.2] hover:shadow-[0_12px_32px_-18px_rgba(21,21,21,0.2)] sm:p-8">
+      {/* The corner prism: glow, glass, grain. Decorative. Faded well back
+          (client, 2026-11-24: "fade the background much more"). */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div
-          className="absolute -bottom-10 -right-10 h-36 w-56 rounded-full opacity-[0.28] blur-[40px] transition-opacity duration-200 ease-out group-hover:opacity-[0.44] motion-reduce:transition-none"
+          className="absolute -bottom-10 -right-10 h-36 w-56 rounded-full opacity-[0.12] blur-[40px] transition-opacity duration-200 ease-out group-hover:opacity-[0.2] motion-reduce:transition-none"
           style={{ backgroundImage: SPECTRUM }}
         />
         <GlassPrismSpin
           shape={prism.shape}
-          period={30}
+          // Eight minutes a turn (client, 2026-11-24: "almost
+          // unnoticeable"): the prism shifts while you read, never spins.
+          period={480}
           initialAngle={prism.initialAngle}
           className="-bottom-8 -right-6 w-[8.5rem] max-sm:w-[6.5rem]"
         />
         <Texture
-          opacity={0.08}
+          opacity={0.04}
           className="[mask-image:radial-gradient(60%_70%_at_100%_100%,black_20%,transparent)]"
         />
       </div>

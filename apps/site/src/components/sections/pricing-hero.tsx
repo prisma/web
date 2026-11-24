@@ -1,5 +1,4 @@
 import { GlassGlide } from "@/components/brand/glass-glide";
-import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 
 // Pricing hero: headline plus the plan cards, which it takes as children so the
@@ -74,15 +73,19 @@ export function PricingHero({ children }: { children?: React.ReactNode }) {
           Measured at 1440: 270px wide / 528px tall -> 326px / 482px. */}
       <div className="relative mx-auto max-w-site pb-14 pt-32 sm:pb-16 md:pt-36">
         <div className="flex min-w-0 flex-col items-start">
-          <RoleKicker color="bg-prism-cyan-400">Pricing</RoleKicker>
-          <h1 className="isolate mt-5 max-w-[34ch] text-balance text-[clamp(2.25rem,3.4vw,3.125rem)] leading-[1.06]">
-            {/* Client, 2026-11-22: say usage-based, and answer the worry it
-                raises (a bill nobody saw coming) in the same breath. The three
-                cost-control cards right under the plans make it concrete.
-                Was "Usage-based pricing: you pay for the work your app and
-                database do" (2026-11-21). */}
-            Usage-based pricing with{" "}
-            <GlassGlide className="md:whitespace-normal">cost controls</GlassGlide>
+          {/* No "Pricing" kicker above the headline (client, 2026-11-24:
+              "remove that"); the headline says it. */}
+          <h1 className="isolate max-w-[34ch] text-balance text-[clamp(2.25rem,3.4vw,3.125rem)] leading-[1.06]">
+            {/* Client, 2026-11-24, after Vercel's "Scale your app, control
+                your costs": two short halves, the pricing model in plain words
+                and then the answer to the worry it raises (a bill nobody saw
+                coming). Stacked one per line for reading. The cost-control
+                cards under the plans make the second half concrete.
+                Was "Usage-based pricing with cost controls" (2026-11-22). */}
+            <span className="block">Pay for what you use.</span>{" "}
+            <span className="block">
+              <GlassGlide className="md:whitespace-normal">Control your spend.</GlassGlide>
+            </span>
           </h1>
         </div>
 

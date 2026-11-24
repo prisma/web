@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Marker } from "@/components/brand/marker";
-import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
+import { PrismButtonPlain } from "@/components/brand/prism-button";
 import {
   AppWindow,
   CheckBold,
@@ -12,17 +12,6 @@ import {
 } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
-
-// Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
-
-// The site's prismatic halo, lifted verbatim from hero-home.tsx. Conic rather
-// than linear is the whole point: it wraps the perimeter, so a single layer
-// gives an even glow on all four sides. An earlier attempt here stacked ten
-// radial gradients to fake that and read as separate coloured blobs.
-const HALO =
-  "conic-gradient(var(--color-prism-yellow-300), var(--color-prism-red-500) 32%, var(--color-prism-cyan-400) 64%, var(--color-prism-yellow-300))";
 
 // Detailed spec table — Shane (2026-07-29): "we'd need to bring back the
 // detailed spec tables further down the page, these tend to be quite
@@ -334,16 +323,9 @@ const PLAN_CTAS = [
 ];
 // Starter carries "Most popular" on the cards, so it reads as the lit column here too.
 const HIGHLIGHT = 1;
+const STARTER_TINT = "bg-[color-mix(in_srgb,var(--color-foreground)_3%,white)]";
 
-function Cell({
-  value,
-  highlight,
-  links,
-}: {
-  value: string;
-  highlight: boolean;
-  links?: CellLink[];
-}) {
+function Cell({ value, links }: { value: string; links?: CellLink[] }) {
   if (value === YES) {
     // cyan-700, not -500: the lighter tick was 2.3:1 on white, under the 3:1
     // a meaningful icon needs (WCAG 1.4.11).
@@ -353,11 +335,7 @@ function Cell({
     <span
       className={cn(
         "text-sm leading-relaxed",
-        QUIET_VALUES.has(value)
-          ? "text-muted-foreground"
-          : highlight
-            ? "font-semibold text-foreground"
-            : "text-foreground",
+        QUIET_VALUES.has(value) ? "text-muted-foreground" : "text-foreground",
       )}
     >
       {links && links.length > 0 ? renderCellWithLinks(value, links) : value}
@@ -394,12 +372,12 @@ function renderCellWithLinks(value: string, links: CellLink[]) {
 function MobileRow({ row }: { row: Row }) {
   const uniform = row.values.every((v) => v === row.values[0]);
   return (
-    <div className="border-t border-black/[0.06] px-5 py-3.5 first:border-t-0">
+    <div className="border-t border-black/[0.06] py-3.5 first:border-t-0">
       {uniform ? (
         <div className="flex items-start justify-between gap-4">
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
           <dd className="shrink-0 text-right">
-            <Cell value={row.values[0]} highlight links={row.cellLinks?.[0]} />
+            <Cell value={row.values[0]} links={row.cellLinks?.[0]} />
           </dd>
         </div>
       ) : (
@@ -407,24 +385,12 @@ function MobileRow({ row }: { row: Row }) {
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
           <dd className="mt-2.5 grid grid-cols-2 gap-2">
             {row.values.map((v, i) => (
-              <div
-                key={PLAN_NAMES[i]}
-                className={cn(
-                  "rounded-lg px-3 py-2",
-                  // Recommended plan lifted on white, the rest recessed — the
-                  // site's before/after language from pricing-comparison.tsx.
-                  i === HIGHLIGHT ? "bg-white ring-1 ring-black/[0.09]" : "bg-foreground/[0.03]",
-                )}
-              >
+              <div key={PLAN_NAMES[i]} className="rounded-lg bg-foreground/[0.03] px-3 py-2">
                 <p className="text-[0.6875rem] font-medium text-muted-foreground">
                   {PLAN_NAMES[i]}
                 </p>
                 <div className="mt-1">
-                  <Cell
-                    value={v}
-                    highlight={i === HIGHLIGHT}
-                    links={row.cellLinks?.[i as 0 | 1 | 2 | 3]}
-                  />
+                  <Cell value={v} links={row.cellLinks?.[i as 0 | 1 | 2 | 3]} />
                 </div>
               </div>
             ))}
@@ -441,13 +407,13 @@ function DesktopRow({ row }: { row: Row }) {
     <tr className="border-t border-black/[0.06]">
       <th
         scope="row"
-        className="px-5 py-3.5 text-sm font-normal leading-relaxed text-muted-foreground"
+        className="py-3.5 pr-5 text-sm font-normal leading-relaxed text-muted-foreground"
       >
         {row.label}
       </th>
       {row.values.map((v, i) => (
         <td key={i} className="px-5 py-3.5 align-top">
-          <Cell value={v} highlight={i === HIGHLIGHT} links={row.cellLinks?.[i as 0 | 1 | 2 | 3]} />
+          <Cell value={v} links={row.cellLinks?.[i as 0 | 1 | 2 | 3]} />
         </td>
       ))}
     </tr>
@@ -472,28 +438,11 @@ export function PricingSpecTable() {
           </p>
         </Reveal>
 
-        {/* The table was the only block on the page with no brand presence at
-            all — bare white, while every other section sits in a panel with the
-            spectral wash. */}
         <Reveal delay={0.15} className="relative mt-10">
-          {/* The hero's prismatic halo — same two layers and geometry: a tight
-              inner edge plus a soft outer bloom, hugging the table rather than
-              spreading into the copy around it.
-              Opacity is a third of the hero's 60/40. The hero's card is the
-              focal point of the page and earns a bright halo; this is a dense
-              data table where the glow should only suggest the brand, so at the
-              hero's values it competed with the content. Dialled down twice on
-              the client's eye — don't "resync" it with the hero. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -inset-px rounded-2xl opacity-20 blur-[20px]"
-            style={{ background: HALO }}
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -inset-4 rounded-3xl opacity-10 blur-[56px]"
-            style={{ background: HALO }}
-          />
+          {/* Off the card (client, 2026-11-24: "remove the chrome here,
+              take it off the card"): no halo, no border box, no lit column.
+              The table sits on the page on its own hairlines, its labels on
+              the heading's left edge, like the plans table above it. */}
           {/* Mobile and tablet: every plan visible at once, nothing to open.
               The table is 832px wide against a ~356px viewport, so Pro and
               Business sat outside a horizontal scroller with nothing to signal
@@ -515,7 +464,7 @@ export function PricingSpecTable() {
           {/* overflow-clip, not -hidden: clip doesn't create a scroll
               container, so the sticky group headings below stick to the
               viewport rather than to this box. */}
-          <div className="relative overflow-clip rounded-2xl border border-black/[0.06] bg-white lg:hidden">
+          <div className="relative overflow-clip lg:hidden">
             {/* Monthly price sits above the product groups, ungrouped — it's
                 the plan's price, not a Postgres or Compute feature. */}
             <div className="border-b border-black/[0.06]">
@@ -525,12 +474,15 @@ export function PricingSpecTable() {
             </div>
             {GROUPS.map((group) => (
               <div key={group.label} className="border-b border-black/[0.06] last:border-b-0">
-                {/* Sticky just under the floating nav (its pill ends at 68px on
+                {/* No white band above it (it had one, to hide rows sliding
+                    behind the nav once stuck): at rest the band covered the
+                    Pro and Business prices in the row above.
+                    Sticky just under the floating nav (its pill ends at 68px on
                     phones), so seven screens in you still
                     know which group a row belongs to. A heading, so screen
                     readers can jump between groups. Opaque paper rather than
                     the old 3% wash, which showed rows through it once stuck. */}
-                <h3 className="sticky top-[4.5rem] z-10 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-[4.5rem] before:bg-white flex items-center gap-2.5 border-b border-black/[0.06] bg-paper px-5 py-3 text-sm font-semibold text-foreground">
+                <h3 className="sticky top-[4.5rem] z-10 flex items-center gap-2.5 border-b border-black/[0.06] bg-white py-3 text-sm font-semibold text-foreground">
                   <group.icon aria-hidden className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
                   {group.note && (
@@ -550,31 +502,20 @@ export function PricingSpecTable() {
               </div>
             ))}
             {/* The table ends on a next step, not on the last row. */}
-            <div className="border-t border-black/[0.06] bg-paper px-5 py-5">
+            <div className="border-t border-black/[0.06] py-5">
               <p className="text-sm font-semibold text-foreground">Get started</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {PLAN_CTAS.map((cta, i) =>
-                  i === HIGHLIGHT ? (
-                    <PrismButton
-                      key={cta.plan}
-                      href={SIGN_UP}
-                      fullWidth
-                      ctaLocation="pricing_compare_plans"
-                      className="text-[15px]"
-                    >
-                      {cta.short}
-                    </PrismButton>
-                  ) : (
-                    <PrismButtonOutline
-                      key={cta.plan}
-                      href={SIGN_UP}
-                      ctaLocation="pricing_compare_plans"
-                      className="w-full text-[15px]"
-                    >
-                      {cta.short}
-                    </PrismButtonOutline>
-                  ),
-                )}
+                {PLAN_CTAS.map((cta, i) => (
+                  <PrismButtonPlain
+                    key={cta.plan}
+                    href={SIGN_UP}
+                    fullWidth
+                    variant={i === HIGHLIGHT ? "solid" : "outline"}
+                    ctaLocation="pricing_compare_plans"
+                  >
+                    {cta.short}
+                  </PrismButtonPlain>
+                ))}
               </div>
             </div>
           </div>
@@ -583,7 +524,7 @@ export function PricingSpecTable() {
               the sticky header stick to this box instead of the viewport.
               The table only renders from lg, where it fits (see above), and
               overflow-clip keeps the rounded corners without scrolling. */}
-          <div className="relative hidden overflow-clip rounded-2xl border border-black/[0.06] bg-white lg:block">
+          <div className="relative hidden overflow-clip lg:block">
             <table className="w-full border-collapse text-left">
               <caption className="sr-only">
                 Feature and limit comparison across the Free, Starter, Pro and Business plans
@@ -591,7 +532,10 @@ export function PricingSpecTable() {
               <colgroup>
                 <col />
                 <col />
-                <col className="bg-paper" />
+                {/* Starter's column is tinted top to bottom (client,
+                    2026-11-24), the one highlight the table keeps. A 3% ink
+                    mix, opaque: brand paper is too close to white to see. */}
+                <col className={STARTER_TINT} />
                 <col />
                 <col />
               </colgroup>
@@ -607,7 +551,7 @@ export function PricingSpecTable() {
                 <tr>
                   <th
                     scope="col"
-                    className="sticky top-[6.25rem] z-10 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-[6.25rem] before:bg-white bg-white px-5 pb-4 pt-5 shadow-[inset_0_-1px_0_rgba(21,21,21,0.08)]"
+                    className="sticky top-[6.25rem] z-10 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-[6.25rem] before:bg-white bg-white pb-4 pr-5 pt-5 shadow-[inset_0_-1px_0_rgba(21,21,21,0.08)]"
                   >
                     <span className="sr-only">Feature</span>
                   </th>
@@ -617,27 +561,12 @@ export function PricingSpecTable() {
                       scope="col"
                       className={cn(
                         "sticky top-[6.25rem] z-10 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-[6.25rem] before:bg-white px-5 pb-4 pt-5 shadow-[inset_0_-1px_0_rgba(21,21,21,0.08)]",
-                        i === HIGHLIGHT ? "bg-paper" : "bg-white",
+                        // Opaque, so rows scroll under it cleanly when stuck.
+                        i === HIGHLIGHT ? STARTER_TINT : "bg-white",
                       )}
                     >
-                      {/* The lit column gets a spectrum cap rather than relying
-                          on the paper tint alone, which was almost invisible. */}
-                      {i === HIGHLIGHT && (
-                        <span
-                          aria-hidden
-                          className="absolute inset-x-0 top-0 h-[3px]"
-                          style={{ backgroundImage: SPECTRUM }}
-                        />
-                      )}
                       <span className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "text-sm font-semibold",
-                            i === HIGHLIGHT ? "text-foreground" : "text-muted-foreground",
-                          )}
-                        >
-                          {name}
-                        </span>
+                        <span className="text-sm font-semibold text-foreground">{name}</span>
                         {i === HIGHLIGHT && <Marker>Most popular</Marker>}
                       </span>
                       {/* The price lives in the header now, so it stays in
@@ -662,7 +591,7 @@ export function PricingSpecTable() {
                     <th
                       scope="rowgroup"
                       colSpan={5}
-                      className="border-t border-black/[0.06] bg-card px-5 py-3"
+                      className="border-t border-black/[0.06] py-3 pr-5"
                     >
                       <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
                         <group.icon aria-hidden className={cn("size-4 shrink-0", group.color)} />
@@ -687,22 +616,20 @@ export function PricingSpecTable() {
                   column, the same labels as the plan cards. */}
               <tfoot>
                 <tr className="border-t border-black/[0.06]">
-                  <td className="px-5 py-6 text-sm text-muted-foreground">Get started</td>
+                  <td className="py-6 pr-5 text-sm text-muted-foreground">Get started</td>
                   {PLAN_CTAS.map((cta, i) => (
                     <td key={cta.plan} className="px-5 py-6">
-                      {i === HIGHLIGHT ? (
-                        <PrismButton href={SIGN_UP} fullWidth ctaLocation="pricing_compare_plans">
-                          {cta.label}
-                        </PrismButton>
-                      ) : (
-                        <PrismButtonOutline
+                      <div className="w-full max-w-[10.5rem]">
+                        <PrismButtonPlain
                           href={SIGN_UP}
+                          size="sm"
+                          fullWidth
+                          variant={i === HIGHLIGHT ? "solid" : "outline"}
                           ctaLocation="pricing_compare_plans"
-                          className="w-full"
                         >
                           {cta.label}
-                        </PrismButtonOutline>
-                      )}
+                        </PrismButtonPlain>
+                      </div>
                     </td>
                   ))}
                 </tr>
