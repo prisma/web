@@ -118,7 +118,7 @@ function agentMarkdownHeaders(path) {
  */
 export const ANSWER_PAGE_HEADER_SOURCES = {
   postgres:
-    "/postgres/:slug((?!(?:guides|hipaa|free-postgresql-hosting)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
+    "/postgres/:slug((?!(?:guides|hipaa|free-postgresql-hosting|serverless)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
   compute: "/compute/:slug((?!(?:guides)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
 };
 
