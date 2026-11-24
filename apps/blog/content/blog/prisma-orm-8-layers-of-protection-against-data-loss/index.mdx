@@ -30,13 +30,13 @@ Prisma ORM 8 changes how these situations are handled:
 - **A change that could destroy data needs an explicit decision.** You name the field and state whether the change is a rename or a deletion.
 - **A database can refuse changes it shouldn't accept.** You declare a policy, and Prisma records it in the database.
 
-This post goes through each check in the order a schema change meets it, and says what each check leaves to you. It ends with instructions you can give your coding agent.
-
-The figure below maps the checks. Select a stage to see what it covers.
+A schema change now meets six checks on its way to the database:
 
 <ProtectionLayers />
 
-Five of the six stages work without setup. The policy stage works only after you declare a policy, and the review stage warns instead of blocking.
+Five of the six checks work without setup, and the policy check works only after you declare a policy. The review check warns instead of blocking.
+
+This post goes through the checks in that order and says what each one leaves to you. It ends with instructions you can give your coding agent.
 
 ## What keeps going wrong?
 
@@ -82,7 +82,7 @@ The figure below steps through a reset attempt:
 
 Renaming a field in your schema can delete the data in its column. Prisma compares the old schema with the new one, and a rename looks the same as one column removed and another added. A migration planned from that comparison drops `username` and adds `handle`, so the schema is correct and the existing usernames are gone.
 
-Prisma ORM 8 doesn't guess which one you meant. It asks you to state it.
+Prisma ORM 8 asks you to state which one you meant instead of guessing.
 
 The figure below shows the whole change in five steps. The rest of this section goes through them.
 
@@ -158,9 +158,9 @@ A coding agent therefore can't approve a destructive change by accepting every p
 
 ### Related cases
 
-- **A lossy type change.** Prisma asks the same question. You answer with a conversion or an explicit `--delete`.
-- **Making a column required.** This is caught later. The apply stops if existing rows hold `NULL`.
-- **A new required field with no default.** This case only gets a warning. Prisma fills existing rows with a temporary value, such as `''` or `0`. The dry run tells you, and `--backfill` on `migration plan` lets you choose the value.
+- **A lossy type change.** Prisma asks the same question, and you answer with a conversion or an explicit `--delete`.
+- **Making a column required.** This is caught later, when the apply stops if existing rows hold `NULL`.
+- **A new required field with no default.** Prisma only warns about this case and fills existing rows with a temporary value, such as `''` or `0`. The dry run tells you, and `--backfill` on `migration plan` lets you choose the value.
 
 **What this leaves to you.** An agent can pass `--delete User.username` itself. The check makes the decision explicit and visible, but it doesn't control who makes it.
 
@@ -214,7 +214,7 @@ npx prisma migration check
 
 ## Production can refuse changes it shouldn't accept
 
-In development, `prisma db update` applies schema changes without creating migration files, which suits experimenting. Production needs the opposite. Every change should go through a migration so that it can be reviewed, tracked, and deployed consistently. Without that rule, anyone who holds the production connection string, often an agent, can update the production schema directly and leave the migration history out of sync.
+In development, `prisma db update` applies schema changes without creating migration files, which suits experimenting. In production, every change should go through a migration so that it can be reviewed, tracked, and deployed consistently. Without that rule, anyone who holds the production connection string, often an agent, can update the production schema directly and leave the migration history out of sync.
 
 Database policies enforce that rule, and unlike the checks so far, they are off by default. You declare them once for each database you want to protect:
 
@@ -239,7 +239,7 @@ Declare the policy in the ref file for the environment, `migrations/app/refs/pro
 }
 ```
 
-Declaring the policy doesn't apply it. Whoever owns the database records it once, by deploying to the ref with a flag that states their consent:
+The declaration takes effect only after whoever owns the database records it, by deploying to the ref with a flag that states their consent:
 
 ```bash
 npx prisma db migrate --to production --permit-policy-change \
@@ -259,7 +259,7 @@ npx prisma db update \
 → Author a migration with prisma migration plan, then apply it with prisma db migrate --db <url>.
 ```
 
-The policy is stored in the database, not only in a file in the repository. Supported Prisma CLI versions therefore enforce it from any checkout or environment.
+Because the policy is stored in the database and not only in a repository file, supported Prisma CLI versions enforce it from any checkout or environment.
 
 ### Forbidding data loss on a database
 
@@ -290,9 +290,7 @@ $ npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"
 
 Editing the ref file doesn't remove a restriction. When a ref and its database disagree, a deploy to that ref stops with `MIGRATION.POLICY_MISMATCH`, and the person who owns the database applies the change with a separate flag, `--permit-policy-change`.
 
-The refusals above never name that flag. They say that whoever owns the database must change the policy. An agent that is stuck acts on whatever an error offers, so the errors don't offer the override.
-
-Nothing checks who passes the flag, though. Like `--delete`, an agent can type it, which is why the agent instructions below forbid it.
+The refusals above say that whoever owns the database must change the policy, and they never name the flag, because an agent that is stuck acts on whatever an error offers. Nothing checks who passes the flag, however, so an agent can type it just as it can type `--delete`. The agent instructions below forbid it for that reason.
 
 ### What policies don't cover
 
@@ -324,11 +322,11 @@ The figure below shows the three outcomes of a run:
 
 ## What should you tell your coding agent?
 
-An agent that knows the workflow hits fewer refusals, and an agent that knows when to stop is easier to trust. Give it instructions at two levels.
+Give your agent two sets of instructions, so that it hits fewer refusals and knows when to stop and ask you.
 
-**Prisma's agent skills.** `prisma init` installs [agent skills](https://www.prisma.io/docs/cli/skills) into your project. They come from the Prisma packages you have installed, so they describe the version you're using. They already tell an agent never to reset a database to fix a migration problem and never to loosen a policy to get its own deploy through.
+The first set comes with Prisma. `prisma init` installs [agent skills](https://www.prisma.io/docs/cli/skills) into your project from the Prisma packages you have installed, so they describe the version you're using. The skills already tell an agent never to reset a database to fix a migration problem and never to loosen a policy to get its own deploy through.
 
-**Your project rules.** Skills describe the tool. They can't know which of your databases matter or when you want to be asked. Add that to your `AGENTS.md`, `CLAUDE.md`, or equivalent:
+The second set is yours to write, because the skills can't know which of your databases matter or when you want to be asked. Add rules like these to your `AGENTS.md`, `CLAUDE.md`, or equivalent:
 
 ```md
 ## Database changes (Prisma ORM 8)

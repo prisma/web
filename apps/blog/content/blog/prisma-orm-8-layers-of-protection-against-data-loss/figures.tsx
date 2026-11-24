@@ -52,7 +52,7 @@ async function toSteps(sources: StepSource[]): Promise<GuardStep[]> {
 
 // Each static fallback hides the interactive figures itself, so it never
 // depends on another figure being on the page.
-const HIDE_INTERACTIVE = `.guard, .layers { display: none; }`;
+const HIDE_INTERACTIVE = `.guard { display: none; }`;
 
 // Without JavaScript the figure cannot change step, so the same steps are
 // listed in full instead.
@@ -141,94 +141,48 @@ const c = (text: string): ReactNode => <code>{text}</code>;
 
 const LAYERS: Layer[] = [
   {
-    name: "Commands",
     heading: "The reset commands are gone",
-    risk: "A reset, or a shadow database pointed at live data, empties every table.",
-    check:
-      "Nothing to check. No migration command resets or drops a database you connect to, and Prisma 7 commands stop with CLI.V7_COMMAND.",
-    setup: "Automatic",
-    effect: "Not available",
-    remains: "Raw SQL, the Prisma 7 CLI, and anything else that holds the connection string.",
+    summary: "No migration command resets or drops a database you connect to.",
+    effect: "Removed",
+    href: "#the-commands-behind-these-incidents-no-longer-exist",
   },
   {
-    name: "Plan",
     heading: "Data loss needs a named decision",
-    risk: "A renamed field is planned as a dropped column and a new, empty one.",
-    check:
-      "Whether every change that could lose data has been resolved by name, with --rename, --delete or --convert. --yes cannot answer.",
-    setup: "Automatic",
+    summary:
+      "A change that could lose data stops until you name the field and say whether it is a rename or a deletion.",
     effect: "Blocks",
-    remains: "Who makes the decision. An agent can pass --delete itself.",
+    href: "#a-rename-cant-quietly-become-a-deletion",
   },
   {
-    name: "Review",
     heading: "Destructive operations are labeled",
-    risk: "A dropped column hides among the other changes in a pull request.",
-    check:
-      "Each operation carries a class. migration show and the dry run mark the destructive ones.",
-    setup: "Automatic",
+    summary: "The preview and the migration both mark every operation that deletes data.",
     effect: "Warns",
-    remains: "Reading it. An approved deletion still runs, and db migrate does not ask again.",
+    href: "#destructive-operations-are-visible-in-review",
   },
   {
-    name: "Integrity",
     heading: "The reviewed migration is the one that runs",
-    risk: "A migration is edited after it was reviewed.",
-    check:
-      "migration check and db migrate recompute the hash of the compiled migration and compare it with the recorded one.",
-    setup: "Automatic",
+    summary: "A migration that was edited after it was generated is rejected.",
     effect: "Blocks",
-    remains: "The source migration.ts is not hashed. Review the compiled result after a recompile.",
+    href: "#the-migration-that-runs-is-the-one-you-reviewed",
   },
   {
-    name: "Policy",
     heading: "The database refuses what it shouldn't accept",
-    risk: "A development command, or a migration that drops data, reaches production.",
-    check:
-      "The policies recorded in the database: which commands may change it, and whether it may lose data at all.",
-    setup: "Declare a policy",
+    summary: "A database with a recorded policy refuses development commands, data loss, or both.",
     effect: "Blocks",
-    remains:
-      "Direct SQL access, and hand-written SQL steps that carry the wrong class. The CLI enforces this, not the database.",
+    needsPolicy: true,
+    href: "#production-can-refuse-changes-it-shouldnt-accept",
   },
   {
-    name: "Apply",
-    heading: "Assumptions are checked before each operation",
-    risk: "The database is no longer in the state the migration was written for.",
-    check:
-      "The recorded schema state, then a precheck and a postcheck around every operation. On PostgreSQL the run is one transaction.",
-    setup: "Automatic",
+    heading: "The database is checked before each operation",
+    summary: "The run stops if the database is not in the state the migration expects.",
     effect: "Blocks",
-    remains: "Application instances still reading the old schema. That takes a staged rollout.",
+    href: "#checking-the-database-before-applying-a-migration",
   },
 ];
 
 export function ProtectionLayers() {
   return (
-    <>
-      <LayerMap
-        label="Where each check sits between a schema edit and the database"
-        layers={LAYERS}
-      />
-      <noscript>
-        <style>{HIDE_INTERACTIVE}</style>
-        <figure className="guard-static not-prose">
-          <ol>
-            {LAYERS.map((l) => (
-              <li key={l.name}>
-                <p>
-                  <strong>{l.heading}.</strong>{" "}
-                  <em>
-                    {l.setup}, {l.effect.toLowerCase()}.
-                  </em>{" "}
-                  {l.risk} {l.check} What it leaves to you: {l.remains}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </figure>
-      </noscript>
-    </>
+    <LayerMap label="The checks a schema change meets on its way to the database" layers={LAYERS} />
   );
 }
 
