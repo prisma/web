@@ -2,7 +2,7 @@ import { Users } from "lucide-react";
 import Link from "next/link";
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { Texture } from "@/components/brand/texture";
-import { CheckBold, GitBranch, Rocket, Swap } from "@/components/icons/forma";
+import { Code, GitBranch, Layers, Rocket, Search, Swap, Table } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
 import { COST_CONTROLS, NEVER_BILLED, type NeverBilledItem } from "./pricing-ledger";
@@ -12,6 +12,10 @@ const FREE_ICONS: Record<NeverBilledItem["icon"], React.ComponentType<{ classNam
   previews: GitBranch,
   seats: Users,
   transfer: Swap,
+  pool: Layers,
+  insights: Search,
+  studio: Table,
+  orm: Code,
 };
 
 // "Keep your bill in check": three cost-control cards directly under the plan
@@ -54,9 +58,10 @@ export function PricingCostControls() {
         <h2 id="cost-controls" className="sr-only">
           Keep your bill in check
         </h2>
-        {/* Three across on desktop; on tablets the third spans the row under
-            the first two; stacked on phones. */}
-        <div className="grid gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+        {/* Three across from 1280px; below that the third spans the row
+            under the first two (its eight-item list needs the width);
+            stacked on phones. */}
+        <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
           <Reveal className="h-full">
             <ControlCard
               {...idle}
@@ -72,7 +77,7 @@ export function PricingCostControls() {
             />
           </Reveal>
           {/* id="free" keeps old links to /pricing#free landing here. */}
-          <Reveal delay={0.16} className="h-full md:col-span-2 lg:col-span-1">
+          <Reveal delay={0.16} className="h-full md:col-span-2 xl:col-span-1">
             <div id="free" className="h-full scroll-mt-24">
               <ControlCard
                 {...never}
@@ -231,27 +236,24 @@ function LimitBars() {
   );
 }
 
-/** The four things every plan includes at no cost, each marked Free, so the
- *  card reads at a glance before its text does. A plain ruled list, not
- *  tiles: boxes inside the card read as a card on a card (client,
- *  2026-11-22). */
+/** What every plan includes at no cost, so the card reads at a glance
+ *  before its text does. A plain ruled list, not tiles: boxes inside the card
+ *  read as a card on a card (client, 2026-11-22). Eight items in two columns
+ *  of four, so the illustration keeps the other cards' height. No ticks
+ *  (client, 2026-11-24: "just take away the ticks"): the title says "Free on
+ *  every plan". Row icons drop out on phones, where the columns are narrow. */
 function FreeTiles() {
   return (
-    <ul className="grid h-full grid-rows-4 divide-y divide-black/[0.07] border-y border-black/[0.07]">
+    <ul className="grid h-full grid-flow-col grid-cols-2 grid-rows-4 gap-x-5 border-t border-black/[0.07]">
       {NEVER_BILLED.map((item) => {
         const Icon = FREE_ICONS[item.icon];
         return (
-          <li key={item.short} className="flex min-w-0 items-center justify-between gap-3">
-            <span className="flex min-w-0 items-center gap-2 text-sm text-foreground/80">
-              <Icon aria-hidden className="size-4 shrink-0 text-foreground/45" />
-              <span className="truncate">{item.short}</span>
-            </span>
-            {/* The plan cards' tick, cyan on the mark only: cyan text read
-                as off-brand (client, 2026-11-22). */}
-            <span className="flex shrink-0 items-center gap-1.5 text-sm text-foreground">
-              <CheckBold aria-hidden className="size-4 text-prism-cyan-500" />
-              Free
-            </span>
+          <li
+            key={item.short}
+            className="flex min-w-0 items-center gap-2 border-b border-black/[0.07] text-[13px] text-foreground/80 sm:text-sm"
+          >
+            <Icon aria-hidden className="size-4 shrink-0 text-foreground/45 max-sm:hidden" />
+            <span className="truncate">{item.short}</span>
           </li>
         );
       })}

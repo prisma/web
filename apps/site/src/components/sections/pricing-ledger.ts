@@ -30,9 +30,16 @@ export const PRICING_FLOW_LEDE =
 //   - Database data transfer: the former "Every plan includes" list
 //     ("Unlimited, no egress fees"). Database only: Compute's outbound
 //     bandwidth is billed.
+//   - Connection pooling, query insights, Prisma Studio, Prisma ORM (client,
+//     2026-11-24: "maybe add some more stuff here", after asking about query
+//     insights): the "Compare plans" table marks each one on every plan
+//     (Managed connection pool, Query insights, View and edit your data,
+//     Prisma ORM "Free"). Pool limits differ by plan, so the detail says
+//     "sized by plan" and names no number. This reverses the 2026-11-22 call
+//     above that ORM and Studio were product facts, not cost.
 // Idle apps aren't repeated here: the first card says it.
 export type NeverBilledItem = {
-  icon: "deploys" | "previews" | "seats" | "transfer";
+  icon: "deploys" | "previews" | "seats" | "transfer" | "pool" | "insights" | "studio" | "orm";
   /** The tile in the card's illustration. */
   short: string;
   /** The Markdown rendition's bullet. */
@@ -55,6 +62,25 @@ export const NEVER_BILLED: NeverBilledItem[] = [
     label: "Database data transfer",
     detail: "unlimited, no egress fees",
   },
+  {
+    icon: "pool",
+    short: "Connection pool",
+    label: "Managed connection pooling",
+    detail: "sized by plan",
+  },
+  {
+    icon: "insights",
+    short: "Query insights",
+    label: "Query insights",
+    detail: "on every database",
+  },
+  {
+    icon: "studio",
+    short: "Prisma Studio",
+    label: "Prisma Studio",
+    detail: "view and edit your data",
+  },
+  { icon: "orm", short: "Prisma ORM", label: "Prisma ORM", detail: "free and open source" },
 ];
 
 // "Keep your bill in check": three cards under the plan cards
@@ -110,8 +136,9 @@ export const COST_CONTROLS: [CostControl, CostControl, CostControl] = [
     // ordinary usage.
     title: "Free on every plan",
     body:
-      "Deployments, creating preview branches, team seats and database data transfer are " +
-      "included at no cost. You pay for your plan and the usage your apps and databases run up.",
+      "Deployments, creating preview branches, team seats and database data transfer cost " +
+      "nothing. Every plan also includes connection pooling, query insights, Prisma Studio and " +
+      "Prisma ORM.",
     link: { label: "Compare what each plan includes", href: "/pricing#compare-plans" },
   },
 ];
