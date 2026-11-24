@@ -16,6 +16,7 @@ import { formatAnswerDate, type AnswerPage as AnswerPageContent } from "@/lib/an
 import { getMDXComponents } from "@/mdx-components";
 import { ConnectionPoolingDiagram } from "./connection-pooling-diagram";
 import { EnvironmentDiagram } from "./environment-diagram";
+import { GuideToc } from "./guide-toc";
 import { HeaderRipple } from "./header-ripple";
 import { getAnswerProduct } from "@/lib/answer-products";
 
@@ -38,7 +39,7 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
   const toc = [
     ...data.toc.filter((item) => item.depth === 2),
     { title: "Frequently asked questions", url: "#faq" },
-  ];
+  ].map(({ url, title }) => ({ url, title: data.tocLabels?.[url.slice(1)] ?? title }));
 
   return (
     <article className={`${monaSansMono.variable} bg-background pb-24 pt-32 sm:pt-40`}>
@@ -125,15 +126,7 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
             className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3"
           >
             <p className="mb-4 text-sm font-semibold">On this page</p>
-            <ul className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-              {toc.map((item) => (
-                <li key={item.url}>
-                  <a href={item.url} className="transition-colors hover:text-foreground">
-                    {item.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <GuideToc items={toc} />
           </nav>
         </aside>
 

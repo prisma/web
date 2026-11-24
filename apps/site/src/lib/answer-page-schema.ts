@@ -9,6 +9,8 @@ export const answerPageSchema = z.object({
   date: z.iso.date(),
   updatedAt: z.iso.date(),
   readingTime: z.string().min(1),
+  /** Short "On this page" labels, keyed by heading anchor (and `faq`). */
+  tocLabels: z.record(z.string(), z.string().min(1)).optional(),
   /** Optional decorative background for the header. */
   headerArt: z.enum(["ripple"]).optional(),
   faq: z
