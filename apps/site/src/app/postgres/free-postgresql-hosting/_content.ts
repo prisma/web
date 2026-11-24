@@ -2,7 +2,9 @@
 //
 // Rules for this page's copy (SEO brief, 18 Oct 2026; slug override 21 Oct):
 //   - Price never appears in the title, meta description, H1 or closing CTA.
-//   - Title tag and meta description are taken verbatim from the brief.
+//   - Title tag and meta description are taken verbatim from the brief. The
+//     description was shortened to 156 characters on 25 Nov 2026 (search
+//     engines cut descriptions over 160); its facts are the brief's.
 //   - All FAQ answers are rendered in the server HTML (the shared Faq
 //     accordion already does that with Radix's `forceMount`).
 //   - No em dashes or en dashes.
@@ -19,7 +21,7 @@ export const FREE_POSTGRES_PATH = "/postgres/free-postgresql-hosting";
 export const FREE_POSTGRES_TITLE = "Free PostgreSQL Hosting | Prisma Postgres";
 
 export const FREE_POSTGRES_DESCRIPTION =
-  "Free PostgreSQL hosting on Prisma Postgres. Managed PostgreSQL 17 with 2 GB of storage, 200,000 operations a month and up to 50 databases. No credit card and no time limit.";
+  "Free PostgreSQL hosting on Prisma Postgres: managed PostgreSQL 17, 2 GB of storage, 200,000 operations a month, 50 databases. No credit card, no time limit.";
 
 export const FREE_POSTGRES_H1 = "Free PostgreSQL hosting";
 
@@ -36,7 +38,7 @@ export const FREE_POSTGRES_HERO_CHECKS = [
   "With a free account: no time limit, for claimed databases and databases created in the Prisma Console.",
 ] as const;
 
-export const FREE_POSTGRES_LAST_MODIFIED = "2026-11-24";
+export const FREE_POSTGRES_LAST_MODIFIED = "2026-11-25";
 
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CREATE_DB_WEB_URL = "https://create-db.prisma.io";

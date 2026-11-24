@@ -4,8 +4,8 @@ import { z } from "zod";
 // prisma/prisma-examples. The manifest is the source of truth for which
 // templates exist and what they are called; this module layers the gallery's
 // own knowledge on top: framework identity and logo, the stack it ships
-// with, when it landed, the curated Featured and Popular orders, and the
-// preview screenshot. Anything the manifest adds later that
+// with, when it landed, which template is featured, the curated Popular
+// order, and the preview screenshot. Anything the manifest adds later that
 // the registry here does not know about still renders, with sensible
 // fallbacks, so a new template is never blocked on a site change.
 
@@ -279,12 +279,15 @@ type TemplateMeta = {
   stack: readonly StackId[];
   /** ISO date the template landed in prisma-examples (first commit on its folder). */
   publishedAt?: string;
-  /** 1 = first. Hand-ordered: the full-stack apps lead, broadest first, and the personal site closes. */
-  featuredRank: number;
+  /**
+   * Pins the template to the top of the gallery with a Featured label. Give it
+   * to one template at a time; the rest follow newest first.
+   */
+  featured?: boolean;
   /**
    * 1 = first. The console records a deploy_button_succeeded event per template
    * but does not expose counts yet, so this order is maintained by hand from
-   * those numbers. Templates without a rank sort after ranked ones.
+   * those numbers. Templates without a rank sort after ranked ones, newest first.
    */
   popularRank?: number;
   /** Screenshot under /public, 1280x800, captured from the running template. */
@@ -299,7 +302,6 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     framework: "nextjs",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
     publishedAt: "2026-07-21",
-    featuredRank: 1,
     popularRank: 1,
     preview: "/apps/previews/nextjs.png",
   },
@@ -308,7 +310,6 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     framework: "hono",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
     publishedAt: "2026-07-21",
-    featuredRank: 2,
     popularRank: 2,
     preview: "/apps/previews/hono.png",
   },
@@ -317,29 +318,25 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     framework: "tanstack-start",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
     publishedAt: "2026-07-21",
-    featuredRank: 3,
     popularRank: 3,
     preview: "/apps/previews/tanstack-start.png",
   },
-  // The one template without a database, so it closes the Featured order:
-  // the full-stack apps lead and the site is the quick thing to make your own.
   "personal-site": {
     useCase: "Personal site",
     framework: "astro",
     stack: ["bun", "typescript"],
     publishedAt: "2026-08-20",
-    featuredRank: 6,
     popularRank: 4,
     preview: "/apps/previews/personal-site.png",
   },
   // The manifest supplies the author; the registry adds the use case, the
-  // date it landed, the screenshot and the page copy.
+  // date it landed, the screenshot and the page copy. Featured: pinned first.
   "room-booking-prisma-template": {
     useCase: "Booking app",
     framework: "nextjs",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
     publishedAt: "2026-11-01",
-    featuredRank: 4,
+    featured: true,
     preview: "/apps/previews/room-booking-prisma-template.png",
     page: {
       tagline: "Book meeting rooms on a drag-to-book timeline that never double-books.",
@@ -384,7 +381,6 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     framework: "nextjs",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
     publishedAt: "2026-11-11",
-    featuredRank: 5,
     preview: "/apps/previews/scalable-indexing-platform-template.png",
     page: {
       tagline:
@@ -443,7 +439,7 @@ export type GalleryTemplate = {
   stack: StackMeta[];
   publishedAt: string | null;
   isNew: boolean;
-  featuredRank: number;
+  featured: boolean;
   popularRank: number | null;
   preview: string | null;
   /** Position in the manifest, the tie-breaker for every sort. */
@@ -474,9 +470,6 @@ export function enrichTemplates(
   templates: readonly ManifestTemplate[],
   now: Date = new Date(),
 ): GalleryTemplate[] {
-  // Past every curated rank, so an unregistered template never ties with one.
-  const unranked = Math.max(...Object.values(TEMPLATE_META).map((meta) => meta.featuredRank)) + 1;
-
   return templates.map((template, manifestIndex) => {
     const meta = TEMPLATE_META[template.id];
     const frameworkId = template.framework ?? meta?.framework ?? "unknown";
@@ -499,7 +492,7 @@ export function enrichTemplates(
       stack: (meta?.stack ?? DEFAULT_STACK).map((id) => STACK[id]),
       publishedAt,
       isNew: ageDays !== null && ageDays >= 0 && ageDays <= NEW_FOR_DAYS,
-      featuredRank: meta?.featuredRank ?? unranked + manifestIndex,
+      featured: meta?.featured ?? false,
       popularRank: meta?.popularRank ?? null,
       preview: meta?.preview ?? null,
       manifestIndex,
@@ -510,10 +503,9 @@ export function enrichTemplates(
 // ---------------------------------------------------------------------------
 // Sorting and filtering — pure, so the client gallery and the tests share them.
 
-export type SortKey = "featured" | "newest" | "popular";
+export type SortKey = "newest" | "popular";
 
 export const SORT_OPTIONS: readonly { value: SortKey; label: string }[] = [
-  { value: "featured", label: "Featured" },
   { value: "newest", label: "Newest" },
   { value: "popular", label: "Popular" },
 ];
@@ -522,20 +514,19 @@ export function isSortKey(value: string | null | undefined): value is SortKey {
   return SORT_OPTIONS.some((option) => option.value === value);
 }
 
-const byManifest = (a: GalleryTemplate, b: GalleryTemplate) => a.manifestIndex - b.manifestIndex;
+// Most recently landed first. Undated templates sort after dated ones, and the
+// manifest order breaks ties (several templates landed on the same day).
+function byNewest(a: GalleryTemplate, b: GalleryTemplate) {
+  if (a.publishedAt && b.publishedAt && a.publishedAt !== b.publishedAt) {
+    return a.publishedAt < b.publishedAt ? 1 : -1;
+  }
+  if (!a.publishedAt !== !b.publishedAt) return a.publishedAt ? -1 : 1;
+  return a.manifestIndex - b.manifestIndex;
+}
 
 export function sortTemplates(templates: readonly GalleryTemplate[], sort: SortKey) {
   const list = [...templates];
   switch (sort) {
-    case "newest":
-      return list.sort((a, b) => {
-        if (a.publishedAt && b.publishedAt && a.publishedAt !== b.publishedAt) {
-          return a.publishedAt < b.publishedAt ? 1 : -1;
-        }
-        // Undated templates sort after dated ones.
-        if (!a.publishedAt !== !b.publishedAt) return a.publishedAt ? -1 : 1;
-        return byManifest(a, b);
-      });
     case "popular":
       return list.sort((a, b) => {
         if (a.popularRank !== null && b.popularRank !== null && a.popularRank !== b.popularRank) {
@@ -544,10 +535,11 @@ export function sortTemplates(templates: readonly GalleryTemplate[], sort: SortK
         if ((a.popularRank === null) !== (b.popularRank === null)) {
           return a.popularRank === null ? 1 : -1;
         }
-        return a.featuredRank - b.featuredRank || byManifest(a, b);
+        return byNewest(a, b);
       });
     default:
-      return list.sort((a, b) => a.featuredRank - b.featuredRank || byManifest(a, b));
+      // The default view: the featured template is pinned first, then newest first.
+      return list.sort((a, b) => Number(b.featured) - Number(a.featured) || byNewest(a, b));
   }
 }
 
@@ -561,10 +553,10 @@ export function filterTemplates(templates: readonly GalleryTemplate[], filter: G
   );
 }
 
-/** Frameworks present in the catalog, in Featured order, with how many templates use each. */
+/** Frameworks present in the catalog, in gallery order, with how many templates use each. */
 export function frameworkOptions(templates: readonly GalleryTemplate[]) {
   const counts = new Map<string, { framework: FrameworkMeta; count: number }>();
-  for (const template of sortTemplates(templates, "featured")) {
+  for (const template of sortTemplates(templates, "newest")) {
     const entry = counts.get(template.framework.id);
     if (entry) entry.count += 1;
     else counts.set(template.framework.id, { framework: template.framework, count: 1 });
