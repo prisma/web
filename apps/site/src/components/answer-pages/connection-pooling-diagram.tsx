@@ -1,4 +1,6 @@
-import { POOLING_DIAGRAM_LABEL } from "./_content";
+/** Text alternative for screen readers. */
+const POOLING_DIAGRAM_LABEL =
+  "Two panels. Without a pooler, each of five function instances opens its own connection straight to Postgres, so five instances use five database connections. With Prisma Postgres, the five instances connect to the pooled host, pooled.db.prisma.io, where PgBouncer in transaction mode shares two database connections between them. The numbers are an illustration.";
 
 // Many short-lived function instances with and without a pooler, as
 // docs/postgres/database/connection-pooling.mdx describes Prisma Postgres:
@@ -252,9 +254,10 @@ function Diagram({ narrow }: { narrow: boolean }) {
   );
 }
 
-export function PoolingDiagram() {
+/** Function instances with and without a connection pooler in front of Postgres. */
+export function ConnectionPoolingDiagram() {
   return (
-    <figure className="m-0 overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#FAFAFA]">
+    <figure className="not-prose my-10 overflow-hidden rounded-xl border border-border bg-[#FAFAFA]">
       <Diagram narrow={false} />
       <Diagram narrow />
     </figure>

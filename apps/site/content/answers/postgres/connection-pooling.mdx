@@ -1,0 +1,167 @@
+---
+title: "How does Postgres connection pooling work with serverless apps?"
+description: "A pooler shares a few Postgres connections across many short-lived functions. How PgBouncer pooling works on Prisma Postgres, with limits and Prisma ORM setup."
+summary: "Postgres connection pooling keeps a small set of database connections open and lends them out per request, so your app doesn't open a new connection for every query. Serverless apps need a server-side pooler, because every function instance opens its own connections and together they run the database out of slots. Prisma Postgres includes one on every plan: send app traffic to the pooled host, `pooled.db.prisma.io`, where a PgBouncer instance in transaction mode shares the database's connections, keep each instance's client pool small, and use the direct host, `db.prisma.io`, for migrations."
+author: "Martin Janse van Rensburg"
+authorUrl: "https://github.com/vanrensbird"
+date: "2026-11-24"
+updatedAt: "2026-11-24"
+readingTime: "8 min read"
+faq:
+  - question: "Does Prisma Postgres use PgBouncer?"
+    answer: "Yes. Application traffic on the pooled connection string goes through a tenant-isolated PgBouncer instance in transaction mode, on every plan. You don't configure or run it yourself."
+  - question: "How many connections does Prisma Postgres allow?"
+    answer: "Pooled connections: 10 on Free, 100 on Starter, 500 on Pro and 1,000 on Business. Direct connections: 10 on Free and Starter, 50 on Pro and 100 on Business, with 5 reserved for platform operations. See [connection limits](/docs/postgres/database/connection-pooling#connection-limits)."
+  - question: "Do I still need a client-side pool with PgBouncer?"
+    answer: "Your client still keeps a pool, and each connection in it counts against your pooled limit. Keep it small on serverless platforms and Prisma Compute. Prisma ORM 8's default is 10 connections, and `poolOptions: { max: 1 }` keeps a client to one behind the pooled URL."
+  - question: "Can I use prepared statements with the pooler?"
+    answer: "Prepared statements don't persist on pooled connections, because PgBouncer in transaction mode returns the connection to the pool after each transaction. Use the direct connection for workloads that rely on session-level prepared statements."
+related:
+  - title: "What is serverless Postgres, and when should I use it?"
+    href: "/postgres/serverless"
+  - title: "What is the Postgres connection string format?"
+    href: "/postgres/connection-string"
+  - title: "Hosted Postgres says \"too many connections\""
+    href: "/postgres/too-many-connections"
+  - title: "Prisma Postgres connection pooling and limits"
+    href: "/docs/postgres/database/connection-pooling"
+  - title: "Pooled and direct connection strings"
+    href: "/docs/postgres/database/connecting-to-your-database"
+  - title: "What is connection pooling and how does it work?"
+    href: "/dataguide/database-tools/connection-pooling"
+cta:
+  title: "Use a database with pooling built in"
+  description: "Every Prisma Postgres database comes with a pooled and a direct connection string. Create one with npx create-db, or sign up and create one in the Console. Any Postgres client works."
+  label: "Get started"
+  href: "https://console.prisma.io/sign-up"
+---
+
+Use a server-side pooler whenever many short-lived processes, such as serverless functions or parallel agent tasks, talk to one Postgres database. Point those processes at the pooled connection string, keep each one's client pool small, and keep migrations and admin tools on the direct connection.
+
+We make Prisma Postgres, Prisma ORM and Prisma Compute. Every Prisma Postgres claim on this page links to the Prisma docs, checked in November 2026.
+
+## What is Postgres connection pooling?
+
+Opening a Postgres connection takes work: a network round trip, TLS, authentication, and a [new server process](https://www.postgresql.org/docs/17/connect-estab.html) on the database side. A connection pool opens a few connections once and lends them out, so each query borrows a connection instead of creating one.
+
+Pools live in two places. Your app's database client keeps one in memory, as `node-postgres` and Prisma ORM do. A server-side pooler such as PgBouncer sits in front of the database and shares its connections across every instance of your app. The [dataguide on connection pooling](/dataguide/database-tools/connection-pooling) covers the general theory. This guide is about how it works with serverless apps on Prisma Postgres.
+
+## Why do serverless apps need a pooler?
+
+A long-running server opens its pool once and reuses it for hours. Serverless functions don't work that way. A traffic spike can start dozens of function instances at once, and each one opens its own connections. So can coding agents running tasks in parallel. Without a pooler, those connections add up until the database runs out of slots and new ones fail with a too many connections error.
+
+A server-side pooler fixes this at the source. Every instance connects to the pooler instead of the database, and the pooler hands out a small number of real database connections one transaction at a time:
+
+<ConnectionPoolingDiagram />
+
+If you already see the error, [hosted Postgres says "too many connections"](/postgres/too-many-connections) walks through the diagnosis on any host.
+
+## How does Prisma Postgres pool connections?
+
+Every Prisma Postgres database includes a pooler, and you don't configure or run it yourself. Application traffic goes through a connection proxy to a tenant-isolated PgBouncer instance, then to the database.
+
+### Transaction mode
+
+PgBouncer runs in transaction mode. It assigns a database connection when a transaction starts and returns it to the pool when the transaction ends, so a connection is only busy while it's doing work. That's what lets many short-lived clients share a few connections.
+
+The trade-off is session state. `SET` commands, prepared statements, advisory locks and temporary tables don't carry over between transactions, and `LISTEN` and `NOTIFY` need a direct connection. Queries on pooled connections are also stopped after 10 minutes.
+
+### Pooled and direct connection strings
+
+Each database has two connection strings with the same credentials. Only the host differs:
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+- **Pooled, `pooled.db.prisma.io`:** all application traffic, such as API handlers, background workers and serverless functions.
+- **Direct, `db.prisma.io`:** migrations, Prisma Studio, `pg_dump` and `pg_restore`, `LISTEN` and `NOTIFY`, session-level `SET` commands, and queries that may run longer than 10 minutes.
+
+Get both in the [Prisma Console](https://console.prisma.io): open the database, select **Connect to your database**, then **Generate new connection string**. The [Postgres connection string](/postgres/connection-string) guide breaks down each part of the format.
+
+### Connection limits
+
+| Plan | Pooled connections | Direct connections |
+| --- | --- | --- |
+| Free | 10 | 10 |
+| Starter | 100 | 10 |
+| Pro | 500 | 50 |
+| Business | 1,000 | 100 |
+
+These are concurrent connection limits. 5 direct connections are reserved for platform operations such as maintenance and monitoring, so they aren't available to your workload. Idle pooled connections are closed after 60 minutes. The [connection pooling docs](/docs/postgres/database/connection-pooling) have the details.
+
+## How do I set up pooling with Prisma ORM?
+
+Prisma ORM keeps its own client-side pool, and each connection in it counts against your pooled limit. In Prisma ORM 8, the client you create with `postgres()` opens up to 10 connections by default. Set [`poolOptions.max`](/docs/orm/reference/transactions-and-runtime) to change that. Behind a pooled Prisma Postgres URL, `max: 1` keeps each client to one connection, and queries take turns on it:
+
+```ts title="src/prisma/db.ts"
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const contract = contractFromJson<Contract>(contractJson);
+
+// DATABASE_URL is the pooled string (pooled.db.prisma.io).
+export const db = postgres({
+  contract,
+  url: process.env.DATABASE_URL!,
+  poolOptions: { max: 1 },
+});
+```
+
+With a single connection, send queries inside a transaction through `tx`, not `db`. A query sent through `db` inside `db.transaction()` waits for the transaction's connection until it times out.
+
+Point the Prisma CLI at the direct string, so migrations and `db` commands bypass the pooler:
+
+```ts title="prisma.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    db: {
+      connection: process.env.DIRECT_URL!,
+    },
+  }),
+});
+```
+
+For serverless functions, Prisma ORM's [serverless client](/docs/orm/reference/transactions-and-runtime#serverless-client-on-postgresql), `postgresServerless()`, opens one connection per request with `connect({ url })`. Create it once, outside the handler, and give it the pooled string. On Prisma ORM 7, the `PrismaPg` adapter takes the same `pg` pool settings, including `max`. Prisma ORM is optional: any Postgres client works with the same two connection strings. [What is serverless Postgres](/postgres/serverless) shows the full path from schema to deploy.
+
+## How do I keep pools small on Prisma Compute?
+
+[Prisma Compute](/compute) runs your Node.js, Bun or Next.js app next to Prisma Postgres in the same project, with PgBouncer pooling included. Store the pooled connection string as a project [environment variable](/docs/compute/environment-variables):
+
+```bash
+npx prisma project env add DATABASE_URL=postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require --role production
+```
+
+Compute scales an idle app to zero and closes idle database connections. Keep each instance's pool small and ready to reconnect. The [Composer docs](/docs/composer/deploying#production-behavior) use one connection with a 10-second idle timeout:
+
+```ts title="src/server.ts"
+import { SQL } from "bun";
+import service from "./service.ts";
+
+const { db } = service.load();
+const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10, prepare: false });
+```
+
+## Common connection pooling mistakes and how to fix them
+
+- **A new client for every request.** Each new client opens new connections. Create the client once, outside the handler, so warm invocations reuse it.
+- **More instances than pooled connections.** Each function instance holds its own connections. If your platform scales to 200 instances and your plan allows 100 pooled connections, you hit the limit. Lower each instance's pool size, cap concurrency on the platform, or move to a plan with more pooled connections.
+- **App traffic on the direct host.** It works at low traffic, then runs out of connections under load, because direct limits are much lower. Use `pooled.db.prisma.io` for the app.
+- **Migrations through the pooler.** Migrations need session continuity, so on the pooled host they fail with lock, session or prepared statement errors. Point the Prisma CLI at the direct string.
+- **Expecting session state to stick.** `SET` commands, temporary tables and prepared statements are lost after each transaction in transaction mode. Use a direct connection for work that depends on them.
+- **Long queries on the pooler.** Pooled queries stop after 10 minutes. Split the job into smaller batches, or run it over the direct connection.
+
+## When is the pooler the wrong path?
+
+Use the direct connection, not the pooler, for anything that needs one session from start to finish: migrations, `LISTEN` and `NOTIFY`, session-level `SET` commands and prepared statements outside a transaction, and jobs that can run longer than 10 minutes. The pooler also doesn't raise your plan's limit: every client connection to it counts, so a fleet of instances with large client pools still runs out.
+
+Every Prisma Postgres plan includes PgBouncer pooling. Plans differ in how many pooled and direct connections you get, as in the table above, and in operations, storage and backups. Compare them on the [pricing page](/pricing).

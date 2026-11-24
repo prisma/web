@@ -29,6 +29,10 @@ export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
       .replace(
         /<EnvironmentDiagram\s*\/>/g,
         "Test: feature branch → own app and API → separate database with synthetic records.\n\nProduction: protected main → own app and API → customer database.\n\nEach app uses its own database credentials. The assistant gets access to the test environment.",
+      )
+      .replace(
+        /<ConnectionPoolingDiagram\s*\/>/g,
+        "Without a pooler: five function instances each open their own connection to Postgres, so the database holds five connections. With Prisma Postgres pooling: the same five instances connect to PgBouncer at `pooled.db.prisma.io` (transaction mode), which shares two database connections between them. The numbers are an illustration; your plan sets how many pooled connections you get.",
       ),
     "## Frequently asked questions",
     ...data.faq.map(({ question, answer }) => `### ${question}\n\n${answer}`),
