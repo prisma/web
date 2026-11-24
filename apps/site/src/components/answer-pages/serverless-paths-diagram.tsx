@@ -1,23 +1,18 @@
-// How apps reach Prisma Postgres: an architecture diagram rebuilt from the
-// "How apps reach Prisma Postgres" design mockup (1440 px artboard), recomposed
-// at the guide's 760 px column so its type stays at the mockup's sizes. Same
-// tokens: #E4E4E4 / #EDEDED / #D4D4D4 borders, 12 and 16 px radii, grey
-// #CFCFCF connectors with prism-coloured arrowheads and start rings, mono host
-// pills, a grey Pooling group and dashed route pills. The mockup's title block
-// is left out (the guide's H2 introduces the diagram) and PostgreSQL carries
-// no version. Paths follow docs/postgres/database/connection-pooling.mdx and
-// serverless-driver.mdx. Logos (PostgreSQL, PgBouncer, Prisma) are the
-// mockup's own vector paths.
+// How apps reach Prisma Postgres: an architecture diagram from the "How apps
+// reach Prisma Postgres" design mockup. Built in HTML and CSS grid, as the
+// mockup is, so every box sizes to its text and nothing can run past an edge;
+// only connectors and logos are SVG. A container query switches between the
+// three-row grid and a stacked phone layout. Tokens follow the mockup:
+// #E4E4E4 / #EDEDED / #D4D4D4 borders, 12 and 16 px radii, #CFCFCF connectors
+// with prism-coloured arrowheads and start rings, mono host pills and grey
+// route cells. PostgreSQL carries no version. Paths follow
+// docs/postgres/database/connection-pooling.mdx and serverless-driver.mdx.
 
-const INK = "#121212";
-const MUTED = "#6B6B6B";
-const LINE = "#CFCFCF";
-const BOX = "#E4E4E4";
+import type { ReactNode } from "react";
+
 const CYAN = "#01D7E4";
 const YELLOW = "#F3C306";
 const RED = "#F34A60";
-const SANS = "var(--font-inter), Inter, system-ui, sans-serif";
-const MONO = 'var(--font-code), "JetBrains Mono", ui-monospace, Menlo, monospace';
 
 /** Text alternative, also used for the guide's Markdown rendition. */
 export const SERVERLESS_PATHS_DIAGRAM_TEXT =
@@ -38,25 +33,16 @@ const PRISMA_LOGO = {
 
 function Logo({
   logo,
-  x,
-  y,
-  w,
-  h,
+  className,
 }: {
   logo: { viewBox: string; markup: string };
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+  className: string;
 }) {
   return (
     <svg
-      x={x}
-      y={y}
-      width={w}
-      height={h}
       viewBox={logo.viewBox}
       aria-hidden
+      className={`flex-none ${className}`}
       dangerouslySetInnerHTML={{ __html: logo.markup }}
     />
   );
@@ -80,486 +66,282 @@ const ROUTES = [
   },
 ] as const;
 
-function Markers({ id }: { id: string }) {
+type Route = (typeof ROUTES)[number];
+
+const LABEL = "text-[10.5px] font-medium tracking-[0.1em] text-[#6B6B6B] uppercase";
+
+function Dot({ color }: { color: string }) {
   return (
-    <defs>
-      {ROUTES.map((r) => (
-        <marker
-          key={r.key}
-          id={`${id}-${r.key}`}
-          orient="auto"
-          markerWidth="7"
-          markerHeight="7"
-          refX="5"
-          refY="3"
-          overflow="visible"
-        >
-          <path d="M0 0 L6 3 L0 6 Z" fill={r.color} />
-        </marker>
-      ))}
-    </defs>
+    <span aria-hidden className="size-2 flex-none rounded-[2px]" style={{ background: color }} />
   );
 }
 
-function ZoneLabel({
-  x,
-  y,
-  text,
-  weight = 500,
-  color = MUTED,
-}: {
-  x: number;
-  y: number;
-  text: string;
-  weight?: number;
-  color?: string;
-}) {
-  return (
-    <text
-      x={x}
-      y={y}
-      fill={color}
-      fontFamily={SANS}
-      fontSize={11}
-      fontWeight={weight}
-      letterSpacing={1.1}
-    >
-      {text.toUpperCase()}
-    </text>
-  );
-}
-
-function Card({
-  x,
-  y,
-  w,
-  h,
+/** A white component box: bold name, muted detail, optional leading mark. */
+function Box({
   title,
   sub,
-  dot,
-  titleSize = 15,
-  subSize = 12.5,
-  titleX,
+  lead,
+  className = "",
 }: {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
   title: string;
   sub: string;
-  dot?: string;
-  titleSize?: number;
-  subSize?: number;
-  titleX?: number;
+  lead?: ReactNode;
+  className?: string;
 }) {
-  const tx = titleX ?? (dot ? x + 38 : x + 16);
-  const mid = y + h / 2;
   return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} rx={12} fill="#FFFFFF" stroke={BOX} />
-      {dot ? <rect x={x + 16} y={mid - 5} width={10} height={10} rx={2.5} fill={dot} /> : null}
-      <text
-        x={tx}
-        y={mid - 3}
-        fill={INK}
-        fontFamily={SANS}
-        fontSize={titleSize}
-        fontWeight={600}
-        letterSpacing={-0.15}
-      >
-        {title}
-      </text>
-      <text x={tx} y={mid + 15} fill={MUTED} fontFamily={SANS} fontSize={subSize}>
-        {sub}
-      </text>
-    </g>
-  );
-}
-
-function HostPill({
-  cx,
-  cy,
-  text,
-  size = 11,
-}: {
-  cx: number;
-  cy: number;
-  text: string;
-  size?: number;
-}) {
-  const w = text.length * size * 0.62 + 18;
-  return (
-    <g>
-      <rect x={cx - w / 2} y={cy - 12} width={w} height={24} rx={12} fill="#FFFFFF" stroke={BOX} />
-      <text
-        x={cx}
-        y={cy + 4}
-        textAnchor="middle"
-        fill={INK}
-        fontFamily={MONO}
-        fontSize={size}
-        fontWeight={500}
-      >
-        {text}
-      </text>
-    </g>
-  );
-}
-
-function RoutePill({
-  x,
-  cy,
-  w,
-  color,
-  text,
-}: {
-  x: number;
-  cy: number;
-  w: number;
-  color: string;
-  text: string;
-}) {
-  const textW = text.length * 6.3;
-  const start = x + (w - (textW + 13)) / 2;
-  return (
-    <g>
-      <rect
-        x={x}
-        y={cy - 12}
-        width={w}
-        height={24}
-        rx={12}
-        fill="#FAFAFA"
-        stroke="#D4D4D4"
-        strokeDasharray="3 3"
-      />
-      <circle cx={start + 3} cy={cy} r={3} fill={color} />
-      <text x={start + 13} y={cy + 4} fill={INK} fontFamily={SANS} fontSize={12} fontWeight={500}>
-        {text}
-      </text>
-    </g>
-  );
-}
-
-function StartRing({ x, y, color }: { x: number; y: number; color: string }) {
-  return <circle cx={x} cy={y} r={4} fill="#FFFFFF" stroke={color} strokeWidth={2} />;
-}
-
-function PrismaZoneLabel({ x, y }: { x: number; y: number }) {
-  return (
-    <g>
-      <Logo logo={PRISMA_LOGO} x={x} y={y - 12} w={15} h={15} />
-      <ZoneLabel x={x + 23} y={y} text="Prisma Postgres" weight={600} color={INK} />
-    </g>
-  );
-}
-
-function RegionPill({ right, y }: { right: number; y: number }) {
-  return (
-    <g>
-      <rect x={right - 88} y={y - 16} width={88} height={22} rx={11} fill="#FFFFFF" stroke={BOX} />
-      <text
-        x={right - 44}
-        y={y - 1}
-        textAnchor="middle"
-        fill={MUTED}
-        fontFamily={SANS}
-        fontSize={11.5}
-        fontWeight={500}
-      >
-        One region
-      </text>
-    </g>
-  );
-}
-
-/** Desktop and tablet, at the article column's width. */
-function WideDiagram() {
-  const W = 760;
-  const H = 344;
-  const id = "apps-reach";
-  const rows = [112, 208, 304];
-  const appRight = 186;
-  const pg = { x: 352, w: W - 352 };
-  const group = { x: 364, y: 50, w: 272, h: 108 };
-  const proxy = { x: 376, w: 94 };
-  const bouncer = { x: 486, w: 138 };
-  const cardH = 60;
-  const db = { x: 648, y: 64, w: 100, h: 272 };
-  const gapMid = (200 + pg.x) / 2;
-
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width={W}
-      height={H}
-      role="img"
-      aria-labelledby="apps-reach-title apps-reach-desc"
-      className="hidden h-auto w-full sm:block"
+    <div
+      className={`flex min-w-0 items-center gap-2.5 rounded-xl border border-[#E4E4E4] bg-white px-4 py-3.5 ${className}`}
     >
-      <title id="apps-reach-title">How apps reach Prisma Postgres</title>
-      <desc id="apps-reach-desc">{SERVERLESS_PATHS_DIAGRAM_TEXT}</desc>
-      <Markers id={id} />
+      {lead}
+      <div className="min-w-0 leading-tight">
+        <div className="text-[12.5px] font-semibold tracking-[-0.01em] whitespace-nowrap text-[#121212]">
+          {title}
+        </div>
+        <div className="mt-1 text-[11px] whitespace-nowrap text-[#6B6B6B]">{sub}</div>
+      </div>
+    </div>
+  );
+}
 
-      <rect
-        x={0.5}
-        y={0.5}
-        width={200}
-        height={H - 1}
-        rx={16}
-        fill="#FFFFFF"
-        stroke="#D4D4D4"
-        strokeDasharray="4 4"
-      />
-      <rect
-        x={pg.x + 0.5}
-        y={0.5}
-        width={pg.w - 1}
-        height={H - 1}
-        rx={16}
-        fill="#FAFAFA"
-        stroke="#EDEDED"
-      />
-      <rect
-        x={group.x}
-        y={group.y}
-        width={group.w}
-        height={group.h}
-        rx={14}
-        fill="#F2F2F2"
-        stroke="#E6E6E6"
-      />
+function HostPill({ text }: { text: string }) {
+  return (
+    <span className="relative z-10 rounded-full border border-[#E4E4E4] bg-white px-2 py-1 font-[family-name:var(--font-code)] text-[10px] leading-none whitespace-nowrap text-[#121212]">
+      {text}
+    </span>
+  );
+}
 
-      <g fill="none" stroke={LINE} strokeWidth={1.5} strokeLinecap="round">
-        <path d={`M${appRight} ${rows[0]} H${proxy.x - 6}`} markerEnd={`url(#${id}-pooled)`} />
-        <path
-          d={`M${proxy.x + proxy.w} ${rows[0]} H${bouncer.x - 6}`}
-          markerEnd={`url(#${id}-pooled)`}
+function Arrowhead({ color, className = "" }: { color: string; className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 6 6" className={`size-[7px] flex-none ${className}`}>
+      <path d="M0 0 L6 3 L0 6 Z" fill={color} />
+    </svg>
+  );
+}
+
+/** A horizontal connector: start ring, line, optional pill on the line, arrowhead. */
+function Connector({
+  color,
+  pill,
+  ring = false,
+}: {
+  color: string;
+  pill?: string;
+  ring?: boolean;
+}) {
+  return (
+    <div className="relative flex w-full items-center self-center">
+      {ring ? (
+        <span
+          aria-hidden
+          className="relative z-10 -ml-[5px] size-[9px] flex-none rounded-full border-2 bg-white"
+          style={{ borderColor: color }}
         />
-        <path
-          d={`M${bouncer.x + bouncer.w} ${rows[0]} H${db.x - 6}`}
-          markerEnd={`url(#${id}-pooled)`}
+      ) : null}
+      <div className="relative flex flex-1 items-center justify-center">
+        <span
+          aria-hidden
+          className="absolute inset-x-0 top-1/2 h-[1.5px] -translate-y-1/2 bg-[#CFCFCF]"
         />
-        <path d={`M${appRight} ${rows[1]} H${db.x - 6}`} markerEnd={`url(#${id}-driver)`} />
-        <path d={`M${appRight} ${rows[2]} H${db.x - 6}`} markerEnd={`url(#${id}-direct)`} />
-      </g>
+        {pill ? <HostPill text={pill} /> : null}
+      </div>
+      <Arrowhead color={color} className="-ml-px" />
+    </div>
+  );
+}
 
-      <ZoneLabel x={20} y={30} text="Your app" />
-      <PrismaZoneLabel x={pg.x + 16} y={30} />
-      <RegionPill right={W - 14} y={30} />
-      <ZoneLabel x={group.x + 14} y={group.y + 18} text="Pooling" />
+function PrismaLabel() {
+  return (
+    <span className="inline-flex items-center gap-2 text-[10.5px] font-semibold tracking-[0.1em] text-[#121212] uppercase">
+      <Logo logo={PRISMA_LOGO} className="size-3.5" />
+      Prisma Postgres
+    </span>
+  );
+}
 
-      {ROUTES.map((r, i) => (
-        <g key={r.key}>
-          <Card x={14} y={rows[i] - 32} w={172} h={64} title={r.title} sub={r.sub} dot={r.color} />
-          <StartRing x={appRight} y={rows[i]} color={r.color} />
-          <HostPill cx={gapMid} cy={rows[i]} text={r.host} />
-        </g>
-      ))}
+function RegionPill() {
+  return (
+    <span className="rounded-full border border-[#E4E4E4] bg-white px-2.5 py-0.5 text-[10.5px] font-medium text-[#6B6B6B]">
+      One region
+    </span>
+  );
+}
 
-      <Card
-        x={proxy.x}
-        y={rows[0] - cardH / 2 + 8}
-        w={proxy.w}
-        h={cardH - 8}
-        title="Proxy"
-        sub="Connections"
-        titleSize={14.5}
-        subSize={12}
-      />
-      <g>
-        <Card
-          x={bouncer.x}
-          y={rows[0] - cardH / 2 + 8}
-          w={bouncer.w}
-          h={cardH - 8}
+/** The "connects through" cell for each route. */
+function RouteCell({ route }: { route: Route }) {
+  if (route.key === "pooled") {
+    return (
+      <div className="flex h-full items-stretch rounded-xl border border-[#E6E6E6] bg-[#F2F2F2] p-2">
+        <Box title="Proxy" sub="Connections" className="w-[100px] flex-none" />
+        <Arrowhead color={CYAN} className="mx-1.5 self-center" />
+        <Box
           title="PgBouncer"
           sub="Transaction mode"
-          titleSize={14.5}
-          subSize={11.5}
-          titleX={bouncer.x + 38}
+          className="min-w-0 flex-1"
+          lead={<Logo logo={PGBOUNCER_LOGO} className="h-3.5 w-4" />}
         />
-        <Logo logo={PGBOUNCER_LOGO} x={bouncer.x + 12} y={rows[0] - 6} w={20} h={17} />
-      </g>
-
-      <RoutePill x={group.x} cy={rows[1]} w={group.w} color={YELLOW} text="Serverless driver" />
-      <RoutePill x={group.x} cy={rows[2]} w={group.w} color={RED} text="Bypasses the pooler" />
-
-      <rect x={db.x} y={db.y} width={db.w} height={db.h} rx={12} fill="#FFFFFF" stroke={INK} />
-      <Logo logo={POSTGRES_LOGO} x={db.x + db.w / 2 - 17} y={db.y + db.h / 2 - 40} w={34} h={35} />
-      <text
-        x={db.x + db.w / 2}
-        y={db.y + db.h / 2 + 22}
-        textAnchor="middle"
-        fill={INK}
-        fontFamily={SANS}
-        fontSize={15}
-        fontWeight={600}
-        letterSpacing={-0.15}
-      >
-        PostgreSQL
-      </text>
-    </svg>
+      </div>
+    );
+  }
+  const label =
+    route.key === "driver"
+      ? { title: "Serverless driver", sub: "HTTPS and WebSocket" }
+      : { title: "Direct", sub: "Bypasses the pooler" };
+  return (
+    <div className="flex h-full items-center justify-center gap-2.5 rounded-xl border border-[#E6E6E6] bg-[#F2F2F2] px-4 py-3">
+      <span
+        aria-hidden
+        className="size-1.5 flex-none rounded-full"
+        style={{ background: route.color }}
+      />
+      <div className="text-center leading-tight">
+        <div className="text-[12.5px] font-semibold text-[#121212]">{label.title}</div>
+        <div className="mt-1 text-[11px] text-[#6B6B6B]">{label.sub}</div>
+      </div>
+    </div>
   );
 }
 
-/** Phones: three lanes running down into Prisma Postgres. */
-function NarrowDiagram() {
-  const W = 360;
-  const id = "apps-reach-sm";
-  const lanes = [64, 180, 296];
-  const appBox = { y: 40, w: 108, h: 60 };
-  const pgTop = 176;
-  const group = { x: 8, y: 192, w: 112, h: 174 };
-  const proxyY = 208;
-  const bouncerY = 276;
-  const boxH = 50;
-  const db = { x: 10, y: 392, w: 340, h: 64 };
-  const H = db.y + db.h + 44;
-  const shortTitles = ["Functions", "Edge", "Admin tools"];
-  const shortSubs = ["Node.js, Bun", "No TCP", "pg_dump"];
-
+function Database({ className = "" }: { className?: string }) {
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width={W}
-      height={H}
-      role="img"
-      aria-labelledby="apps-reach-title-sm apps-reach-desc-sm"
-      className="block h-auto w-full sm:hidden"
+    <div
+      className={`flex items-center justify-center gap-3 rounded-xl border border-[#BDBDBD] bg-white px-3 py-4 ${className}`}
     >
-      <title id="apps-reach-title-sm">How apps reach Prisma Postgres</title>
-      <desc id="apps-reach-desc-sm">{SERVERLESS_PATHS_DIAGRAM_TEXT}</desc>
-      <Markers id={id} />
+      <Logo logo={POSTGRES_LOGO} className="h-7 w-[27px]" />
+      <span className="text-[13px] font-semibold tracking-[-0.01em] text-[#121212]">
+        PostgreSQL
+      </span>
+    </div>
+  );
+}
 
-      <rect
-        x={0.5}
-        y={0.5}
-        width={W - 1}
-        height={pgTop - 56}
-        rx={16}
-        fill="#FFFFFF"
-        stroke="#D4D4D4"
-        strokeDasharray="4 4"
+/** Wide layout: a three-row grid inside two zones. */
+function WideDiagram() {
+  // Columns: app card | host connector | route cell | short connector | database.
+  return (
+    <div
+      role="img"
+      aria-label={SERVERLESS_PATHS_DIAGRAM_TEXT}
+      className="relative hidden grid-cols-[minmax(0,180fr)_minmax(152px,140fr)_minmax(0,280fr)_22px_minmax(0,100fr)] grid-rows-[auto_repeat(3,78px)_10px] gap-y-3 @min-[700px]:grid"
+    >
+      {/* Zones sit behind the items in the same grid areas. */}
+      <div
+        aria-hidden
+        className="col-start-1 row-span-full row-start-1 rounded-2xl border border-dashed border-[#D4D4D4] bg-white"
       />
-      <rect
-        x={0.5}
-        y={pgTop + 0.5}
-        width={W - 1}
-        height={H - pgTop - 1}
-        rx={16}
-        fill="#FAFAFA"
-        stroke="#EDEDED"
-      />
-      <rect
-        x={group.x}
-        y={group.y}
-        width={group.w}
-        height={group.h}
-        rx={14}
-        fill="#F2F2F2"
-        stroke="#E6E6E6"
+      <div
+        aria-hidden
+        className="col-span-3 col-start-3 row-span-full row-start-1 -ml-4 rounded-2xl border border-[#EDEDED] bg-[#FAFAFA]"
       />
 
-      <g fill="none" stroke={LINE} strokeWidth={1.5} strokeLinecap="round">
-        <path
-          d={`M${lanes[0]} ${appBox.y + appBox.h} V${proxyY - 6}`}
-          markerEnd={`url(#${id}-pooled)`}
-        />
-        <path
-          d={`M${lanes[0]} ${proxyY + boxH} V${bouncerY - 6}`}
-          markerEnd={`url(#${id}-pooled)`}
-        />
-        <path d={`M${lanes[0]} ${bouncerY + boxH} V${db.y - 6}`} markerEnd={`url(#${id}-pooled)`} />
-        <path
-          d={`M${lanes[1]} ${appBox.y + appBox.h} V${db.y - 6}`}
-          markerEnd={`url(#${id}-driver)`}
-        />
-        <path
-          d={`M${lanes[2]} ${appBox.y + appBox.h} V${db.y - 6}`}
-          markerEnd={`url(#${id}-direct)`}
-        />
-      </g>
+      <div className="col-start-1 row-start-1 px-4 pt-4">
+        <span className={LABEL}>Your app</span>
+      </div>
+      <div className="col-span-3 col-start-3 row-start-1 flex items-center justify-between pt-4 pr-3">
+        <PrismaLabel />
+        <RegionPill />
+      </div>
 
-      <ZoneLabel x={14} y={26} text="Your app" />
-      <rect x={group.x + 8} y={group.y + group.h - 24} width={68} height={18} fill="#F2F2F2" />
-      <ZoneLabel x={group.x + 12} y={group.y + group.h - 10} text="Pooling" />
-
-      {ROUTES.map((r, i) => (
-        <g key={r.key}>
-          <Card
-            x={lanes[i] - appBox.w / 2}
-            y={appBox.y}
-            w={appBox.w}
-            h={appBox.h}
-            title={shortTitles[i]}
-            sub={shortSubs[i]}
-            dot={r.color}
-            titleSize={13}
-            subSize={11}
-            titleX={lanes[i] - appBox.w / 2 + 30}
-          />
-          <StartRing x={lanes[i]} y={appBox.y + appBox.h} color={r.color} />
-          <HostPill cx={lanes[i]} cy={146} text={r.host} size={i === 0 ? 9.5 : 10.5} />
-        </g>
+      {ROUTES.map((route, i) => (
+        <div key={route.key} className="contents">
+          <div className="col-start-1 flex px-3" style={{ gridRowStart: i + 2 }}>
+            <Box
+              title={route.title}
+              sub={route.sub}
+              lead={<Dot color={route.color} />}
+              className="flex-1"
+            />
+          </div>
+          <div className="col-start-2 flex" style={{ gridRowStart: i + 2 }}>
+            <div className="flex flex-1 items-center pl-1">
+              <Connector color={route.color} pill={route.host} ring />
+            </div>
+          </div>
+          <div className="col-start-3 flex min-w-0 flex-col" style={{ gridRowStart: i + 2 }}>
+            <RouteCell route={route} />
+          </div>
+          <div className="col-start-4 flex items-center px-1" style={{ gridRowStart: i + 2 }}>
+            <div className="flex-1">
+              <Connector color={route.color} />
+            </div>
+          </div>
+        </div>
       ))}
 
-      <Card
-        x={group.x + 8}
-        y={proxyY}
-        w={group.w - 16}
-        h={boxH}
-        title="Proxy"
-        sub="Connections"
-        titleSize={13}
-        subSize={11}
-      />
-      <Card
-        x={group.x + 8}
-        y={bouncerY}
-        w={group.w - 16}
-        h={boxH}
-        title="PgBouncer"
-        sub="Transaction"
-        titleSize={13}
-        subSize={11}
-        titleX={group.x + 36}
-      />
-      <Logo logo={PGBOUNCER_LOGO} x={group.x + 14} y={bouncerY + boxH / 2 - 14} w={16} h={14} />
+      <div className="col-start-5 row-span-3 row-start-2 flex pr-2">
+        <Database className="flex-1 flex-col gap-2" />
+      </div>
+    </div>
+  );
+}
 
-      <RoutePill x={lanes[1] - 58} cy={250} w={116} color={YELLOW} text="Serverless driver" />
-      <RoutePill x={lanes[2] - 56} cy={300} w={112} color={RED} text="Bypasses pooler" />
-
-      <rect x={db.x} y={db.y} width={db.w} height={db.h} rx={12} fill="#FFFFFF" stroke={INK} />
-      <Logo logo={POSTGRES_LOGO} x={db.x + db.w / 2 - 66} y={db.y + db.h / 2 - 14} w={27} h={28} />
-      <text
-        x={db.x + db.w / 2 + 14}
-        y={db.y + db.h / 2 + 5}
-        textAnchor="middle"
-        fill={INK}
-        fontFamily={SANS}
-        fontSize={15}
-        fontWeight={600}
-      >
-        PostgreSQL
-      </text>
-
-      <PrismaZoneLabel x={14} y={H - 16} />
-      <RegionPill right={W - 12} y={H - 16} />
-    </svg>
+/** Narrow layout: the two zones stacked; each route keeps its colour from app to cell. */
+function NarrowDiagram() {
+  return (
+    <div
+      role="img"
+      aria-label={SERVERLESS_PATHS_DIAGRAM_TEXT}
+      className="flex flex-col gap-3 @min-[700px]:hidden"
+    >
+      <div className="rounded-2xl border border-dashed border-[#D4D4D4] bg-white p-4">
+        <span className={LABEL}>Your app</span>
+        <div className="mt-3 grid gap-2.5">
+          {ROUTES.map((route) => (
+            <div key={route.key} className="flex items-center gap-3">
+              <Box
+                title={route.title}
+                sub={route.sub}
+                lead={<Dot color={route.color} />}
+                className="flex-1"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex justify-center">
+        <svg aria-hidden viewBox="0 0 10 22" className="h-5 w-2.5">
+          <path d="M5 0 V17" stroke="#CFCFCF" strokeWidth="1.5" />
+          <path d="M1.5 15 L5 21 L8.5 15 Z" fill="#9A9B9E" />
+        </svg>
+      </div>
+      <div className="rounded-2xl border border-[#EDEDED] bg-[#FAFAFA] p-4">
+        <div className="flex items-center justify-between">
+          <PrismaLabel />
+          <RegionPill />
+        </div>
+        <div className="mt-3 grid gap-2.5">
+          {ROUTES.map((route) => (
+            <div key={route.key} className="grid gap-1.5">
+              <div className="flex items-center gap-2">
+                <Dot color={route.color} />
+                <HostPill text={route.host} />
+              </div>
+              <RouteCell route={route} />
+            </div>
+          ))}
+          <div className="flex justify-center py-1">
+            <svg aria-hidden viewBox="0 0 10 22" className="h-5 w-2.5">
+              <path d="M5 0 V17" stroke="#CFCFCF" strokeWidth="1.5" />
+              <path d="M1.5 15 L5 21 L8.5 15 Z" fill="#9A9B9E" />
+            </svg>
+          </div>
+          <Database />
+        </div>
+      </div>
+    </div>
   );
 }
 
 function LegendItem({ color, name, detail }: { color: string; name: string; detail: string }) {
   return (
-    <span className="inline-flex items-center gap-2.5">
-      <svg aria-hidden width="28" height="10" viewBox="0 0 28 10" className="flex-none">
-        <path d="M5 5 H27" stroke={LINE} strokeWidth="1.5" strokeLinecap="round" />
+    <span className="flex items-start gap-2.5">
+      <svg aria-hidden width="24" height="10" viewBox="0 0 24 10" className="mt-[5px] flex-none">
+        <path d="M5 5 H23" stroke="#CFCFCF" strokeWidth="1.5" strokeLinecap="round" />
         <circle cx="5" cy="5" r="4" fill="#FFFFFF" stroke={color} strokeWidth="2" />
       </svg>
-      <span>
-        <b className="font-semibold text-foreground">{name}</b>{" "}
-        <span className="text-[#6B6B6B]">{detail}</span>
+      <span className="leading-5">
+        <b className="font-semibold text-foreground">{name}</b>
+        <span className="block text-[#6B6B6B]">{detail}</span>
       </span>
     </span>
   );
@@ -568,10 +350,10 @@ function LegendItem({ color, name, detail }: { color: string; name: string; deta
 /** How serverless functions, edge runtimes and admin tools reach Prisma Postgres. */
 export function ServerlessPathsDiagram() {
   return (
-    <figure className="not-prose my-10">
+    <figure className="not-prose @container my-10">
       <WideDiagram />
       <NarrowDiagram />
-      <figcaption className="mt-5 flex flex-wrap gap-x-7 gap-y-2 border-t border-[#EDEDED] pt-4 text-[13px] leading-6">
+      <figcaption className="mt-5 grid gap-x-6 gap-y-3 border-t border-[#EDEDED] pt-4 text-[12.5px] @min-[560px]:grid-cols-3">
         <LegendItem color={CYAN} name="Pooled" detail="App traffic, TCP 5432" />
         <LegendItem color={YELLOW} name="Serverless" detail="Edge runtimes, HTTPS and WebSocket" />
         <LegendItem color={RED} name="Direct" detail="Admin tools, TCP 5432" />

@@ -15,6 +15,7 @@ import { getBaseUrl } from "@/lib/url";
 import { formatAnswerDate, type AnswerPage as AnswerPageContent } from "@/lib/answer-pages";
 import { getMDXComponents } from "@/mdx-components";
 import { EnvironmentDiagram } from "./environment-diagram";
+import { CommandPill } from "./command-pill";
 import { GuideToc } from "./guide-toc";
 import { HeaderRipple } from "./header-ripple";
 import { ServerlessPathsDiagram } from "./serverless-paths-diagram";
@@ -161,10 +162,11 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
             <p className="mt-4 text-pretty leading-relaxed text-foreground">
               {data.cta.description}
             </p>
-            <div className="mt-7">
+            <div className="mt-7 flex flex-wrap items-center gap-3">
               <PrismButton href={data.cta.href} ctaLocation="answer-page">
                 {data.cta.label}
               </PrismButton>
+              {data.cta.command ? <CommandPill command={data.cta.command} /> : null}
             </div>
           </section>
 
