@@ -3,7 +3,7 @@
 // Rules for this page's copy (SEO brief, 18 Oct 2026; slug override 21 Oct):
 //   - Price never appears in the title, meta description, H1 or closing CTA.
 //   - Title tag and meta description are taken verbatim from the brief. The
-//     description was shortened to 156 characters on 25 Nov 2026 (search
+//     description was shortened to 156 characters on 24 Nov 2026 (search
 //     engines cut descriptions over 160); its facts are the brief's.
 //   - All FAQ answers are rendered in the server HTML (the shared Faq
 //     accordion already does that with Radix's `forceMount`).
@@ -38,7 +38,7 @@ export const FREE_POSTGRES_HERO_CHECKS = [
   "With a free account: no time limit, for claimed databases and databases created in the Prisma Console.",
 ] as const;
 
-export const FREE_POSTGRES_LAST_MODIFIED = "2026-11-25";
+export const FREE_POSTGRES_LAST_MODIFIED = "2026-11-24";
 
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CREATE_DB_WEB_URL = "https://create-db.prisma.io";
