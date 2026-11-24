@@ -1,18 +1,5 @@
-import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
-import { Marker } from "@/components/brand/marker";
-import { Pattern } from "@/components/brand/pattern";
-import { RoleKicker } from "@/components/brand/role-kicker";
-import { SpectrumRing } from "@/components/brand/spectrum-ring";
-import { Texture } from "@/components/brand/texture";
-import { CheckBold, X } from "@/components/icons/forma";
-import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
-import { cn } from "@/lib/utils";
 import { CostBar } from "./pricing-cost-bar";
-
-// Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
 
 // V2 copy verbatim, with "No connection limits" removed — Gregory confirmed
 // pooled limits do exist (10/100/500/1000).
@@ -21,10 +8,16 @@ const SPECTRUM =
 // 10M requests, 10-20M database operations, 40 GB database, database compute
 // of 1-2 CU always on (Supabase Medium-Large), 1-3 developer seats.
 //  - Supabase Pro $95-145 and Prisma Pro $72-90 come from the 2026-07-30
-//    "Recommended website comparison" (fair 50K MAU model). Recomputing Prisma
-//    Pro from prisma.io/pricing on the same basis gives $60-99: $49 plan, ops
-//    over 10M at $2 per million, memory at $0.006 per GB-hour, CPU at $0.064
-//    per vCPU-hour, bandwidth at $0.025 per GB.
+//    "Recommended website comparison" (fair 50K MAU model).
+//  - Rechecked 2026-11-22 against neon.com, supabase.com and vercel.com
+//    pricing: every rate above unchanged. Supabase reproduces exactly: $25
+//    Pro + $60-110 Medium-Large compute - $10 credit + $4 disk (32 GB over at
+//    $0.125) + $16 Edge Function invocations (8M over at $2/M) = $95-145.
+//    Prisma Pro reproduces with this page's own calculator (calc.ts, "API or
+//    web app" profile, 10M requests, 10-20M operations, 40 GB): $49 plan +
+//    $0-20 operations + ~$22 Compute (833 GB-hours, 167 vCPU-hours, 250 GB
+//    out) = $71-91. The card keeps $72-90, which pricing-scale.tsx on the
+//    home page also uses.
 //  - Neon + Vercel $110-270, recomputed from list prices on the same basis.
 //    Neon Launch (neon.com/pricing): 730-1,460 CU-hours at $0.106 plus 40 GB
 //    at $0.35 per GB-month = $91-169; database egress stays inside the 500 GB
@@ -46,6 +39,56 @@ const SPECTRUM =
 //    like-for-like plan, so it was replaced.
 // Re-check these figures whenever any of the four pricing pages change.
 
+// /pricing compares Netlify, Supabase and Railway (client, 2026-11-24:
+// "use Netlify instead of Vercel", "also add Railway"). The Neon + Vercel
+// column above stays in ALTERNATIVES for /lp/providers and the home page,
+// whose copy names Vercel; /pricing renders PRICING_ALTERNATIVES below.
+//
+// Provenance, checked 2026-11-24 against netlify.com/pricing, the Netlify
+// billing docs (credit-based plans, how credits work, auto recharge) and
+// railway.com/pricing, docs.railway.com (plans, cost control, workspaces).
+// Same basis as above, plus about 250 GB of data out: the bandwidth this
+// page's own calculator gives Prisma for 10M requests (calc.ts, "API or web
+// app"), so every column now prices the same transfer.
+//  - Netlify Pro $130-240, app and database on Netlify (client, 2026-11-24:
+//    "they have their own db now"). Netlify Database is billed in Netlify
+//    credits on credit-based plans (docs.netlify.com/build/data-and-storage/
+//    netlify-database/billing-and-usage): 10 credits per database compute
+//    unit, 20 credits per GB of data out of the database, storage free for
+//    now (40 GB is inside Pro's 100 GB per database). Netlify Pro: $20 a month
+//    with 3,000 credits and unlimited members (no seat fees). Usage in
+//    credits: web requests 10M at 2 per 10,000 = 2,000; function compute
+//    400-1,300 GB-hours (the same range as Vercel's provisioned memory above)
+//    at 10 per GB-hour = 4,000-13,000; bandwidth 250 GB at 20 per GB = 5,000;
+//    database compute 1-2 units always on, 730-1,460 unit-hours at 10 =
+//    7,300-14,600; database data out 20-40 GB (about 2 KB per operation) at
+//    20 per GB = 400-800. Total 18,700-35,400, less 3,000 included =
+//    15,700-32,400 extra, bought in Pro packs of 1,500 credits for $10 (auto
+//    recharge): 11-22 packs = $110-220. Netlify $130-240. Production deploys
+//    (15 credits each) are left out, so this is the low side. The larger Pro
+//    credit tiers would be cheaper per credit, but Netlify doesn't publish
+//    their prices, so the packs are what can be checked.
+//  - Railway Pro $70-125. $20 a month per workspace, which counts towards
+//    usage; unlimited seats; billed per second on the CPU, memory and disk
+//    actually used ($20 per vCPU-month, $10 per GB-month of memory, $0.15 per
+//    GB-month of volume, $0.05 per GB egress). App: 0.5-1 GB resident memory
+//    all month $5-10, 100-200 vCPU-hours $3-5. Postgres on Railway, sized like
+//    the 1-2 Neon CU above (4-8 GB memory, 0.25-0.5 vCPU on average): $40-80
+//    memory, $5-10 CPU. Volume 40 GB $6. Egress 250 GB $12.50 (app-to-database
+//    traffic stays on the private network). Usage $71-124, above the $20 fee,
+//    so the bill is the usage: $70-125.
+//  - Prisma Pro $72-90 already includes ~250 GB out (see above).
+//  - Midpoints: Netlify $185, Supabase $120, Railway $97.50, Prisma $81.
+//    Prisma is about 44% of Netlify, so "less than half as much" holds; Railway is close to Prisma, and the page says so plainly.
+// Re-check whenever any of these pricing pages change.
+
+// What the costs assume, shown under the columns. Keep in step with the
+// provenance notes above; update the date whenever the figures are rechecked.
+export const COMPARISON_BASIS =
+  "Estimated at list prices for about 50K monthly active users: 10M requests, 10–20M database " +
+  "operations, a 40 GB database, about 250 GB of data out and 1–3 developer seats. Prices " +
+  "checked 24 November 2026.";
+
 // Placeholder marker. Anything using PENDING is awaiting figures from the
 // client — never fill these in with estimates.
 //
@@ -62,6 +105,7 @@ export const ALTERNATIVES = [
     id: "neon-vercel",
     name: "Typical stack (Neon + Vercel)",
     shortName: "Neon + Vercel",
+    compareHref: "/compare/vercel-neon-drizzle",
     cost: "$110–270",
     pending: false,
     // Billing and data transfer checked 2026-10-22: Neon added from the Vercel
@@ -79,7 +123,7 @@ export const ALTERNATIVES = [
       },
       {
         label: "Database data transfer",
-        value: "500 GB egress per project included, then $0.10/GB",
+        value: "500 GB egress per project included, then $0.10 per GB",
       },
       {
         label: "Spend limits",
@@ -96,6 +140,7 @@ export const ALTERNATIVES = [
     id: "supabase",
     name: "Supabase Pro",
     shortName: "Supabase",
+    compareHref: "/compare/supabase",
     cost: "$95–145",
     pending: false,
     rows: [
@@ -105,7 +150,7 @@ export const ALTERNATIVES = [
       },
       {
         label: "Database data transfer",
-        value: "250 GB egress included, then $0.09/GB",
+        value: "250 GB egress included, then $0.09 per GB",
       },
       // The "database compute excluded" caveat is the client's own wording and
       // is the point of the row — a spend cap that doesn't cover compute is not
@@ -113,6 +158,63 @@ export const ALTERNATIVES = [
       {
         label: "Spend limits",
         value: "Spend cap on by default for covered usage; database compute excluded",
+      },
+    ],
+  },
+];
+
+// The columns /pricing shows (see the provenance note above COMPARISON_BASIS).
+export const PRICING_ALTERNATIVES = [
+  {
+    id: "netlify",
+    name: "Netlify Pro",
+    shortName: "Netlify",
+    compareHref: "/blog/prisma-vs-netlify",
+    cost: "$130–240",
+    pending: false,
+    // Netlify docs: Pro is credit-based; "all of your web projects
+    // (sites/apps) are paused" when credits run out, unless auto recharge
+    // (off by default) buys more. Netlify Database is paid in the same
+    // credits; 20 credits per GB out is $0.13 at the $10 per 1,500 pack.
+    rows: [
+      {
+        label: "Billing",
+        value: "One Netlify bill; app and database usage both paid in credits",
+      },
+      {
+        label: "Database data transfer",
+        value: "20 credits per GB out of the database (about $0.13 per GB)",
+      },
+      {
+        label: "Spend limits",
+        value: "Sites pause when credits run out, unless auto recharge is on",
+      },
+    ],
+  },
+  ALTERNATIVES[1],
+  {
+    id: "railway",
+    name: "Railway Pro",
+    shortName: "Railway",
+    compareHref: "/blog/app-hosting-platforms-with-managed-postgres-2026",
+    cost: "$70–125",
+    pending: false,
+    // Railway docs: billed per second "for the CPU, memory, and disk your
+    // services actually use"; private networking keeps traffic "within
+    // Railway's private network"; a hard usage limit takes "all your
+    // workloads ... offline", with email reminders at 75%, 90% and 100%.
+    rows: [
+      {
+        label: "Billing",
+        value: "One bill for app and database, on the CPU, memory and disk used",
+      },
+      {
+        label: "Database data transfer",
+        value: "Egress $0.05 per GB; app-to-database traffic stays on the private network",
+      },
+      {
+        label: "Spend limits",
+        value: "Email alerts and a hard usage limit you set; services go offline when it's hit",
       },
     ],
   },
@@ -154,9 +256,14 @@ function costMidpoint(cost: string): number | null {
 const COSTS = [...ALTERNATIVES.map((a) => a.cost), PRISMA.cost];
 const MAX_COST = Math.max(...COSTS.map((c) => costMidpoint(c) ?? 0));
 
+// The bars on /pricing scale to its own widest column (Netlify).
+const PAGE_MAX_COST = Math.max(
+  ...[...PRICING_ALTERNATIVES.map((a) => a.cost), PRISMA.cost].map((c) => costMidpoint(c) ?? 0),
+);
+
 function costFraction(cost: string): number | null {
   const mid = costMidpoint(cost);
-  return mid === null || !MAX_COST ? null : mid / MAX_COST;
+  return mid === null || !PAGE_MAX_COST ? null : mid / PAGE_MAX_COST;
 }
 
 // The headline multiple, rounded from the figures rather than hardcoded, so it
@@ -187,208 +294,116 @@ function PendingBadge() {
   );
 }
 
-// "See how Prisma compares at scale" — wrapped prismatic panel (hero idiom:
-// beam fan and a turning glass prism cropped by the bottom edge).
-//
-// The comparison itself follows the site's established before/after language
-// from comparison.tsx: the alternative sits plain and muted with X marks, the
-// Prisma side is lifted on white with the always-on spectrum ring, the brand
-// cube pattern greyscaled behind it, and CheckBold in prism cyan. The monthly
-// cost leads each side at display size — the figure is the argument, so it
-// gets the emphasis rather than sitting in a table cell.
+// "See how Prisma compares at scale", quietened (client, 2026-11-24: "this is
+// too much, let's quieten this section by a whole bunch"). No panel, wash,
+// beams, glass prism, grain, cards, counting numbers, ticks or spectrum bar:
+// three plain columns on hairlines, like the Compare plans table, with the
+// heading on the page's left edge like the other sections. Each column is
+// marked by its logo; Prisma's cost bar is the one in colour.
+// Each column's logo(s), in place of the kicker's dot (client, 2026-11-24).
+// The marks only, not wordmarks: the column names already say who they are.
+const LOGOS: Record<string, string[]> = {
+  netlify: ["/icons/companies/netlify-logo.svg"],
+  railway: ["/logos/railway.svg"],
+  supabase: ["/icons/companies/supabase.svg"],
+  prisma: ["/logos/prisma-logo-mark.svg"],
+};
+
 export function PricingComparison() {
+  const columns = [
+    ...PRICING_ALTERNATIVES,
+    { ...PRISMA, id: "prisma", pending: false, compareHref: null },
+  ];
   return (
-    <section className="bg-white px-3 py-16 sm:px-4 sm:py-24">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
-        {/* spectral bottom — wash plus the three brand beams */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[34rem] overflow-hidden"
-        >
-          <div
-            className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
-            style={{
-              background: [
-                "radial-gradient(52% 40% at 30% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 30%, transparent), transparent 68%)",
-                "radial-gradient(44% 36% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 24%, transparent), transparent 66%)",
-                "radial-gradient(42% 30% at 74% 100%, color-mix(in srgb, var(--color-prism-red-400) 26%, transparent), transparent 68%)",
-              ].join(","),
-            }}
-          />
-          <div className="absolute bottom-[-24rem] left-[12%] h-[60rem] w-40 origin-bottom rotate-[-26deg] bg-prism-cyan-300/45 blur-[80px]" />
-          <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-44 origin-bottom -translate-x-1/2 rotate-[4deg] bg-prism-yellow-200/50 blur-[72px]" />
-          <div className="absolute bottom-[-28rem] right-[12%] h-[60rem] w-40 origin-bottom rotate-[26deg] bg-prism-red-300/45 blur-[80px]" />
-          <div className="absolute inset-x-0 top-0 h-56 bg-gradient-to-t from-transparent via-white/60 to-white" />
-        </div>
+    <section id="compare" className="scroll-mt-24 bg-white px-4 py-16 sm:px-8 sm:py-24">
+      <div className="mx-auto max-w-site">
+        <Reveal>
+          <h2 className="max-w-[24ch] text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+            See how Prisma compares at scale
+          </h2>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">
+            At around 50K monthly active users, Prisma Pro can cost less than half as much as
+            Netlify Pro, with database data transfer included and a hard spend limit you set.
+          </p>
+        </Reveal>
 
-        {/* glass prism turning at the bottom edge, light concentrating behind it */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute bottom-[-6rem] right-[-4rem] h-[16rem] w-[24rem] rounded-full opacity-25 blur-[70px]"
-          style={{ backgroundImage: SPECTRUM }}
-        />
-        <GlassPrismSpin
-          shape="pentagon"
-          period={24}
-          initialAngle={0.7}
-          className="bottom-[-4.5rem] right-[-3.5rem] w-[14rem] max-md:bottom-[-3rem] max-md:right-[-2rem] max-md:w-[9rem]"
-        />
-        <Texture />
-
-        <div className="relative px-4 pb-12 pt-16 sm:px-8 sm:pb-14 sm:pt-24">
-          <div className="mx-auto max-w-site">
-            <Reveal>
-              <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
-                See how Prisma compares at scale
-              </h2>
-            </Reveal>
-            <Reveal delay={0.1}>
-              <p className="mx-auto mt-6 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
-                Prisma charges per operation: each query your app runs against your database counts
-                as one. No seats. No database egress fees. And every paid plan includes a hard spend
-                limit so there are no surprises.
-              </p>
-            </Reveal>
-            <Reveal delay={0.15}>
-              <p className="mx-auto mt-5 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
-                At around 50K monthly active users,{" "}
-                <strong className="font-semibold text-foreground">
-                  Prisma Pro can cost less than half as much as a typical Neon + Vercel setup
-                </strong>
-                , with one bill, included database data transfer, and a hard spend limit you set.
-              </p>
-            </Reveal>
-
-            {/* Columns stretch to a shared height so the three read as one
-                comparison rather than three stacks of different length. */}
-            <div className="mt-14 grid gap-5 lg:grid-cols-3 lg:gap-6">
-              {/* The alternatives. Recessed translucent glass rather than bare
-                  text: it gives the three columns one shared rhythm so they
-                  read as a comparison, and stays transparent enough for the
-                  spectral wash to carry through from the panel behind. */}
-              {ALTERNATIVES.map((alt, i) => (
-                <Reveal
-                  key={alt.id}
-                  delay={0.2 + i * 0.05}
-                  className={cn(
-                    "flex flex-col rounded-[1.25rem] border p-6 backdrop-blur-[2px]",
-                    alt.pending
-                      ? "border-dashed border-black/15 bg-white/25"
-                      : "border-black/[0.05] bg-white/45",
-                  )}
-                >
-                  <RoleKicker color="bg-foreground/20">{alt.name}</RoleKicker>
-                  {/* A pending column shows the badge at label size, not the
-                      price at display size — a 2.75rem "TBC" reads as a broken
-                      column rather than a reserved one. */}
-                  {alt.pending ? (
-                    <p className="mt-5 flex h-[clamp(2rem,3.4vw,2.75rem)] items-center">
-                      <PendingBadge />
-                    </p>
-                  ) : (
-                    <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-muted-foreground">
-                      <CountUp value={alt.cost} />
-                      <span className="ml-1.5 align-baseline text-base font-normal">/month</span>
-                    </p>
-                  )}
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {alt.pending ? "Awaiting figures" : "at ~50K MAU"}
-                  </p>
-
-                  <CostBar
-                    className="mt-5"
-                    fraction={costFraction(alt.cost)}
-                    delay={0.3 + i * 0.05}
-                  />
-
-                  <dl className="mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
-                    {alt.rows.map((r) => (
-                      <div key={r.label}>
-                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
-                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
-                          {alt.pending ? (
-                            <PendingBadge />
-                          ) : (
-                            <>
-                              <X
-                                className="mt-1 size-4 shrink-0 text-foreground/35"
-                                strokeWidth={3}
-                                aria-hidden
-                              />
-                              {r.value}
-                            </>
-                          )}
-                        </dd>
-                      </div>
+        {/* One shared grid of eight rows (name, price, basis, bar, three
+            facts, link); each column takes all eight as a subgrid, so every
+            row starts at the same height in all three columns however its
+            text wraps (client, 2026-11-24: "now let's fix this"). */}
+        <div className="mt-10 grid border-t border-black/[0.08] md:grid-cols-2 md:gap-x-8 xl:grid-cols-4 xl:grid-rows-[repeat(8,auto)] xl:gap-x-0 xl:divide-x xl:divide-black/[0.06]">
+          {columns.map((col, i) => {
+            const prisma = col.id === "prisma";
+            return (
+              <div
+                key={col.id}
+                className="flex flex-col border-b border-black/[0.06] py-8 xl:row-span-8 xl:grid xl:grid-rows-subgrid xl:border-b-0 xl:px-6 xl:first:pl-0 xl:last:pr-0"
+              >
+                <p className="flex items-center gap-2.5 text-sm font-semibold text-foreground/80">
+                  <span className="flex items-center gap-1.5">
+                    {/* Decorative beside the name, so alt is empty. */}
+                    {(LOGOS[col.id] ?? []).map((src) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={src} src={src} alt="" className="size-[18px]" />
                     ))}
-                  </dl>
-                </Reveal>
-              ))}
-
-              {/* Prisma — lifted on white with the always-on spectrum ring, the
-                  brand cube pattern greyscaled behind it, and a soft spectrum
-                  glow underneath so the winning column sits above the other
-                  two rather than merely beside them. */}
-              <div className="relative">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -inset-x-4 -bottom-6 top-8 rounded-full opacity-25 blur-[52px]"
-                  style={{ backgroundImage: SPECTRUM }}
+                  </span>
+                  {col.name}
+                </p>
+                {col.pending ? (
+                  <p className="mt-4 flex h-9 items-center">
+                    <PendingBadge />
+                  </p>
+                ) : (
+                  <p className="mt-4 font-heading text-3xl font-medium tracking-tight text-foreground">
+                    {col.cost}
+                    <span className="ml-1.5 text-sm font-normal text-muted-foreground">/month</span>
+                  </p>
+                )}
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {col.pending ? "Awaiting figures" : "at ~50K MAU"}
+                </p>
+                {/* Prisma's bar in the brand gradient, the others grey: the
+                    one highlight, on the figure that makes the case (client
+                    picked from five options, 2026-11-24). */}
+                <CostBar
+                  className="mt-4 self-center"
+                  fraction={costFraction(col.cost)}
+                  spectrum={prisma}
+                  delay={0.1 + i * 0.05}
                 />
-                <Reveal
-                  delay={0.3}
-                  className="relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+
+                {/* `contents`, so each fact is its own row of the shared grid. */}
+                <dl className="contents">
+                  {col.rows.map((r, k) => (
+                    <div key={r.label} className={k === 0 ? "mt-6" : "mt-4"}>
+                      <dt className="text-xs font-medium text-muted-foreground">{r.label}</dt>
+                      <dd className="mt-1 text-pretty text-sm leading-relaxed text-foreground">
+                        {col.pending ? <PendingBadge /> : r.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {/* Every column ends on a link, so the three end level:
+                    the others link to their full comparison, Prisma to the
+                    calculator (was "Try your own numbers" in the small print). */}
+                <a
+                  href={col.compareHref ?? "/pricing/calculator"}
+                  className="mt-auto self-start justify-self-start rounded-sm pt-6 text-sm text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 opacity-[0.04] grayscale [mask-image:linear-gradient(to_bottom,black,transparent_55%)]"
-                  >
-                    <Pattern className="h-full w-full" scale={2.5} />
-                  </div>
-
-                  <div className="relative flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                    <RoleKicker color="bg-prism-cyan-400">{PRISMA.name}</RoleKicker>
-                    {SAVINGS_MULTIPLE !== null && (
-                      <Marker className="-mt-0.5 shrink-0">
-                        Up to {SAVINGS_MULTIPLE}x less vs {WIDEST.shortName}
-                      </Marker>
-                    )}
-                  </div>
-                  <p className="relative mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
-                    <CountUp value={PRISMA.cost} />
-                    <span className="ml-1.5 align-baseline text-base font-normal text-muted-foreground">
-                      /month
-                    </span>
-                  </p>
-                  <p className="relative mt-2 text-sm text-muted-foreground">at ~50K MAU</p>
-
-                  <CostBar
-                    className="relative mt-5"
-                    fraction={costFraction(PRISMA.cost)}
-                    spectrum
-                    delay={0.4}
-                  />
-
-                  <dl className="relative mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
-                    {PRISMA.rows.map((r) => (
-                      <div key={r.label}>
-                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
-                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] font-semibold leading-relaxed text-foreground">
-                          <CheckBold
-                            className="mt-1 size-4 shrink-0 text-prism-cyan-500"
-                            aria-hidden
-                          />
-                          {r.value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                  <SpectrumRing />
-                </Reveal>
+                  {col.compareHref ? "Full comparison →" : "Estimate your bill →"}
+                </a>
               </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
+
+        {/* The estimate's basis, with the date it was checked and a way to
+            run your own numbers in the calculator above. */}
+        <p className="mt-6 max-w-3xl text-pretty text-xs leading-relaxed text-muted-foreground">
+          {COMPARISON_BASIS}
+        </p>
       </div>
     </section>
   );

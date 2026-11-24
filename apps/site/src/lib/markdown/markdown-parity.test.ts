@@ -60,9 +60,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/app/pricing/page.tsx",
     "src/components/sections/pricing-hero.tsx",
     "src/components/sections/pricing-plans.tsx",
-    "src/components/sections/pricing-how-it-works.tsx",
-    "src/components/sections/pricing-includes.tsx",
-    "src/components/sections/pricing-calculator.tsx",
+    "src/components/sections/pricing-cost-controls.tsx",
     "src/components/sections/pricing-comparison.tsx",
     "src/components/sections/pricing-spec-table.tsx",
     "src/components/sections/faq.tsx",
@@ -121,7 +119,9 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/orm": 1,
   "/postgres": 1,
   "/compute": 1,
-  "/pricing": 5,
+  // 4 since the calculator moved to /pricing/calculator (2026-11-24): its
+  // h2 left the page; /pricing links to it from the footer under the plans.
+  "/pricing": 4,
   "/studio": 0,
   "/stack": 1,
   "/enterprise": 3,
