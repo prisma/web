@@ -173,7 +173,7 @@ function RouteCell({ route }: { route: Route }) {
     return (
       <div className="flex h-full items-stretch rounded-xl border border-[#E6E6E6] bg-[#F2F2F2] p-2">
         <Box title="Proxy" sub="Connections" className="w-[100px] flex-none" />
-        <Arrowhead color={CYAN} className="mx-1.5 self-center" />
+        <Arrowhead color={CYAN} className="mx-2.5 self-center" />
         <Box
           title="PgBouncer"
           sub="Transaction mode"
@@ -222,7 +222,7 @@ function WideDiagram() {
     <div
       role="img"
       aria-label={SERVERLESS_PATHS_DIAGRAM_TEXT}
-      className="relative hidden grid-cols-[minmax(0,180fr)_minmax(152px,140fr)_minmax(0,280fr)_22px_minmax(0,100fr)] grid-rows-[auto_repeat(3,78px)_10px] gap-y-3 @min-[700px]:grid"
+      className="relative hidden grid-cols-[minmax(0,196fr)_minmax(152px,184fr)_minmax(0,320fr)_44px_minmax(0,124fr)] grid-rows-[auto_repeat(3,80px)_16px] gap-y-4 @min-[860px]:grid"
     >
       {/* Zones sit behind the items in the same grid areas. */}
       <div
@@ -231,20 +231,20 @@ function WideDiagram() {
       />
       <div
         aria-hidden
-        className="col-span-3 col-start-3 row-span-full row-start-1 -ml-4 rounded-2xl border border-[#EDEDED] bg-[#FAFAFA]"
+        className="col-span-3 col-start-3 row-span-full row-start-1 -ml-5 rounded-2xl border border-[#EDEDED] bg-[#FAFAFA]"
       />
 
-      <div className="col-start-1 row-start-1 px-4 pt-4">
+      <div className="col-start-1 row-start-1 px-5 pt-5">
         <span className={LABEL}>Your app</span>
       </div>
-      <div className="col-span-3 col-start-3 row-start-1 flex items-center justify-between pt-4 pr-3">
+      <div className="col-span-3 col-start-3 row-start-1 flex items-center justify-between pt-5 pr-4">
         <PrismaLabel />
         <RegionPill />
       </div>
 
       {ROUTES.map((route, i) => (
         <div key={route.key} className="contents">
-          <div className="col-start-1 flex px-3" style={{ gridRowStart: i + 2 }}>
+          <div className="col-start-1 flex px-4" style={{ gridRowStart: i + 2 }}>
             <Box
               title={route.title}
               sub={route.sub}
@@ -253,14 +253,14 @@ function WideDiagram() {
             />
           </div>
           <div className="col-start-2 flex" style={{ gridRowStart: i + 2 }}>
-            <div className="flex flex-1 items-center pl-1">
+            <div className="flex flex-1 items-center pr-6 pl-1">
               <Connector color={route.color} pill={route.host} ring />
             </div>
           </div>
           <div className="col-start-3 flex min-w-0 flex-col" style={{ gridRowStart: i + 2 }}>
             <RouteCell route={route} />
           </div>
-          <div className="col-start-4 flex items-center px-1" style={{ gridRowStart: i + 2 }}>
+          <div className="col-start-4 flex items-center px-2" style={{ gridRowStart: i + 2 }}>
             <div className="flex-1">
               <Connector color={route.color} />
             </div>
@@ -268,7 +268,7 @@ function WideDiagram() {
         </div>
       ))}
 
-      <div className="col-start-5 row-span-3 row-start-2 flex pr-2">
+      <div className="col-start-5 row-span-3 row-start-2 flex pr-4">
         <Database className="flex-1 flex-col gap-2" />
       </div>
     </div>
@@ -281,7 +281,7 @@ function NarrowDiagram() {
     <div
       role="img"
       aria-label={SERVERLESS_PATHS_DIAGRAM_TEXT}
-      className="flex flex-col gap-3 @min-[700px]:hidden"
+      className="mx-auto flex max-w-xl flex-col gap-3 @min-[860px]:hidden"
     >
       <div className="rounded-2xl border border-dashed border-[#D4D4D4] bg-white p-4">
         <span className={LABEL}>Your app</span>
@@ -350,12 +350,12 @@ function LegendItem({ color, name, detail }: { color: string; name: string; deta
 /** How serverless functions, edge runtimes and admin tools reach Prisma Postgres. */
 export function ServerlessPathsDiagram() {
   return (
-    <figure className="not-prose @container my-10">
+    <figure className="not-prose @container my-12 xl:-mr-[140px]">
       <WideDiagram />
       <NarrowDiagram />
-      <figcaption className="mt-5 grid gap-x-6 gap-y-3 border-t border-[#EDEDED] pt-4 text-[12.5px] @min-[560px]:grid-cols-3">
+      <figcaption className="mx-auto mt-6 grid max-w-xl gap-x-8 gap-y-3 border-t border-[#EDEDED] pt-5 text-[12.5px] @min-[860px]:max-w-none @min-[860px]:grid-cols-3">
         <LegendItem color={CYAN} name="Pooled" detail="App traffic, TCP 5432" />
-        <LegendItem color={YELLOW} name="Serverless" detail="Edge runtimes, HTTPS and WebSocket" />
+        <LegendItem color={YELLOW} name="Serverless" detail="Edge runtimes, HTTPS, WebSocket" />
         <LegendItem color={RED} name="Direct" detail="Admin tools, TCP 5432" />
       </figcaption>
     </figure>
