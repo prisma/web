@@ -83,7 +83,7 @@ test("every tocLabels key names a real H2 anchor or the FAQ", () => {
     const anchors = new Set(
       [...entry.content.matchAll(/^#{1,6} (.+)$/gm)].map((match) =>
         slugger.slug(match[1].replace(/`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")),
-      ),
+      [...entry.content.matchAll(/^## (.+)$/gm)].map((match) =>
     );
     anchors.add("faq");
     for (const key of Object.keys(labels)) {
