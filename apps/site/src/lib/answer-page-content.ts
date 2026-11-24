@@ -29,10 +29,14 @@ export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
       .replace(
         /<EnvironmentDiagram\s*\/>/g,
         "Test: feature branch → own app and API → separate database with synthetic records.\n\nProduction: protected main → own app and API → customer database.\n\nEach app uses its own database credentials. The assistant gets access to the test environment.",
+      )
+      .replace(
+        /<ConnectionStringDiagram\s*\/>/g,
+        "The parts of `postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require`: scheme `postgres://`, user `USER`, password `PASSWORD` (percent-encode special characters), host `pooled.db.prisma.io` (or `db.prisma.io` for a direct connection), port `5432`, database `postgres`, and parameters after `?`, here `sslmode=require`.",
       ),
     "## Frequently asked questions",
     ...data.faq.map(({ question, answer }) => `### ${question}\n\n${answer}`),
-    `## ${data.cta.title}\n\n${data.cta.description}\n\n[${data.cta.label}](${data.cta.href})`,
+    `## ${data.cta.title}\n\n${data.cta.description}\n\n${data.cta.command ? `\`${data.cta.command}\`\n\n` : ""}[${data.cta.label}](${data.cta.href})`,
     "## Related guides",
     ...data.related.map(({ title, href }) => `- [${title}](${href})`),
   ].join("\n\n");
