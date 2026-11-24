@@ -16,7 +16,7 @@ const MONO = 'var(--font-code), ui-monospace, "SF Mono", Menlo, Consolas, monosp
 
 /** Text alternative, also used for the guide's Markdown rendition. */
 export const SERVERLESS_PATHS_DIAGRAM_TEXT =
-  "How apps reach Prisma Postgres. Serverless functions and Prisma Compute apps connect over TCP to the pooled host, pooled.db.prisma.io, where PgBouncer in transaction mode shares a few database connections. Edge runtimes use the serverless driver over HTTP and WebSockets. Migrations, Prisma Studio and pg_dump use the direct host, db.prisma.io. All three paths reach one PostgreSQL 17 database in the region you chose.";
+  "How apps reach Prisma Postgres. Serverless functions and Prisma Compute apps connect over TCP to the pooled host, pooled.db.prisma.io, where PgBouncer in transaction mode shares a few database connections. Edge runtimes use the serverless driver over HTTP and WebSockets. Migrations, Prisma Studio and pg_dump use the direct host, db.prisma.io. All three paths reach one PostgreSQL database in the region you chose.";
 
 function Markers({ id }: { id: string }) {
   return (
@@ -167,7 +167,7 @@ function Database({
       <ellipse cx={cx} cy={top} rx={rx} ry={ry} fill="#FFFFFF" stroke={INK} strokeWidth={1.5} />
       <text
         x={cx}
-        y={top + height / 2 + 6}
+        y={top + height / 2 + 12}
         textAnchor="middle"
         fill={INK}
         fontFamily={HEADING}
@@ -175,16 +175,6 @@ function Database({
         fontWeight={600}
       >
         PostgreSQL
-      </text>
-      <text
-        x={cx}
-        y={top + height / 2 + 23}
-        textAnchor="middle"
-        fill={MUTED}
-        fontFamily={BODY}
-        fontSize={11.5}
-      >
-        version 17
       </text>
     </g>
   );
