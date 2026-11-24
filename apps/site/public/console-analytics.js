@@ -163,8 +163,10 @@
   // failed sends in its own retry queue from then on), "pending" while the tag
   // is loading, and "none" when Freebuff does not apply or the tag failed to
   // load twice (a blocked tag must not hold back the other destinations). A
-  // failed load is retried on the next handoff; the queued signup is kept and
-  // drained by the tag when it loads.
+  // load that neither loads nor errors within 10 seconds counts as failed, so
+  // a hung request cannot hold acknowledgements back either. A failed load is
+  // retried on the next handoff; the queued signup is kept and drained by the
+  // tag when it loads.
   //
   // Consent revocation reaches a loaded tag through the Consent Mode update
   // pushed to `dataLayer` above, which the tag reads; it then stops sending and
@@ -179,10 +181,19 @@
       const script = document.createElement("script");
       script.async = true;
       script.src = freebuffTagUrl;
-      script.onload = () => { freebuffState = "ready"; };
-      script.onerror = () => {
+      const fail = () => {
+        if (freebuffState !== "loading") return;
         freebuffState = "failed";
         script.remove?.();
+      };
+      const timeout = setTimeout(fail, 10000);
+      script.onload = () => {
+        clearTimeout(timeout);
+        freebuffState = "ready";
+      };
+      script.onerror = () => {
+        clearTimeout(timeout);
+        fail();
       };
       document.head.appendChild(script);
     }

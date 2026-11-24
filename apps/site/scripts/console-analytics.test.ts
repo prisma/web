@@ -9,6 +9,7 @@ const script = readFileSync(new URL("../public/console-analytics.js", import.met
 function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } = {}) {
   const messages: unknown[][] = [];
   const scripts: Record<string, unknown>[] = [];
+  const timers: (() => void)[] = [];
   let receive: (event: unknown) => void = () => {};
   const parent = { postMessage: (...args: unknown[]) => messages.push(args) };
   const window: Record<string, any> = {
@@ -20,6 +21,10 @@ function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } =
   vm.runInNewContext(script, {
     window,
     URL,
+    setTimeout: (callback: () => void) => timers.push(callback),
+    clearTimeout: (id: number) => {
+      timers[id - 1] = () => {};
+    },
     document: {
       createElement: () => ({}),
       head: {
@@ -35,6 +40,8 @@ function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } =
     window,
     scripts,
     messages,
+    /** Fires every pending timer, as if its delay had passed. */
+    elapse: () => timers.splice(0).forEach((callback) => callback()),
     send: (
       data: unknown,
       origin = "https://console.prisma.io",
@@ -472,6 +479,34 @@ test("reloads a failed Freebuff tag once, keeps the queued signup, then stops wa
 
   app.send({ ...signup, consent: grant.consent });
   assert.equal(app.messages.length, 2, "analytics still acknowledges after Freebuff gave up");
+});
+
+test("a Freebuff tag load that hangs counts as failed and stops holding acknowledgements", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  assert.equal(app.messages.length, 1, "held while the tag is loading");
+  app.elapse();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 2, "the hung load is retried once");
+  assert.equal(app.messages.length, 1);
+  app.elapse();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 2, "no third attempt");
+  assert.equal(
+    JSON.stringify(app.messages.at(-1)?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "handoff-1" }),
+  );
+  assert.equal(freebuffConversions(app).length, 1, "the signup stays queued, not re-queued");
+});
+
+test("a tag that loads in time clears its timeout", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  (freebuffScripts(app)[0] as { onload: () => void }).onload();
+  app.elapse();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 1);
+  assert.equal(app.messages.length, 2);
 });
 
 test("a revoked grant reaches a loaded Freebuff tag through Consent Mode", () => {
