@@ -14,8 +14,8 @@
  * are the symbol cropped from each company's own wordmark already in the repo
  * (public/logos/customers/bucket.png, public/icons/companies/*), centred on a
  * square. Cal.com and Gamma use their official site icons (cal.com/icon.png,
- * gamma.app/favicon.ico; Gamma publishes only 32 px). Fluidwave's site is
- * behind a bot check, so it keeps a letter chip until a logo is supplied.
+ * gamma.app/favicon.ico; Gamma publishes only 32 px). Fluidwave's icon was
+ * supplied by the client (2048 px), saved at 144 px: 4x the 36 px tile.
  *
  * Solin's quote about Accelerate caching was retired 2026-09-30: Prisma
  * Postgres has no query cache and Accelerate retires on December 1, 2026, so
@@ -46,6 +46,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Martin Adams",
     role: "Founder",
     company: "Fluidwave",
+    logo: "/logos/customers/fluidwave.png",
   },
   {
     quote:

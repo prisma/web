@@ -11,7 +11,7 @@ import { TESTIMONIALS, type Testimonial } from "./testimonials-data";
 // quotes (Cal.com, Gamma, Stellate, Trunk, Memberstack, Instatus) and the
 // former homepage's testimonials (Fluidwave); see testimonials-data.ts.
 // Client logos are the real brand marks (/logos/customers/*.png) where a
-// square mark exists; Fluidwave, with none yet, uses a letter chip.
+// square mark exists; a company without one gets a letter chip.
 
 // Six unique quotes per row, interleaving case-study and showcase voices; a
 // half-track is ~2,200px, so a quote only recurs a full loop apart — never
