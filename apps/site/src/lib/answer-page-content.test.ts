@@ -79,13 +79,14 @@ test("every tocLabels key names a real H2 anchor or the FAQ", () => {
     if (!labels) continue;
     // Same slugger, and same duplicate suffixing, as the heading ids fumadocs
     // generates for the rendered page (fumadocs-core uses github-slugger).
+    // Every heading goes through the slugger so duplicate suffixes line up with
+    // the page, but only H2 anchors count: tocLabels only labels H2 entries.
     const slugger = new GithubSlugger();
-    const anchors = new Set(
-      [...entry.content.matchAll(/^#{1,6} (.+)$/gm)].map((match) =>
-        slugger.slug(match[1].replace(/`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")),
-      [...entry.content.matchAll(/^## (.+)$/gm)].map((match) =>
-    );
-    anchors.add("faq");
+    const anchors = new Set<string>(["faq"]);
+    for (const [, hashes, text] of entry.content.matchAll(/^(#{1,6}) (.+)$/gm)) {
+      const slug = slugger.slug(text.replace(/`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1"));
+      if (hashes.length === 2) anchors.add(slug);
+    }
     for (const key of Object.keys(labels)) {
       assert.ok(anchors.has(key), `${entry.url}: tocLabels key "${key}" matches no heading`);
     }
