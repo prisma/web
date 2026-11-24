@@ -29,7 +29,7 @@ npm install alchemy @alchemy.run/prisma effect @effect/platform-node
 printf '\n.alchemy/\n' >> .gitignore
 ```
 
-Keep the versions of `effect` and the `@effect/*` packages aligned with the version Alchemy depends on.
+Install the `effect` and `@effect/*` versions that your Alchemy version requires.
 
 Create a Prisma [service token](/rest-api/authentication#service-tokens) in your workspace settings, then add Prisma to your local Alchemy profile:
 
@@ -37,7 +37,7 @@ Create a Prisma [service token](/rest-api/authentication#service-tokens) in your
 npx alchemy profile edit --add Prisma
 ```
 
-Paste the token when prompted. Alchemy stores it under `~/.alchemy/credentials/<profile>/`.
+Paste the token when prompted, and Alchemy stores it under `~/.alchemy/credentials/<profile>/`.
 
 In CI (when `CI=true`), Alchemy skips profiles and reads the token from the environment instead. Set `PRISMA_SERVICE_TOKEN` (or `PRISMA_API_TOKEN`):
 
@@ -95,6 +95,7 @@ export default Alchemy.Stack(
 - **Next.js**: set `output: "standalone"` in `next.config`.
 - **Nuxt**: keep the default `node-server` Nitro preset.
 - **Astro**: install `@astrojs/node` and use `adapter: node({ mode: "standalone" })`.
+- **NestJS**: install `@vercel/nft`. Alchemy uses it to trace the compiled app's dependencies, and the build fails without it.
 - **TanStack Start**: add the Nitro plugin to `vite.config` with its default node preset.
 - **Vite**: the `dist` output is served as a single-page app.
 - **Bun**: set `entrypoint` on the resource or `main` in `package.json`.
@@ -150,7 +151,7 @@ const migrate = yield* Prisma.Migrate("Migrate", {
 });
 ```
 
-`Prisma.Contract` reads `./prisma.config.ts` and the `./migrations` directory by default. Set `config` and `migrationsDir` if yours live elsewhere. Applying migrations is idempotent. Removing either resource from the stack leaves your database, emitted contract, and migrations untouched.
+`Prisma.Contract` reads `./prisma.config.ts` and the `./migrations` directory by default. Set `config` and `migrationsDir` if yours live elsewhere. Deploying again when the database is already up to date applies nothing. Removing either resource from the stack leaves your database, emitted contract, and migrations untouched.
 
 Alchemy orders resources by the outputs they reference. To make sure migrations finish before Compute builds a new deployment, reference an output of `migrate` from the Compute resource, for example in the build environment:
 
@@ -240,7 +241,7 @@ return {
 
 Prisma checks the domain's `CNAME` record when the custom domain is created. Before deploying, point `app.example.com` at your app's regional endpoint, `switchboard.<region>.prisma.build`. The returned `dnsRecords` list the records Prisma expects. Certificate provisioning continues after the deploy, so check the domain's `status` before you send production traffic to it.
 
-The package also exports `Prisma.Website` constructors, such as `Prisma.Website.Nextjs`, for framework sites. See the [examples](https://github.com/alchemy-run/alchemy/tree/main/examples) whose names start with `prisma-website-`.
+The package also exports `Prisma.Website` constructors, such as `Prisma.Website.Nextjs`, for framework sites. These also need `@vercel/nft` installed. See the [examples](https://github.com/alchemy-run/alchemy/tree/main/examples) whose names start with `prisma-website-`.
 
 ## CI and cleanup
 
