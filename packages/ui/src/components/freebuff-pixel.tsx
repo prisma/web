@@ -10,7 +10,11 @@ import { FREEBUFF_QUEUE_STUB, loadFreebuffPixel, rememberBfcid } from "../lib/fr
  * once CookieYes advertising consent is granted (stored or given live). The
  * `bfcid` of each route is remembered in memory so a grant given after
  * client-side navigation still attributes the visit (see `lib/freebuff-pixel`).
- * A denial or revocation loads nothing.
+ * A visitor who has not granted advertising consent loads nothing. A later
+ * revocation reaches an already loaded tag through the Consent Mode update
+ * that the GTM bridge (`google-tag-manager.tsx`) pushes to `dataLayer`: the tag
+ * reads it, stops sending, and clears its cookie and retry queue. The tag has
+ * no consent command of its own.
  */
 export function FreebuffPixel() {
   const pathname = usePathname();

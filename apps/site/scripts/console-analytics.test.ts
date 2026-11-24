@@ -6,7 +6,7 @@ import { OPENAI_ADS_PIXEL_ID, OPENAI_ADS_SDK_URL } from "@prisma-docs/ui/lib/ope
 import { FREEBUFF_TAG_SRC } from "@prisma-docs/ui/lib/freebuff-pixel";
 
 const script = readFileSync(new URL("../public/console-analytics.js", import.meta.url), "utf8");
-function setup() {
+function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } = {}) {
   const messages: unknown[][] = [];
   const scripts: Record<string, unknown>[] = [];
   let receive: (event: unknown) => void = () => {};
@@ -22,7 +22,13 @@ function setup() {
     URL,
     document: {
       createElement: () => ({}),
-      head: { appendChild: (node: Record<string, unknown>) => scripts.push(node) },
+      head: {
+        appendChild: (node: Record<string, any>) => {
+          scripts.push(node);
+          // The Freebuff tag loads at once unless a test drives it by hand.
+          if (freebuffLoad === "auto" && node.src === FREEBUFF_TAG_SRC) node.onload?.();
+        },
+      },
     },
   });
   return {
@@ -414,6 +420,76 @@ test("reports a signup to Freebuff once, with a namespaced handoff id and nothin
     ["conversion", "signup_completed", { eventId: "signup_completed:handoff-2" }],
   ]);
   assert.doesNotMatch(JSON.stringify(freebuffConversions(app)), /private@|a1b2c3|google/);
+});
+
+test("waits for the Freebuff tag before acknowledging an ads-only signup", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  const adsOnly = { ...grant, consent: { decided: true, analytics: false, advertisement: true } };
+  const signup = { ...adsOnly, conversion: { id: "h-wait", event: "sign_up", method: "email" } };
+  app.send(signup);
+  assert.equal(app.messages.length, 1, "no acknowledgement while the tag is loading");
+  assert.equal(freebuffConversions(app).length, 1, "the signup is queued for the tag");
+  (freebuffScripts(app)[0] as { onload: () => void }).onload();
+  app.send(signup);
+  assert.equal(freebuffConversions(app).length, 1, "a retry is not queued twice");
+  assert.equal(
+    JSON.stringify(app.messages[1]?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "h-wait" }),
+  );
+});
+
+test("holds every destination's acknowledgement while the Freebuff tag is loading", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  assert.equal(app.messages.length, 1);
+  assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
+  (freebuffScripts(app)[0] as { onload: () => void }).onload();
+  app.send(grant);
+  assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
+  assert.equal(app.messages.length, 2);
+});
+
+test("reloads a failed Freebuff tag once, keeps the queued signup, then stops waiting", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  const adsOnly = { ...grant, consent: { decided: true, analytics: false, advertisement: true } };
+  const signup = { ...adsOnly, conversion: { id: "h-fail", event: "sign_up", method: "github" } };
+  const fail = (index: number) =>
+    (freebuffScripts(app)[index] as { onerror: () => void }).onerror();
+
+  app.send(signup);
+  fail(0);
+  app.send(signup);
+  assert.equal(freebuffScripts(app).length, 2, "the next handoff retries the load");
+  assert.equal(app.messages.length, 1);
+  assert.equal(freebuffConversions(app).length, 1, "the queued signup waits for the reload");
+
+  fail(1);
+  app.send(signup);
+  assert.equal(freebuffScripts(app).length, 2, "no third attempt");
+  // Freebuff no longer holds the handoff back. With no other destination for an
+  // ads-only signup without an OpenAI id, nothing acknowledges it.
+  assert.equal(app.messages.length, 1);
+
+  app.send({ ...signup, consent: grant.consent });
+  assert.equal(app.messages.length, 2, "analytics still acknowledges after Freebuff gave up");
+});
+
+test("a revoked grant reaches a loaded Freebuff tag through Consent Mode", () => {
+  const app = setup();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 1);
+  app.send({
+    ...grant,
+    consent: { decided: true, analytics: true, advertisement: false },
+    conversion: { ...grant.conversion, id: "handoff-after-revoke" },
+  });
+  const updates = app
+    .commands()
+    .filter(([command, kind]) => command === "consent" && kind === "update");
+  assert.equal((updates.at(-1)?.[2] as { ad_storage: string }).ad_storage, "denied");
+  assert.deepEqual(freebuffConversions(app), [
+    ["conversion", "signup_completed", { eventId: "signup_completed:handoff-1" }],
+  ]);
 });
 
 test("logins, project creation and invalid handoffs are not Freebuff conversions", () => {

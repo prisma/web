@@ -34,18 +34,17 @@ function withFakeBrowser(href: string, run: () => void) {
     createElement: () => ({ setAttribute() {} }),
     head: { appendChild: (node: Record<string, unknown>) => appended.push(node) },
   };
-  const saved = ["window", "document"].map((key) => [
-    key,
-    Object.getOwnPropertyDescriptor(globalThis, key),
-  ]);
+  const saved = (["window", "document"] as const).map(
+    (key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)] as const,
+  );
   Object.defineProperty(globalThis, "window", { configurable: true, value: fakeWindow });
   Object.defineProperty(globalThis, "document", { configurable: true, value: fakeDocument });
   try {
     run();
   } finally {
     for (const [key, descriptor] of saved) {
-      if (descriptor) Object.defineProperty(globalThis, key as string, descriptor);
-      else Reflect.deleteProperty(globalThis, key as string);
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else Reflect.deleteProperty(globalThis, key);
     }
   }
   return { appended, replaced, window: fakeWindow };
