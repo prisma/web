@@ -97,8 +97,8 @@ export const NEVER_BILLED: NeverBilledItem[] = [
 //     in the Console; caps usage charges, not the plan fee; every workspace
 //     member is emailed at 75%; at 100% further usage is blocked until the
 //     limit is raised or removed; no data is deleted. The docs name database
-//     queries as what stops, so this says "usage is blocked" and makes no
-//     claim either way about Compute apps. "Spending limit" is the Console's
+//     queries as what stops, so the copy says "database queries are blocked"
+//     and makes no claim either way about Compute apps (review, 2026-11-24). "Spending limit" is the Console's
 //     own name for it.
 export type CostControl = {
   title: string;
@@ -120,8 +120,8 @@ export const COST_CONTROLS: [CostControl, CostControl, CostControl] = [
     title: "Cap your spending",
     body:
       "Set a spending limit on any paid plan. It caps usage charges, not the plan fee. Your team " +
-      "gets an email at 75%, and at 100% usage is blocked until you raise the limit. No data is " +
-      "deleted.",
+      "gets an email at 75%, and at 100% database queries are blocked until you raise the limit. " +
+      "No data is deleted.",
     link: {
       label: "How spending limits work",
       href: "/docs/console/more/billing#cap-usage-charges-with-a-spending-limit",

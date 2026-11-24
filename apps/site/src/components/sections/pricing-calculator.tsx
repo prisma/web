@@ -320,6 +320,8 @@ export function PricingCalculator() {
                     valueText={`${requests.toLocaleString("en-US")} requests a month`}
                     t={requestsToT(requests)}
                     onT={(t) => setRequests(tToRequests(t))}
+                    snap={(t) => requestsToT(tToRequests(t))}
+                    plan={recommendedId}
                     fillClassName="bg-prism-red-400"
                     disabled={!hasApp}
                     marks={marks.requests}
@@ -331,6 +333,8 @@ export function PricingCalculator() {
                     valueText={`${ops.toLocaleString("en-US")} operations a month`}
                     t={opsToT(ops)}
                     onT={(t) => setOps(tToOps(t))}
+                    snap={(t) => opsToT(tToOps(t))}
+                    plan={recommendedId}
                     fillClassName="bg-prism-cyan-400"
                     marks={marks.ops}
                   />
@@ -340,6 +344,8 @@ export function PricingCalculator() {
                     valueText={fmtGB(gb).replace("GB", "gigabytes").replace("MB", "megabytes")}
                     t={gbToT(gb)}
                     onT={(t) => setGb(tToGB(t))}
+                    snap={(t) => gbToT(tToGB(t))}
+                    plan={recommendedId}
                     fillClassName="bg-prism-yellow-300"
                     marks={marks.gb}
                   />
@@ -352,19 +358,22 @@ export function PricingCalculator() {
               planName={shownPlan.name}
               recommended={shownId === recommendedId}
               total={shown.eligible ? fmtUSD(shown.total, shown.total % 1 !== 0) : "Not available"}
-              onShow={() =>
+              onShow={() => {
                 billRef.current?.scrollIntoView({
                   behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
                     ? "auto"
                     : "smooth",
                   block: "start",
-                })
-              }
+                });
+                // Keyboard users land on the bill too, not on a button that
+                // hides itself once the bill is in view.
+                billRef.current?.focus({ preventScroll: true });
+              }}
             />
           </div>
 
           <Reveal delay={0.3} className="lg:sticky lg:top-24 lg:col-span-2">
-            <div ref={billRef} className="scroll-mt-24">
+            <div ref={billRef} tabIndex={-1} className="scroll-mt-24 outline-none">
               {/* The note is the legend for the cyan dot on the bill's tabs, and
                   says what "recommended" means: the cheapest plan that covers the
                   usage (priceAllPlans). Dot first, like a key. (Client review,
@@ -681,6 +690,8 @@ function Slider({
   fillClassName,
   disabled = false,
   marks = [],
+  snap,
+  plan,
 }: {
   /** Visible label, and the slider's accessible name (WCAG 2.5.3). */
   label: string;
@@ -693,6 +704,10 @@ function Slider({
   fillClassName: string;
   disabled?: boolean;
   marks?: SliderMark[];
+  /** See RangeInput's snap. */
+  snap?: (t: number) => number;
+  /** The plan the bill recommends for the current inputs. */
+  plan?: PlanId;
 }) {
   // Label a tick only when it isn't crowding the last labelled one.
   let lastLabelled = -1;
@@ -704,7 +719,10 @@ function Slider({
   // The last tick the thumb has passed is the zone it's in: that tick and
   // its plan name go ink, so the row reads "you are on Pro's side of here"
   // and the highlight steps along as you drag across a boundary.
-  const current = marks.findLast((m) => m.t <= t);
+  // With a recommendation, only that plan's tick can be current: the ticks
+  // are sampled, so near a boundary the thumb can sit past a tick whose plan
+  // isn't the one the bill recommends (review, 2026-11-24).
+  const current = marks.findLast((m) => m.t <= t && (!plan || m.plan === plan));
   return (
     <div>
       {/* Muted label, ink value: the number is what you read. Same size, so
@@ -722,7 +740,14 @@ function Slider({
         t={t}
         onT={onT}
         label={label}
-        valueText={current ? `${valueText}, ${PLAN_NAME[current.plan]} range` : valueText}
+        valueText={
+          plan
+            ? `${valueText}, ${PLAN_NAME[plan]} recommended`
+            : current
+              ? `${valueText}, ${PLAN_NAME[current.plan]} range`
+              : valueText
+        }
+        snap={snap}
         className="mt-2"
         trackClassName="h-[3px] bg-black/[0.05]"
         fillClassName={cn("h-[3px]", fillClassName)}

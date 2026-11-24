@@ -102,6 +102,7 @@ function ControlCard({
   illustration: React.ReactNode;
   prism: { shape: "triangle" | "hexagon" | "rect"; initialAngle: number };
 }) {
+  const LinkTag: React.ElementType = link.href.startsWith("/docs") ? "a" : Link;
   return (
     <article className="group relative isolate flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.08] bg-white p-6 transition-[border-color,box-shadow] duration-150 ease-out hover:border-black/[0.2] hover:shadow-[0_12px_32px_-18px_rgba(21,21,21,0.2)] sm:p-8">
       {/* The corner prism: glow, glass, grain. Decorative. Faded well back
@@ -131,7 +132,9 @@ function ControlCard({
       <p className="mt-1.5 max-w-[44ch] text-pretty text-sm leading-relaxed text-muted-foreground">
         {body}
       </p>
-      <Link
+      {/* /docs is another zone, so its links are plain anchors; next/link
+          only for same-zone targets (review, 2026-11-24). */}
+      <LinkTag
         href={link.href}
         className="mt-auto self-start rounded-sm pt-4 text-sm font-medium text-foreground underline decoration-black/20 underline-offset-4 outline-none transition-colors after:absolute after:inset-0 after:content-[''] group-hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
@@ -142,7 +145,7 @@ function ControlCard({
         >
           →
         </span>
-      </Link>
+      </LinkTag>
     </article>
   );
 }

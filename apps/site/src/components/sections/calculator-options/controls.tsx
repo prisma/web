@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { gbToT, opsToT, recommend, tToGB, tToOps, type Recommendation } from "./calc";
 
@@ -47,6 +47,10 @@ type RangeInputProps = {
   /** Spoken value (aria-valuetext). Without it, screen readers announce the
    *  raw 0–1000 position, which means nothing to anyone. */
   valueText?: string;
+  /** The position the caller's value snaps to for a position t. When given,
+   *  arrow and page keys keep stepping until the snapped value changes, so a
+   *  keypress never lands back on the same value (review, 2026-11-24). */
+  snap?: (t: number) => number;
 };
 
 // Headless range slider: a transparent native input drives an entirely
@@ -65,20 +69,31 @@ export function RangeInput({
   disabled = false,
   marks,
   valueText,
+  snap,
 }: RangeInputProps) {
   const pct = `${t * 100}%`;
   // Focus ring only when the slider is being driven from the keyboard. On a
   // range input, :focus-visible also matches after a mouse click in Chrome,
   // which left a heavy grey ring on the thumb after every drag.
   const [keyboard, setKeyboard] = useState(false);
+  // Set on pointer down, so focus that a click brings shows no ring, while
+  // focus that arrives any other way (Tab, held Tab, script) does.
+  const pointer = useRef(false);
   // Arrows move 1% (10% with Shift), Page Up/Down 10%, Home/End the ends.
   // The native step here is 0.1%, which made keyboard use a crawl.
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     let next: number;
     if (e.key === "Home") next = 0;
     else if (e.key === "End") next = 1;
-    else if (e.key in KEY_STEPS) next = t + KEY_STEPS[e.key] * (e.shiftKey ? 10 : 1);
-    else return;
+    else if (e.key in KEY_STEPS) {
+      const step = KEY_STEPS[e.key] * (e.shiftKey ? 10 : 1);
+      next = t + step;
+      if (snap) {
+        const from = snap(t);
+        const dir = Math.sign(step) * 0.001;
+        while (next > 0 && next < 1 && Math.abs(snap(next) - from) < 1e-9) next += dir;
+      }
+    } else return;
     e.preventDefault();
     setKeyboard(true);
     onT(Math.min(1, Math.max(0, next)));
@@ -126,9 +141,15 @@ export function RangeInput({
         aria-valuetext={valueText}
         disabled={disabled}
         onKeyDown={onKeyDown}
-        onKeyUp={(e) => e.key === "Tab" && setKeyboard(true)}
-        onPointerDown={() => setKeyboard(false)}
-        onBlur={() => setKeyboard(false)}
+        onFocus={() => setKeyboard(!pointer.current)}
+        onPointerDown={() => {
+          pointer.current = true;
+          setKeyboard(false);
+        }}
+        onBlur={() => {
+          pointer.current = false;
+          setKeyboard(false);
+        }}
         className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
       />
     </div>

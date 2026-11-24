@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { ChevronRight } from "lucide-react";
@@ -37,7 +36,7 @@ import {
 //   - the plan tabs always show all four plans in plan order.
 // "Need more than Business covers?" lives under the card (pricing-calculator).
 //
-// No SpectrumRing: its always-on motion beside the numbers was tiring (client
+// No always-on spectrum ring: its always-on motion beside the numbers was tiring (client
 // review, 2026-11-21). A still hairline and soft shadow; the recommended
 // plan has a cyan dot on its tab, explained by the note under the heading.
 //
@@ -211,13 +210,14 @@ export function PricingBill({
             ))}
             <p className="pt-1 text-xs leading-relaxed text-muted-foreground">
               Assumes each request {profile.perRequest}, from the {profile.source} example in the{" "}
-              <Link
+              {/* /docs is another zone: a plain anchor, not next/link. */}
+              <a
                 href="/docs/compute/pricing"
                 className="rounded-sm underline decoration-black/20 underline-offset-2 outline-none hover:decoration-black/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 Compute pricing docs
-              </Link>
-              .
+              </a>
+              . Lines are rounded to the cent; the subtotal adds the exact amounts.
             </p>
           </DetailRow>
         ) : (

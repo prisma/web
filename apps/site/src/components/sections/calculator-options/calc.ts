@@ -426,7 +426,10 @@ export function gbToT(gb: number) {
   return toLog(gb, GB_MIN, GB_MAX);
 }
 
-export const REQUESTS_MIN = 10_000;
+// 1,000, not 10,000: below 10,000 requests some app types fit Free's
+// Compute limits, and the slider has to be able to show that (review,
+// 2026-11-24).
+export const REQUESTS_MIN = 1_000;
 export const REQUESTS_MAX = 200_000_000;
 export function tToRequests(t: number) {
   return snap2(fromLog(t, REQUESTS_MIN, REQUESTS_MAX));

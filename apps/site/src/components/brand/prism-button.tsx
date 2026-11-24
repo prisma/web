@@ -183,8 +183,10 @@ export function PrismButton({
         {/* inline-flex nowrap keeps a label icon on the label's line. Preflight
             sets svg { display: block }, which stacks the icon above the text
             whenever this span is not a flex box, so the icon is forced back
-            to an inline-block that cannot grow the pill past its size. */}
-        <span className="inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-white [&_svg]:inline-block [&_svg]:shrink-0">
+            to an inline-block that cannot grow the pill past its size.
+            relative z-10 keeps the label above the absolutely positioned
+            burst and glow layers, so hover never tints the text. */}
+        <span className="relative z-10 inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-white [&_svg]:inline-block [&_svg]:shrink-0">
           {children}
         </span>
       </MotionComp>

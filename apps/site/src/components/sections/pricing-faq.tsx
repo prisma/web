@@ -79,7 +79,7 @@ export const PRICING_FAQS: (FaqItem & { answer: string })[] = [
   {
     question: "Can I stop an AI agent from running up a bill?",
     answer:
-      "Yes. Set a spending limit on any paid plan. It caps usage charges across your app and database, not the plan fee. Your team gets an email at 75%, and at 100% usage is blocked until you raise the limit. No data is deleted.",
+      "Yes. Set a spending limit on any paid plan. It counts usage charges for your apps and databases, not the plan fee. Your team gets an email at 75%, and at 100% database queries are blocked until you raise the limit. No data is deleted.",
   },
   {
     question: "Do preview deployments from my coding agent cost anything?",

@@ -25,8 +25,8 @@ export const metadata = createPageMetadata({
 // allowances as a group in the spec table — NOT as a separate section, hero
 // subhead, or strip (all three were tried and removed on Shane's feedback:
 // "we already have a table for these things").
-// What's never billed is the line under PricingCostControls' two cards; the
-// calculator's three entry points double as its preset selector.
+// What's never billed is the list in PricingCostControls' third card ("Free
+// on every plan"); the calculator has its own page, /pricing/calculator.
 //
 // Plan cards sit directly under the hero panel, ahead of the how-it-works
 // copy, per the client (2026-07-30) — Shane asked for the table to be

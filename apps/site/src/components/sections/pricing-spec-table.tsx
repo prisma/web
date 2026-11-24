@@ -486,12 +486,12 @@ export function PricingSpecTable() {
                   <group.icon aria-hidden className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
                   {group.note && (
-                    <Link
+                    <a
                       href={group.note.href}
                       className="ml-auto inline-flex min-h-6 shrink-0 items-center text-xs font-normal text-muted-foreground underline underline-offset-2"
                     >
                       {group.note.text}
-                    </Link>
+                    </a>
                   )}
                 </h3>
                 <dl>
@@ -597,12 +597,12 @@ export function PricingSpecTable() {
                         <group.icon aria-hidden className={cn("size-4 shrink-0", group.color)} />
                         {group.label}
                         {group.note && (
-                          <Link
+                          <a
                             href={group.note.href}
                             className="ml-auto shrink-0 text-xs font-normal text-muted-foreground underline underline-offset-2"
                           >
                             {group.note.text}
-                          </Link>
+                          </a>
                         )}
                       </span>
                     </th>

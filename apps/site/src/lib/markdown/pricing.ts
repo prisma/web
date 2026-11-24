@@ -125,7 +125,13 @@ const CALCULATOR_PRESETS = CALCULATOR_PRESET_LIST.map(
 // on the inputs and are interactive-only, so they are omitted.
 const CALCULATOR_BILL_LINES = [
   "Plan — the plan's monthly price",
-  `Compute requests — included up to the plan's allowance (${CALCULATOR_PLANS.map((p) => `${p.requestsIncluded / 1_000_000}M on ${p.name}`).join(", ")}), then $${COMPUTE_RATES.requestsPerMillion} per million`,
+  `Compute requests — on paid plans, included up to the plan's allowance (${CALCULATOR_PLANS.filter(
+    (p) => p.id !== "free",
+  )
+    .map((p) => `${p.requestsIncluded / 1_000_000}M on ${p.name}`)
+    .join(
+      ", ",
+    )}), then $${COMPUTE_RATES.requestsPerMillion} per million. Free includes ${CALCULATOR_PLANS[0].requestsIncluded / 1_000_000}M a month with no usage billing`,
   `Compute memory — $${COMPUTE_RATES.memoryPerGBHour} per GB-hour, held while your app runs, including time spent waiting`,
   `Compute CPU — $${COMPUTE_RATES.cpuPerVcpuHour} per vCPU-hour, only while your code is computing`,
   `Compute bandwidth — $${COMPUTE_RATES.bandwidthPerGB} per GB sent out to the internet`,
