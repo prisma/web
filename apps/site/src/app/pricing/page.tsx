@@ -28,11 +28,9 @@ export const metadata = createPageMetadata({
 // What's never billed is the list in PricingCostControls' third card ("Free
 // on every plan"); the calculator has its own page, /pricing/calculator.
 //
-// Plan cards sit directly under the hero panel, ahead of the how-it-works
-// copy, per the client (2026-07-30) — Shane asked for the table to be
-// reachable without scrolling. The hero subhead still defines an operation
-// before the cards quote operation counts, so the definition precedes the
-// number even though the full explanation now follows the cards.
+// Order: the plans table inside the hero panel (the client, 2026-07-30:
+// reachable without scrolling), then PricingCostControls, PricingComparison,
+// PricingSpecTable ("Compare plans") and the FAQ.
 // Still to come: the full limits table Ankur asked for — blocked on the
 // unanswered rows (Free-tier backups, compliance on Free/Starter, support).
 export default function PricingPage() {
@@ -40,8 +38,9 @@ export default function PricingPage() {
     // No scroll-in animation on this page: everything is in place when you
     // get to it (client, 2026-11-22). See StaticReveals in motion/reveal.tsx.
     <StaticReveals>
-      {/* The headline and the plan cards share the hero's wrapped panel, per the
-          client (2026-07-30) — the page resumes outside it from how-it-works on. */}
+      {/* The headline and the plans table share the hero's wrapped panel, per
+          the client (2026-07-30); the page resumes outside it from the cost
+          controls on. */}
       <PricingHero>
         <PricingPlans />
       </PricingHero>

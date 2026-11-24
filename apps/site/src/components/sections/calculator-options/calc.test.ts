@@ -72,6 +72,14 @@ test("each plan's total is its Postgres total plus its Compute total", () => {
   }
 });
 
+test("Compute usage changes the recommended plan", () => {
+  // 200K operations and 0.5 GB fit Free on their own; 300K API requests add 5
+  // vCPU-hours, over Free's 4, so Starter becomes the cheapest eligible plan.
+  assert.equal(priceAllPlans(200_000, 0.5)[0].plan.id, "free");
+  const api = computeUsage({ requests: 300_000, profile: profile("api") });
+  assert.equal(priceAllPlans(200_000, 0.5, api)[0].plan.id, "starter");
+});
+
 test("the bill itemizes each meter, and on Free flags the limits it exceeds", () => {
   const usage = computeUsage({ requests: 300_000, profile: profile("api") });
 
