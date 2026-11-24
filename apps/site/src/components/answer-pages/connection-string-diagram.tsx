@@ -1,4 +1,16 @@
-import { CONNSTRING_DIAGRAM_LABEL, CONNSTRING_PARTS } from "./_content";
+/** Text alternative for screen readers. */
+const CONNSTRING_DIAGRAM_LABEL =
+  "An annotated Prisma Postgres connection string: postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require. The scheme postgres:// marks it as PostgreSQL. USER is the database user. PASSWORD follows a colon and must be percent-encoded. The host after the @ is pooled.db.prisma.io, or db.prisma.io for a direct connection. The port is 5432, the database is postgres, and the parameter sslmode=require follows a question mark.";
+
+const CONNSTRING_PARTS = [
+  { part: "Scheme", value: "postgres://", note: "Marks the URL as PostgreSQL" },
+  { part: "User", value: "USER", note: "The database user" },
+  { part: "Password", value: ":PASSWORD", note: "Percent-encode special characters" },
+  { part: "Host", value: "@pooled.db.prisma.io", note: "Pooled, or db.prisma.io for direct" },
+  { part: "Port", value: ":5432", note: "The PostgreSQL default" },
+  { part: "Database", value: "/postgres", note: "The database name" },
+  { part: "Parameters", value: "?sslmode=require", note: "Options after ?, joined with &" },
+] as const;
 
 // A Prisma Postgres connection string, labelled part by part, from the
 // format in docs/postgres/database/connecting-to-your-database.mdx.
@@ -168,9 +180,10 @@ function Diagram({ narrow }: { narrow: boolean }) {
   );
 }
 
+/** The parts of a Prisma Postgres connection string, labelled. */
 export function ConnectionStringDiagram() {
   return (
-    <figure className="m-0 overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#FAFAFA]">
+    <figure className="not-prose my-10 overflow-hidden rounded-xl border border-border bg-[#FAFAFA]">
       <Diagram narrow={false} />
       <Diagram narrow />
     </figure>

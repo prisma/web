@@ -63,6 +63,10 @@ test("answer Markdown preserves the decision and custom diagram's meaning", () =
       assert.ok(markdown.includes("synthetic records"));
       assert.ok(markdown.includes("customer database"));
     }
+    if (entry.content.includes("<ConnectionStringDiagram")) {
+      assert.ok(markdown.includes("sslmode=require"));
+      assert.ok(markdown.includes("percent-encode"));
+    }
     for (const { title, href } of entry.data.related)
       assert.ok(markdown.includes(`[${title}](${href})`));
   }

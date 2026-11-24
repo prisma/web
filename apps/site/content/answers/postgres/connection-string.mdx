@@ -1,0 +1,172 @@
+---
+title: "What is the Postgres connection string format, and how do I get one?"
+description: "A Postgres connection string is postgres://user:password@host:port/database?params. Each part explained, with examples, and how to get one in seconds."
+summary: "A Postgres connection string is a URL in the form `postgres://USER:PASSWORD@HOST:PORT/DATABASE?KEY=VALUE` that tells a client where and how to connect. Percent-encode special characters in the password, and keep options such as `sslmode=require` after the `?`. To get a working one in seconds, run `npx create-db@latest`, which creates a Prisma Postgres database and prints its connection string with no account. Then store it as `DATABASE_URL` in `.env`, or as an environment variable where you deploy."
+author: "Martin Janse van Rensburg"
+authorUrl: "https://github.com/vanrensbird"
+date: "2026-11-24"
+updatedAt: "2026-11-24"
+readingTime: "7 min read"
+faq:
+  - question: "What's the difference between postgres:// and postgresql://?"
+    answer: "Nothing. PostgreSQL accepts both schemes, and so does Prisma ORM. Prisma Postgres connection strings use `postgres://`."
+  - question: "What is DATABASE_URL?"
+    answer: "`DATABASE_URL` is the environment variable Prisma ORM projects and the Prisma docs use for the connection string. Set it in `.env` for local work and as a project environment variable when you deploy, for example on Prisma Compute with `npx prisma project env add`."
+  - question: "What does sslmode=require mean?"
+    answer: "It tells the client to connect only over SSL. Prisma Postgres requires SSL, so keep `sslmode=require` in its connection strings."
+  - question: "Where do I find my Prisma Postgres connection string?"
+    answer: "In the Prisma Console: open your project, select your database, choose Connect to your database, then Generate new connection string. `npx create-db` and `npx prisma postgres create` also print one when they create a database."
+related:
+  - title: "How does Postgres connection pooling work with serverless apps?"
+    href: "/postgres/connection-pooling"
+  - title: "What is serverless Postgres, and when should I use it?"
+    href: "/postgres/serverless"
+  - title: "My deployed app says DATABASE_URL is missing"
+    href: "/postgres/database-url-missing"
+  - title: "Connecting to your Prisma Postgres database"
+    href: "/docs/postgres/database/connecting-to-your-database"
+  - title: "Introduction to PostgreSQL connection URIs"
+    href: "/dataguide/postgresql/short-guides/connection-uris"
+  - title: "Node app gets an SSL error connecting to hosted Postgres"
+    href: "/postgres/ssl-connection-error"
+cta:
+  title: "Get a working connection string now"
+  description: "Run npx create-db for a Prisma Postgres database and its connection string in seconds, with no account. Paste it into any Postgres client, then claim it to keep it."
+  label: "Create an instant database"
+  href: "https://create-db.prisma.io"
+---
+
+If you only need a working string, run `npx create-db@latest` and copy what it prints. If you're writing or debugging one by hand, the format below names each part, and the examples cover SSL, pooled and direct hosts, and passwords with special characters.
+
+We make Prisma Postgres, Prisma ORM and Prisma Compute. PostgreSQL behaviour on this page links to the PostgreSQL 17 docs, and Prisma Postgres claims link to the Prisma docs, checked in November 2026.
+
+## What is the Postgres connection string format?
+
+PostgreSQL clients accept a [connection URI](https://www.postgresql.org/docs/17/libpq-connect.html#LIBPQ-CONNSTRING-URIS) with this shape. Both `postgres://` and `postgresql://` work as the scheme, and clients fill in defaults for parts you leave out, such as port 5432:
+
+```text
+postgres://USER:PASSWORD@HOST:PORT/DATABASE?KEY=VALUE&KEY=VALUE
+```
+
+<ConnectionStringDiagram />
+
+| Part | Example | What it is |
+| --- | --- | --- |
+| Scheme | `postgres://` | Tells the client it's a PostgreSQL URL. `postgresql://` works too. |
+| User | `USER` | The database user. In Prisma Postgres it's generated for you and is the same in every credential for a database. |
+| Password | `PASSWORD` | The password. Percent-encode any special characters. |
+| Host | `pooled.db.prisma.io` | The server's hostname. Prisma Postgres uses `pooled.db.prisma.io` for pooled and `db.prisma.io` for direct connections. |
+| Port | `5432` | The PostgreSQL port. 5432 is the default. |
+| Database | `postgres` | The database to connect to. |
+| Parameters | `?sslmode=require` | Options after `?`, joined with `&`. |
+
+## Postgres connection string examples
+
+### A local database
+
+```bash title=".env"
+DATABASE_URL="postgresql://janedoe:mypassword@localhost:5432/mydb"
+```
+
+### With SSL
+
+Prisma Postgres requires SSL, so its connection strings always end in `?sslmode=require`. PostgreSQL defines [other `sslmode` values](https://www.postgresql.org/docs/17/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS), such as `verify-full`, for clients that should also check the server's certificate.
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+### Pooled and direct
+
+Every Prisma Postgres database has two connection strings with the same credentials. Only the host differs. Use the pooled one for application traffic and the direct one for migrations, Prisma Studio and `pg_dump`. [How Postgres connection pooling works with serverless apps](/postgres/connection-pooling) explains why.
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+### Special characters in the password
+
+[Percent-encode](/docs/orm/v7/reference/connection-urls) special characters in any part of the URL, including the password. For example, `p@$$w0rd` becomes `p%40%24%24w0rd`. Left as is, an `@` in the password ends the user part early, and the client reads the rest as the host.
+
+```ts title="build-url.ts"
+const password = encodeURIComponent("p@$$w0rd"); // "p%40%24%24w0rd"
+const url = `postgres://USER:${password}@db.prisma.io:5432/postgres?sslmode=require`;
+```
+
+Prisma Postgres connection strings come ready to use, so copy them as they are rather than rebuilding them by hand.
+
+### The schema parameter
+
+In [Prisma ORM 7](/docs/orm/v7/reference/connection-urls), `?schema=` picks the PostgreSQL schema, as in `postgresql://janedoe:mypassword@localhost:5432/mydb?schema=sample`. It's read by Prisma ORM, not by PostgreSQL itself, so other tools such as `psql` don't understand it.
+
+## How do I get a Postgres connection string in seconds?
+
+### 1. From the terminal with create-db
+
+[`npx create-db`](/docs/postgres/npx-create-db) creates a Prisma Postgres database and prints its connection string and a claim URL, with no account:
+
+```bash
+npx create-db@latest
+```
+
+The database is deleted after 24 hours unless you open the claim URL and keep it in your workspace. Add `--env .env` to write `DATABASE_URL` and `CLAIM_URL` straight into a file. On a file that already exists it appends both lines and leaves any existing `DATABASE_URL` in place, so check for duplicates. Coding agents can use `--json` to get the connection string, claim URL and deletion time as JSON.
+
+### 2. From the Prisma Console
+
+Open your project in the [Prisma Console](https://console.prisma.io), select your database, choose **Connect to your database**, then **Generate new connection string**. Copy both the pooled and the direct string.
+
+Each time you generate one, the Console creates a new credential: a new password for the same user. Older credentials keep working until you delete them.
+
+### 3. From the Prisma CLI
+
+`npx prisma postgres create my-db` creates a database and prints its connection string once, so save it when it appears. See the [`postgres` CLI reference](/docs/cli/postgres).
+
+## Where do I put the connection string?
+
+### In .env as DATABASE_URL for Prisma ORM
+
+Store it in `.env` as `DATABASE_URL`, and keep `.env` out of source control. Prisma ORM 8's client reads it in `src/prisma/db.ts`:
+
+```ts title="src/prisma/db.ts"
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const contract = contractFromJson<Contract>(contractJson);
+export const db = postgres({ contract, url: process.env.DATABASE_URL! });
+```
+
+The Prisma CLI reads its connection from `prisma.config.ts`. Give it the direct string, so migrations bypass the pooler. Prisma ORM is optional: any Postgres client, such as `node-postgres` or `psql`, takes the same string.
+
+### As an environment variable on Prisma Compute
+
+[Prisma Compute](/compute) injects project [environment variables](/docs/compute/environment-variables) into your deployments, scoped to production or preview:
+
+```bash
+npx prisma project env add DATABASE_URL=postgres://... --role production
+npx prisma project env add DATABASE_URL=postgres://... --role preview
+```
+
+Values are write-only and resolve at deploy time, and `npx prisma project env list` shows names, never values. Point the preview `DATABASE_URL` at a non-production database if preview work must not touch production data.
+
+Wherever it lives, keep the connection string in server-side secrets. Never commit it or ship it in code that runs in a browser.
+
+## Common connection string errors and how to fix them
+
+- **`DATABASE_URL` is missing.** The variable isn't set where the code runs, often only in production. [DATABASE_URL is missing](/postgres/database-url-missing) walks through the fix.
+- **Connection refused or a timeout.** Check that the string uses port `5432` and `sslmode=require`. A corporate firewall or VPN may block outbound PostgreSQL traffic. Allowlist `*.db.prisma.io` on port 5432, or use the [serverless driver](/docs/postgres/database/serverless-driver), which connects over HTTPS. For a string that works locally but times out after deploy, see [this guide](/postgres/connection-timeout-after-deploy).
+- **SSL errors.** Keep `sslmode=require` in Prisma Postgres strings, and check how your driver reads it. [SSL errors connecting to hosted Postgres](/postgres/ssl-connection-error) covers each driver.
+- **Password authentication fails.** The credential may have been deleted or rotated. Generate a new connection string, update `DATABASE_URL` and redeploy.
+- **The URL won't parse.** A special character in the password isn't percent-encoded, or the scheme is wrong. Prisma ORM 8 accepts only `postgres://` or `postgresql://` and rejects anything else with `RUNTIME.BINDING_INVALID`.
+- **Migrations fail with lock or prepared statement errors.** The Prisma CLI is using the pooled string. Point it at the direct string, with host `db.prisma.io`.
+
+## How do I keep a connection string secret?
+
+Every Prisma Postgres credential has full access to its database, and you can't make one read-only. Give each app or service its own credential, so you can delete one app's password without breaking the others.
+
+If a password leaks, replace it. Create a new credential, put its strings in your environment variables and redeploy, then delete the old credential. Rotating isn't enough, because after a rotate the old password can keep working. [Connecting to your database](/docs/postgres/database/connecting-to-your-database#rotate-or-delete-a-credential) has the steps.
+
+Every Prisma Postgres plan gives each database a pooled and a direct connection string, with SSL. The Free plan includes 200,000 operations a month, 2 GB of storage and up to 50 databases, with no credit card. Compare plans on the [pricing page](/pricing).
