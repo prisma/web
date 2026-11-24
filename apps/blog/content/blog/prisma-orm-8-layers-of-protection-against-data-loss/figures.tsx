@@ -8,6 +8,7 @@ import {
   type TrackItem,
 } from "./GuardFigure";
 import { LayerMap, type Layer } from "./LayerMap";
+import { TRACK_STATE_TEXT } from "./trackState";
 
 /* ---------------------------------------------------------------------------
    Interactive figures for this post. Every terminal line below is output from
@@ -49,12 +50,16 @@ async function toSteps(sources: StepSource[]): Promise<GuardStep[]> {
   );
 }
 
+// Each static fallback hides the interactive figures itself, so it never
+// depends on another figure being on the page.
+const HIDE_INTERACTIVE = `.guard, .layers { display: none; }`;
+
 // Without JavaScript the figure cannot change step, so the same steps are
 // listed in full instead.
 function StaticSteps({ label, steps }: { label: string; steps: StepSource[] }) {
   return (
     <noscript>
-      <style>{`.guard, .layers { display: none; }`}</style>
+      <style>{HIDE_INTERACTIVE}</style>
       <figure className="guard-static not-prose" aria-label={label}>
         <ol>
           {steps.map((s) => (
@@ -67,6 +72,41 @@ function StaticSteps({ label, steps }: { label: string; steps: StepSource[] }) {
                 <pre>
                   {s.terminal.map((l) => (l.kind === "cmd" ? `$ ${l.text}` : l.text)).join("\n")}
                 </pre>
+              )}
+              {s.track && (
+                <ul>
+                  {s.track.map((item) => (
+                    <li key={item.label}>
+                      {item.label}: {TRACK_STATE_TEXT[item.state]}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {s.db && (
+                <table>
+                  <caption>
+                    {s.db.table}: {s.db.note}
+                  </caption>
+                  <thead>
+                    <tr>
+                      {s.db.columns.map((col) => (
+                        <th key={col.name} scope="col">
+                          {col.name}
+                          {col.state ? ` (${col.state})` : ""}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s.db.rows.map((row, r) => (
+                      <tr key={r}>
+                        {row.map((cell, n) => (
+                          <td key={n}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </li>
           ))}
@@ -171,6 +211,7 @@ export function ProtectionLayers() {
         layers={LAYERS}
       />
       <noscript>
+        <style>{HIDE_INTERACTIVE}</style>
         <figure className="guard-static not-prose">
           <ol>
             {LAYERS.map((l) => (
@@ -307,7 +348,7 @@ const RESET_STEPS: StepSource[] = [
     track: [
       { label: "Agent runs SQL directly", state: "done" },
       { label: "Prisma is not involved", state: "skip" },
-      { label: "Table dropped", state: "stop" },
+      { label: "Table dropped", state: "lost" },
     ],
     db: {
       table: "User",
@@ -541,8 +582,8 @@ const POLICY_STEPS: StepSource[] = [
     caption: (
       <>
         The ref file declares the policies. Whoever owns the database applies them once, and they
-        are stored in the database itself. From then on every Prisma command checks them, from any
-        checkout.
+        are stored in the database itself. From then on every Prisma ORM 8 command checks them, from
+        any checkout. The Prisma 7 CLI and direct SQL do not.
       </>
     ),
     filename: "migrations/app/refs/production.json",

@@ -1,7 +1,7 @@
 ---
 title: "Stop AI Agents from Wiping Your Database with Prisma ORM 8"
 slug: "prisma-orm-8-layers-of-protection-against-data-loss"
-date: "2026-11-18"
+date: "2026-11-24"
 authors:
   - "Ankur Datta"
 metaTitle: "Stop AI Agents from Wiping Your Database with Prisma ORM 8"
@@ -9,7 +9,6 @@ metaDescription: "Coding agents can change a database faster than anyone can rev
 heroImagePath: "/prisma-orm-8-layers-of-protection-against-data-loss/imgs/hero.svg"
 metaImagePath: "/prisma-orm-8-layers-of-protection-against-data-loss/imgs/meta.png"
 heroImageAlt: "A proposed schema change passes through five protective layers before it reaches a database. Two destructive lines stop at a layer and one safe change passes through."
-draft: true
 tags:
   - "orm"
   - "ai"
@@ -251,7 +250,14 @@ For example, you can declare that a production database should only accept migra
 }
 ```
 
-After the policy is explicitly applied, Prisma records it in the database.
+Declaring the policy doesn't apply it. Whoever owns the database records it once, by deploying to the ref with a flag that states the consent:
+
+```bash
+npx prisma db migrate --to production --permit-policy-change \
+  --db "$PRODUCTION_DATABASE_URL"
+```
+
+That run writes the ref's policies into the database.
 
 If someone subsequently attempts a direct schema update:
 
@@ -372,8 +378,10 @@ Skills teach the tool. They don't know which of your databases matter or when yo
 - Run `prisma migration check` before committing migrations. Don't edit
   `ops.json` or `migration.json` by hand.
 - For changes to columns that a running app reads, plan separate
-  migrations: add the new column, backfill it, switch the app, and remove
-  the old column in a later release.
+  migrations: add the new column, make the app write to both columns,
+  backfill the new one, switch reads to it, and remove the old column in
+  a later release. If the app can't write to both, pause writes from the
+  backfill until every old instance has stopped.
 ```
 
 Most of these rules have a check behind them, so when the agent slips, Prisma is there to catch it. The rules about raw SQL, older CLIs, and connection strings don't, which is why the next three points matter.
@@ -392,7 +400,7 @@ An agent with production credentials can still execute raw SQL. An explicitly ap
 
 A migration that preserves the data can also break an application if older instances continue using the previous schema.
 
-For example, renaming `username` to `handle` preserves the column's contents, but it doesn't account for application instances still querying `username`. In a production system with multiple application versions running during deployment, you may need to introduce the new column, migrate the data, update the application, and remove the old column in a later release.
+For example, renaming `username` to `handle` preserves the column's contents, but it doesn't account for application instances still querying `username`. In a production system with multiple application versions running during deployment, you may need to introduce the new column, have the application write to both columns, backfill the new one, switch reads to it, and remove the old column in a later release. Without the dual-write step, an older instance that updates `username` after the backfill leaves `handle` stale, and removing `username` loses that update. If the application can't write to both, pause writes from the backfill until every old instance has stopped.
 
 Prisma's migration checks don't replace that rollout planning.
 

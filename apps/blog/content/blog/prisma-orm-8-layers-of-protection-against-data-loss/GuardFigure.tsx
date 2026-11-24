@@ -8,12 +8,19 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { InnerLine, Pre, type AnnotationHandler, type HighlightedCode } from "codehike/code";
+import {
+  InnerLine,
+  InnerToken,
+  Pre,
+  type AnnotationHandler,
+  type HighlightedCode,
+} from "codehike/code";
 import {
   calculateTransitions,
   getStartingSnapshot,
   type TokenTransitionsSnapshot,
 } from "codehike/utils/token-transitions";
+import { TRACK_STATE_TEXT, type TrackState } from "./trackState";
 import { Check, ChevronLeft, ChevronRight, Minus, X } from "lucide-react";
 
 export type Verdict = "blocked" | "warned" | "allowed" | "gap" | "info";
@@ -25,7 +32,7 @@ export type TermLine = {
 
 export type TrackItem = {
   label: string;
-  state: "done" | "stop" | "skip" | "todo" | "now";
+  state: TrackState;
 };
 
 export type DbColumn = { name: string; state?: "lost" | "new" };
@@ -66,7 +73,30 @@ const markHandler: AnnotationHandler = {
   ),
 };
 
-const handlers = [markHandler];
+// A moved token is animated with `translate`, which has no effect on an
+// inline box, so every token is an inline-block.
+const tokenHandler: AnnotationHandler = {
+  name: "token-transitions",
+  Token: (props) => <InnerToken merge={props} style={{ display: "inline-block" }} />,
+};
+
+const handlers = [markHandler, tokenHandler];
+
+// Code Hike reports a move as translateX/translateY number pairs. Those are
+// not animatable properties, so they become `translate` keyframes in px.
+function toKeyframes(keyframes: {
+  translateX?: number[];
+  translateY?: number[];
+  color?: string[];
+  opacity?: number[];
+}): PropertyIndexedKeyframes {
+  const { translateX, translateY, ...rest } = keyframes;
+  if (!translateX || !translateY) return rest;
+  return {
+    ...rest,
+    translate: translateX.map((x, i) => `${x}px ${translateY[i] ?? 0}px`),
+  };
+}
 
 function prefersReducedMotion() {
   return (
@@ -78,18 +108,11 @@ function prefersReducedMotion() {
 
 function TrackIcon({ state }: { state: TrackItem["state"] }) {
   if (state === "done") return <Check size={11} strokeWidth={3} aria-hidden="true" />;
-  if (state === "stop") return <X size={11} strokeWidth={3} aria-hidden="true" />;
+  if (state === "stop" || state === "lost")
+    return <X size={11} strokeWidth={3} aria-hidden="true" />;
   if (state === "skip") return <Minus size={11} strokeWidth={3} aria-hidden="true" />;
   return null;
 }
-
-const TRACK_STATE_TEXT: Record<TrackItem["state"], string> = {
-  done: "passed",
-  stop: "stopped here",
-  skip: "did not run",
-  todo: "not reached yet",
-  now: "in progress",
-};
 
 export function GuardFigure({ label, steps, mode = "steps" }: Props) {
   const [index, setIndex] = useState(0);
@@ -128,7 +151,7 @@ export function GuardFigure({ label, steps, mode = "steps" }: Props) {
     // language change swaps instantly.
     if (!pending || !pre || !code || code.lang !== pending.lang) return;
     calculateTransitions(pre, pending.snap).forEach(({ element, keyframes, options }) => {
-      element.animate(keyframes, {
+      element.animate(toKeyframes(keyframes), {
         duration: options.duration * 1000,
         delay: options.delay * 1000,
         easing: options.easing,
@@ -212,6 +235,7 @@ export function GuardFigure({ label, steps, mode = "steps" }: Props) {
         role="tabpanel"
         id={panelId}
         aria-labelledby={tabId(index)}
+        tabIndex={0}
         data-side={hasSide ? "true" : undefined}
       >
         <div className="guard-main">

@@ -79,7 +79,13 @@ export function LayerMap({ label, layers }: Props) {
         <span data-setup="policy">Needs a declared policy</span>
       </p>
 
-      <div className="layers-stack" role="tabpanel" id={panelId} aria-labelledby={tabId(index)}>
+      <div
+        className="layers-stack"
+        role="tabpanel"
+        id={panelId}
+        aria-labelledby={tabId(index)}
+        tabIndex={0}
+      >
         {layers.map((layer, i) => (
           <div
             key={layer.name}
