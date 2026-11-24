@@ -23,11 +23,10 @@ type PostCardItem = {
  * carries a whole page.
  *
  * Resting state is deliberately quiet — a hairline `stroke-neutral` ring on the
- * page surface, 14px radius, a single-pixel shadow. On hover the hairline fades
- * to transparent while `.spectrum-border` lights that same ring with the
- * sliding prism gradient and the shadow lifts: one gesture, 500ms. The utility
- * ships its own `prefers-reduced-motion` guard for the gradient slide; the
- * transitions declared here carry an explicit `motion-reduce:` of their own.
+ * page surface, 14px radius, a single-pixel shadow. On hover only the shadow
+ * lifts (500ms); the hairline stays. The prism ring that used to light on
+ * hover was removed as too much (client, 2026-11-24). The transition carries
+ * an explicit `motion-reduce:` of its own.
  *
  * Three shapes, one surface language:
  * - default  — feed card in the 3-up grid.
@@ -133,8 +132,8 @@ export function PostCard({
     <a
       href={post.url}
       className={cn(
-        "spectrum-border group flex h-full flex-col overflow-hidden rounded-square-high border border-stroke-neutral shadow-box-low",
-        "transition-[box-shadow,border-color] duration-500 hover:border-transparent hover:shadow-box",
+        "group flex h-full flex-col overflow-hidden rounded-square-high border border-stroke-neutral shadow-box-low",
+        "transition-shadow duration-500 hover:shadow-box",
         "motion-reduce:transition-none",
         // In dark mode the card lifts to the docs' surface step —
         // `background-neutral-weak` is #1a1a1a on the #0f0f0f page, the same

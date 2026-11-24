@@ -13,10 +13,11 @@ export type SeriesShelfItem = {
 // Total chips shown in the home shelf (featured + popular non-featured).
 const CHIP_LIMIT = 2;
 
-// Same card language as PostCard: hairline at rest, spectrum ring on hover,
-// shadow lift. Featured series sit on `card-wash` instead of the page surface.
+// Same card language as PostCard: hairline at rest, a shadow lift on hover, no
+// prism ring (client, 2026-11-24: "too much"). Featured series sit on
+// `card-wash` instead of the page surface.
 const seriesSurface =
-  "spectrum-border group relative flex h-full flex-col rounded-square-high border border-stroke-neutral p-5 shadow-box-low transition-[box-shadow,border-color] duration-500 hover:border-transparent hover:shadow-box motion-reduce:transition-none";
+  "group relative flex h-full flex-col rounded-square-high border border-stroke-neutral p-5 shadow-box-low transition-shadow duration-500 hover:shadow-box motion-reduce:transition-none";
 
 function SeriesCard({ item, variant }: { item: SeriesShelfItem; variant: "compact" | "full" }) {
   const featured = item.featured;
@@ -84,7 +85,7 @@ function FeaturedHighlight({ item }: { item: SeriesShelfItem }) {
   return (
     <Link
       href={`/series/${item.key}`}
-      className="spectrum-border group relative isolate mt-4 flex flex-col gap-2 overflow-hidden rounded-square-high border border-stroke-neutral bg-background-default p-5 shadow-box-low transition-[box-shadow,border-color] duration-500 hover:border-transparent hover:shadow-box motion-reduce:transition-none sm:p-6"
+      className="group relative isolate mt-4 flex flex-col gap-2 overflow-hidden rounded-square-high border border-stroke-neutral bg-background-default p-5 shadow-box-low transition-shadow duration-500 hover:shadow-box motion-reduce:transition-none sm:p-6"
       aria-label={`Featured series: ${item.title}`}
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 dark:opacity-70">
