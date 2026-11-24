@@ -57,7 +57,7 @@ const STEPS: Step[] = [
   "password": "...",
   "ssl": "require"
 }`,
-    marks: [3, 4, 5, 6, 7],
+    marks: [3, 5, 6, 7],
     note: "The output is shortened. The marked fields are the ones the Postgres credential asks for.",
   },
   {
