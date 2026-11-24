@@ -6,6 +6,8 @@ import type { FrameworkMeta, GalleryTemplate } from "../_lib/catalog";
 // from the dev server at 1024x640, or, for a template the registry has no
 // screenshot for yet, a brand panel carrying the framework mark. Either way
 // the framework badge sits in the corner so the stack reads at a glance.
+// Thumbnails render in greyscale so every app reads as one set, whatever
+// colours its screenshot carries; the framework badge keeps its colour.
 
 export function TemplatePreview({
   template,
@@ -27,7 +29,7 @@ export function TemplatePreview({
           fill
           sizes={sizes}
           priority={priority}
-          className="object-cover object-top transition-transform duration-500 ease-out group-hover/card:scale-[1.03] motion-reduce:transition-none"
+          className="object-cover object-top grayscale transition-transform duration-500 ease-out group-hover/card:scale-[1.03] motion-reduce:transition-none"
         />
       ) : (
         <PreviewFallback framework={template.framework} />
@@ -70,7 +72,7 @@ function FrameworkBadge({ framework }: { framework: FrameworkMeta }) {
 // mark on a tile in the middle.
 function PreviewFallback({ framework }: { framework: FrameworkMeta }) {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-white">
+    <div className="absolute inset-0 flex items-center justify-center bg-white grayscale">
       <span
         aria-hidden
         className="absolute inset-0"
