@@ -32,11 +32,11 @@ export const FREE_POSTGRES_MARKDOWN_SUBHEADLINE =
 
 /** Check lines under the buttons. Cyan, then yellow. */
 export const FREE_POSTGRES_HERO_CHECKS = [
-  "Instant databases are deleted in 24 hours unless claimed.",
-  "A claimed database, and a database created in the Prisma Console, has no time limit.",
+  "Without an account: instant databases are deleted after 24 hours unless claimed.",
+  "With a free account: no time limit, for claimed databases and databases created in the Prisma Console.",
 ] as const;
 
-export const FREE_POSTGRES_LAST_MODIFIED = "2026-11-03";
+export const FREE_POSTGRES_LAST_MODIFIED = "2026-11-24";
 
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CREATE_DB_WEB_URL = "https://create-db.prisma.io";
@@ -66,7 +66,7 @@ export const FREE_POSTGRES_FAQ: FreeFaqItem[] = [
   {
     question: "How do I create a free PostgreSQL database?",
     answer:
-      "Run [`npx create-db`](/docs/postgres/npx-create-db), or create one in the browser. You get a Postgres database and its connection string in seconds, with no account and no credit card. Claim it within 24 hours to keep it in a Free workspace, which includes 200,000 operations a month, 2 GB of storage and up to 50 databases.",
+      "There are two ways, and neither needs a credit card. [Sign up](https://console.prisma.io/sign-up) for the Free plan and create a database in the Console: it has no time limit. Or run [`npx create-db`](/docs/postgres/npx-create-db), or create one in the browser, to get a database and its connection string in seconds with no account: it is deleted after 24 hours unless you claim it into a Free workspace. A Free workspace includes 200,000 operations a month, 2 GB of storage and up to 50 databases.",
   },
   {
     question: "Is Prisma Postgres really free?",

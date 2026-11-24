@@ -67,8 +67,8 @@ test("title, meta and H1 match the brief", () => {
   assert.deepEqual(
     [...FREE_POSTGRES_HERO_CHECKS],
     [
-      "Instant databases are deleted in 24 hours unless claimed.",
-      "A claimed database, and a database created in the Prisma Console, has no time limit.",
+      "Without an account: instant databases are deleted after 24 hours unless claimed.",
+      "With a free account: no time limit, for claimed databases and databases created in the Prisma Console.",
     ],
   );
   assert.ok(!FREE_POSTGRES_SUBHEADLINE.includes("Instant databases are deleted"));
