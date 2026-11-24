@@ -399,15 +399,23 @@ export function getGitFileDates(
  *
  * Section components used by one page only, which also take performance and
  * markup commits, are not listed: `/pricing`'s pricing-hero, pricing-plans,
- * pricing-spec-table, pricing-cost-controls and pricing-calculator, `/mcp`'s
+ * pricing-spec-table and pricing-cost-controls, `/mcp`'s
  * `_components`, `/stack`'s stack-hero-visual and best-for, and `/brand-kit`'s
  * `components/brand-kit/*.tsx`. A copy edit there moves the route's date only
  * through its `page.tsx`, rendition or content file. A route that is not
  * listed gets no `<lastmod>`.
+ *
+ * `/pricing/calculator` is the exception: it has no rendition or content
+ * file, so its copy lives in pricing-calculator.tsx and its rates and
+ * profiles in calculator-options/calc.ts, and both are listed.
  */
 export const ROUTE_CONTENT_FILES: Readonly<Record<string, readonly string[]>> = {
   "/": ["lib/markdown/home.ts"],
   "/pricing": ["lib/markdown/pricing.ts", "components/sections/pricing-faq.tsx"],
+  "/pricing/calculator": [
+    "components/sections/pricing-calculator.tsx",
+    "components/sections/calculator-options/calc.ts",
+  ],
   "/postgres": ["components/product/content/postgres.ts"],
   "/compute": ["components/product/content/compute.ts"],
   "/orm": ["components/product/content/orm.ts"],
