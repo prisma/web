@@ -6,11 +6,19 @@
   // landing-page pixel wrote is available when the Console reports a signup.
   const openaiPixelId = "V7u8DWWqnx63arxK1sLzkm";
   const openaiSdkUrl = "https://bzrcdn.openai.com/sdk/oaiq.min.js";
+  // Freebuff ads pixel. Same site tag as the landing pages
+  // (packages/ui/src/lib/freebuff-pixel.ts); on this prisma.io origin it can
+  // read the `bfcid` the landing-page pixel stored. Public, no API key.
+  const freebuffTagUrl = "https://freebuff.com/freebuff-tag.v2.js?t=fbt_xr5SWt5bTx2J5xzmgUW5uQ";
   if (window.parent === window) return;
   const seen = new Set();
   const seenOpenai = new Set();
+  const seenFreebuff = new Set();
   let initialized = false;
   let openaiLoaded = false;
+  // "idle" | "loading" | "ready" | "failed"; see measureFreebuffConversion.
+  let freebuffState = "idle";
+  let freebuffAttempts = 0;
   let previousConsent = "";
   let previousOpenaiConsent = null;
   let openaiExternalId = null;
@@ -35,6 +43,7 @@
         ? conversion
         : null;
     const measuredByOpenai = measureOpenaiConversion(consent, validConversion);
+    const freebuff = measureFreebuffConversion(consent, validConversion);
     window[`ga-disable-${measurementId}`] = !analytics;
     const signature = `${analytics}:${ads}`;
     if (signature !== previousConsent) {
@@ -83,7 +92,10 @@
       }
     }
     // Acknowledge once a destination has measured (or already holds) the handoff.
-    if (validConversion && (analytics || measuredByOpenai)) {
+    // While the Freebuff tag is still loading the signup sits in its in-page
+    // queue, which this frame's teardown would discard, so the acknowledgement
+    // waits for the Console's next retry.
+    if (validConversion && freebuff !== "pending" && (analytics || measuredByOpenai || freebuff === "accepted")) {
       window.parent.postMessage({ type: "console-analytics-accepted", id: validConversion.id }, consoleOrigin);
     }
   });
@@ -137,6 +149,67 @@
       window.oaiq("measure", "registration_completed", { type: "customer_action" }, { event_id: eventId });
     }
     return true;
+  }
+
+  // Loads the Freebuff pixel the first time advertising consent is granted and
+  // reports a completed signup as `signup_completed`. Only `sign_up` counts: a
+  // login is not an account creation, and the Console reports no trial,
+  // subscription, or installation here. The handoff id is the random id the
+  // Console gives each authentication handoff and reuses on its retries and
+  // replays, so the namespaced eventId lets Freebuff collapse a repeated report.
+  // Nothing reports signups to Freebuff server-side, so this is the only report.
+  //
+  // Returns "accepted" once the tag has loaded and taken the signup (it keeps
+  // failed sends in its own retry queue from then on), "pending" while the tag
+  // is loading, and "none" when Freebuff does not apply or the tag failed to
+  // load twice (a blocked tag must not hold back the other destinations). A
+  // load that neither loads nor errors within 10 seconds counts as failed, so
+  // a hung request cannot hold acknowledgements back either. A failed load is
+  // retried on the next handoff; the queued signup is kept and drained by the
+  // tag when it loads. Errors and timeouts of a superseded attempt are ignored,
+  // and a `load` from any attempt counts only once the tag has taken over
+  // `window.freebuff` (it marks itself `v: 2`), because that is what drains the
+  // queue.
+  //
+  // Consent revocation reaches a loaded tag through the Consent Mode update
+  // pushed to `dataLayer` above, which the tag reads; it then stops sending and
+  // clears its storage. The tag has no consent command of its own.
+  function measureFreebuffConversion(consent, conversion) {
+    const granted = consent?.decided === true && consent?.advertisement === true;
+    if (!granted) return "none";
+    if ((freebuffState === "idle" || freebuffState === "failed") && freebuffAttempts < 2) {
+      freebuffAttempts++;
+      freebuffState = "loading";
+      window.freebuff = window.freebuff || function () { (window.freebuff.q = window.freebuff.q || []).push(arguments); };
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = freebuffTagUrl;
+      const attempt = freebuffAttempts;
+      const fail = () => {
+        if (attempt !== freebuffAttempts || freebuffState !== "loading") return;
+        freebuffState = "failed";
+        script.remove?.();
+      };
+      const timeout = setTimeout(fail, 10000);
+      script.onload = () => {
+        clearTimeout(timeout);
+        if (window.freebuff?.v === 2) freebuffState = "ready";
+        else fail();
+      };
+      script.onerror = () => {
+        clearTimeout(timeout);
+        fail();
+      };
+      document.head.appendChild(script);
+    }
+    if (!conversion || conversion.event !== "sign_up") return "none";
+    const eventId = `signup_completed:${conversion.id}`;
+    if (!seenFreebuff.has(eventId)) {
+      seenFreebuff.add(eventId);
+      window.freebuff("conversion", "signup_completed", { eventId });
+    }
+    if (freebuffState === "ready") return "accepted";
+    return freebuffState === "loading" ? "pending" : "none";
   }
 
   window.parent.postMessage({ type: "console-analytics-ready" }, consoleOrigin);

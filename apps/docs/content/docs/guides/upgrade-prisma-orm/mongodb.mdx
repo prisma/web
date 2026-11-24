@@ -21,7 +21,7 @@ You install Prisma ORM 8 next to Prisma ORM 6 in the same app. Prisma ORM 8 read
 
 :::info
 
-Install the `latest` version of `@prisma/orm-mongo`, which is what step 1.2 does. This guide was written as of `8.0.0-rc.24`, and MongoDB support in Prisma ORM 8 still changes between release candidates, so a newer version may behave differently from what this guide shows. To see which version you have, run `npm ls @prisma/orm-mongo`.
+Install the `latest` version of `@prisma/orm-mongo`, which is what step 1.2 does. This guide was written as of `8.0.0-rc.25`, and MongoDB support in Prisma ORM 8 still changes between release candidates, so a newer version may behave differently from what this guide shows. To see which version you have, run `npm ls @prisma/orm-mongo`.
 
 :::
 
@@ -530,8 +530,8 @@ In the table below, the left column is how you wrote it in Prisma ORM 6 and the 
 | First line | (nothing) | `// use prisma-8`. Without it, `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED` |
 | Datasource | `datasource db { provider = "mongodb" }` | no `datasource` block (configured in `prisma.config.ts`) |
 | Id field | `id String @id @default(auto()) @map("_id") @db.ObjectId` | `id ObjectId @id @map("_id")` |
-| Scalar types | `Int`, `Float`, `Boolean`, `DateTime` | `Int64Number`, `Double`, `Bool`, `DateTime`. Prisma ORM 6 stores an `Int` as a BSON long, and `Int64Number` keeps that: it reads as a `number` and writes a long. Do not keep the name `Int`: in Prisma ORM 8 it means `Int32`, a BSON int, so its validator refuses every long Prisma ORM 6 wrote. The names `Float` and `Boolean` still work, with a `PSL_DEPRECATED_SCALAR_NAME` warning, and a later release removes them |
-| More scalar types | `BigInt`, `Bytes`, `Json` | `Int64`, `Binary`, `Json`. A `Json` field holds only JSON values; type a field that holds other BSON values, such as a `Date`, as `Bson` |
+| Scalar types | `Int`, `Float`, `Boolean`, `DateTime` | `Int64Number`, `Float`, `Boolean`, `DateTime`. Prisma ORM 6 stores an `Int` as a BSON long, and `Int64Number` keeps that: it reads as a `number` and writes a long. Do not keep the name `Int`: in Prisma ORM 8 it means `Int32`, a BSON int, so its validator refuses every long Prisma ORM 6 wrote. `Float` and `Boolean` stay as they are, and give the same types as `Double` and `Bool` |
+| More scalar types | `BigInt`, `Bytes`, `Json` | `BigInt`, `Bytes`, `Json`, unchanged. A `Json` field holds only JSON values; type a field that holds other BSON values, such as a `Date`, as `Bson` |
 | Enum | `enum UserRole { Admin @map("admin") }` | `enum UserRole { @@type("mongo/string@1") Admin = "admin" }`, one member per line. The value after `=` is what is stored |
 | Timestamps | `@default(now())`, `@updatedAt` | `createdAt temporal.CreatedAt`, `updatedAt temporal.UpdatedAt` |
 | Embedded document | `type Address { ... }` | `type Address { ... }` (unchanged) |
@@ -622,7 +622,7 @@ app space:  migrations/app/20261120T1034_adopt_contract
 Apply it, and check the result:
 
 ```npm
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 npx prisma db verify
 ```
 
@@ -650,7 +650,7 @@ You can also add a validator over documents that do not fit. Those documents the
 
 Once the validators are live, every write must match the contract, including writes from a copy of the app that still runs Prisma ORM 6: a document that doesn't match fails with `Document failed validation`.
 
-Run `npx prisma db migrate --advance-ref db` against every other database you signed in step 1.4 too, with `DATABASE_URL` set to that database.
+Run `npx prisma db migrate --db "<connection string>"` against every other database you signed in step 1.4 too. With `--db`, `db migrate` leaves the `db` ref alone, because the ref tracks your development database.
 
 ### 4.3. Remove Prisma ORM 6
 
@@ -662,7 +662,7 @@ npm install
 npx prisma --version
 ```
 
-`npm uninstall` also removes the `prisma` command, because the `prisma6` alias declared a command of the same name. `npm install` links the Prisma ORM 8 command again. **Expected result:** `npx prisma --version` prints `8.0.0-rc.34` or a newer version. Without the second install, `npx prisma` runs a different copy of the CLI or downloads one.
+`npm uninstall` also removes the `prisma` command, because the `prisma6` alias declared a command of the same name. `npm install` links the Prisma ORM 8 command again. **Expected result:** `npx prisma --version` prints `8.0.0-rc.35` or a newer version. Without the second install, `npx prisma` runs a different copy of the CLI or downloads one.
 
 ## 5. Every schema change after that
 
@@ -671,7 +671,7 @@ Edit `contract.prisma`, then plan and apply a migration:
 ```bash
 npx prisma contract emit                             # planning diffs the emitted contract
 npx prisma migration plan --name add_post_variants   # plans from the db ref
-npx prisma db migrate --advance-ref db
+npx prisma db migrate
 npx prisma db verify                                 # check the DB matches the contract
 ```
 

@@ -149,7 +149,7 @@ MongoDB contracts do not support `@default`. For a timestamp, type the field `te
 
 ## Create a record and its related records
 
-To write related records in the same call, pass a callback for the relation field. The callback's argument, named `p` below, is the relation builder, which holds the methods that link or insert related records:
+On PostgreSQL, SQLite, MySQL, and MariaDB, you write related records in the same call by passing a callback for the relation field. MongoDB has no nested writes, so there you create the related document first and then the document that refers to it, as [References across collections](/orm/data-modeling/mongodb#references-across-collections) shows. The callback's argument, named `p` below, is the relation builder, which holds the methods that link or insert related records:
 
 ```typescript
 const user = await db.orm.public.User.create({
@@ -172,7 +172,7 @@ await db.orm.public.User
 
 `p.disconnect(...)` unlinks a related record, but it applies on `.update(...)` only, not on `.create(...)`.
 
-On PostgreSQL, SQLite, and MySQL, `.update(...)` can also change or delete the related records a filter matches, on a list field such as `posts`. Call `where(...)` on the relation builder, then `updateAll(...)` or `deleteAll()`. To run several of these in one call, return them as an array, and they run in the order you list them:
+On PostgreSQL, SQLite, MySQL, and MariaDB, `.update(...)` can also change or delete the related records a filter matches, on a list field such as `posts`. Call `where(...)` on the relation builder, then `updateAll(...)` or `deleteAll()`. To run several of these in one call, return them as an array, and they run in the order you list them:
 
 ```typescript
 await db.orm.public.User
@@ -187,7 +187,9 @@ await db.orm.public.User
 
 Only the user's own posts change. [`update()`](/orm/reference/orm-client#update) has the rules for each operation.
 
-`connectOrCreate`, the relation `set`, and nested upserts do not exist, and a nested update or delete always goes through `where(...).updateAll(...)` or `where(...).deleteAll()` as above: see [Not available](/orm/coming-from-prisma-orm-7#not-available-yet). For the full picture of relations, see [Relations and joins](/orm/fundamentals/relations-and-joins).
+To change or delete one related record, use `update(...)` or `delete()` in place of `updateAll(...)` and `deleteAll()`. On a list field, such as a user's `posts`, call `where(...)` first, and they act on the first record the filter matches. On a single related record, such as a post's `author`, `where(...)` is optional. `delete()` on a post's `author` is refused, because `authorId` is required.
+
+In place of `connectOrCreate`, pass `{ onConflict: 'connect' }` as the second argument of a nested `create`. It inserts the related record, or, when one with the same primary key exists, links that one. To match on another unique field, name it in `conflictOn`, as in `{ onConflict: 'connect', conflictOn: ['email'] }`. See [`create()`](/orm/reference/orm-client#create). The relation `set` and nested upserts do not exist: see [Not available](/orm/coming-from-prisma-orm-7#not-available-yet). For the full picture of relations, see [Relations and joins](/orm/fundamentals/relations-and-joins).
 
 ## Update one record
 
