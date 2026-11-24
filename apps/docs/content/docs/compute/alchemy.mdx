@@ -2,48 +2,56 @@
 title: Alchemy
 description: Provision Prisma Postgres and deploy applications to Prisma Compute in one TypeScript stack.
 metaTitle: Manage Prisma Postgres and Compute with Alchemy
-metaDescription: Use Alchemy to provision Prisma projects, databases, connections, and Compute applications from one TypeScript stack.
+metaDescription: Use the @alchemy.run/prisma package to provision Prisma projects, databases, connections, and Compute applications from one TypeScript stack.
 url: /compute/alchemy
 tocDepth: 3
 toc: true
 ---
 
-Use [Alchemy](https://alchemy.run/) to create Prisma Postgres databases and deploy applications to Prisma Compute from one `alchemy.run.ts` file.
+Use [Alchemy](https://alchemy.run/) and its [`@alchemy.run/prisma`](https://github.com/alchemy-run/alchemy/tree/main/packages/prisma) package to create Prisma Postgres databases and deploy applications to Prisma Compute from one `alchemy.run.ts` file.
 
-[Alchemy docs](https://alchemy.run/prisma/) · [GitHub](https://github.com/alchemy-run/alchemy) · [Provider source](https://github.com/alchemy-run/alchemy/tree/main/packages/alchemy/src/Prisma) · [TanStack Start example](https://github.com/alchemy-run/alchemy/tree/main/examples/prisma-tanstack-start) · [npm](https://www.npmjs.com/package/alchemy)
+[Alchemy Prisma docs](https://alchemy.run/prisma/) · [Package source](https://github.com/alchemy-run/alchemy/tree/main/packages/prisma) · [Examples](https://github.com/alchemy-run/alchemy/tree/main/examples) · [npm](https://www.npmjs.com/package/@alchemy.run/prisma)
+
+:::note
+
+The Prisma resources moved out of the `alchemy` package into `@alchemy.run/prisma`. If your stack imports from `alchemy/Prisma`, install `@alchemy.run/prisma` and import from it instead. The resource names are unchanged.
+
+:::
 
 ## Deploy Postgres and Compute
 
 ### 1. Install and authenticate
 
+Alchemy runs on Node.js 24.11.1 or later, or on Bun. Install Alchemy, the Prisma package, and Effect:
+
 ```npm title="Terminal"
-npm install alchemy@next effect@beta @effect/platform-bun@beta @effect/platform-node@beta
+npm install alchemy @alchemy.run/prisma effect @effect/platform-node
 printf '\n.alchemy/\n' >> .gitignore
 ```
 
-Create a Prisma [service token](/rest-api/authentication#service-tokens), then choose how Alchemy should read it.
+Keep the versions of `effect` and the `@effect/*` packages aligned with the version Alchemy depends on.
 
-To store the token in your local Alchemy profile:
+Create a Prisma [service token](/rest-api/authentication#service-tokens) in your workspace settings, then add Prisma to your local Alchemy profile:
 
 ```npm title="Terminal"
-npx alchemy login --configure
+npx alchemy profile edit --add Prisma
 ```
 
-Choose **Service Token** for Prisma and paste the token when prompted. Alchemy stores it under `~/.alchemy/credentials/<profile>/`.
+Paste the token when prompted. Alchemy stores it under `~/.alchemy/credentials/<profile>/`.
 
-For CI or an ephemeral shell, choose **Environment Variable** and export the token before running Alchemy:
+In CI (when `CI=true`), Alchemy skips profiles and reads the token from the environment instead. Set `PRISMA_SERVICE_TOKEN` (or `PRISMA_API_TOKEN`):
 
 ```bash title="Terminal"
 export PRISMA_SERVICE_TOKEN="<your-service-token>"
 ```
 
-If the profile uses **Environment Variable**, `alchemy login` only verifies that the variable is available. Run `alchemy login --configure` to switch the profile to a stored token.
+`alchemy dev` runs everything locally and does not need a Prisma token.
 
 ### 2. Create the stack
 
 ```ts title="alchemy.run.ts"
+import * as Prisma from "@alchemy.run/prisma";
 import * as Alchemy from "alchemy";
-import * as Prisma from "alchemy/Prisma";
 import * as Effect from "effect/Effect";
 
 export default Alchemy.Stack(
@@ -53,20 +61,21 @@ export default Alchemy.Stack(
     state: Alchemy.localState(),
   },
   Effect.gen(function* () {
-    const project = yield* Prisma.Project("project", {
+    const project = yield* Prisma.Project("Project", {
       createDatabase: false,
+      region: "us-east-1",
     });
 
-    const postgres = yield* Prisma.Postgres("database", {
+    const postgres = yield* Prisma.Postgres("Postgres", {
       project,
       region: "us-east-1",
     });
 
-    const connection = yield* Prisma.Connection("app-connection", {
+    const connection = yield* Prisma.Connection("Connection", {
       database: postgres,
     });
 
-    const app = yield* Prisma.Compute("app", {
+    const app = yield* Prisma.Compute("App", {
       project,
       build: "auto",
       env: {
@@ -79,21 +88,18 @@ export default Alchemy.Stack(
 );
 ```
 
-`build: "auto"` detects and builds Bun, Next.js, Nuxt, Astro, TanStack Start, and NestJS applications from the current directory. It expects deployable server output: Next.js needs standalone output, Astro needs the Node adapter in standalone mode, and TanStack Start needs its Nitro deployment adapter (`bunx @tanstack/cli@latest add nitro`). Plain Bun servers must listen on `process.env.PORT` and bind to `0.0.0.0`.
+`Prisma.Postgres` is an alias for `Prisma.Database`. `connection.databaseUrl` is the pooled connection string, which is the right choice for application traffic. `connection.directConnectionString` is the direct one, for migrations and other tooling.
 
-Alchemy provisions the database but does not infer or run production schema migrations. For Prisma ORM 7, pass `connection.directConnectionString` to the migration process as `DIRECT_URL` and read it from `prisma.config.ts`:
+`build: "auto"` builds the application in the current directory (or in `path`) and detects Next.js, Nuxt, Astro, NestJS, TanStack Start, Vite, and Bun applications, in that order. Each framework must produce deployable server output:
 
-```ts title="prisma.config.ts"
-import { defineConfig, env } from "prisma/config";
+- **Next.js**: set `output: "standalone"` in `next.config`.
+- **Nuxt**: keep the default `node-server` Nitro preset.
+- **Astro**: install `@astrojs/node` and use `adapter: node({ mode: "standalone" })`.
+- **TanStack Start**: add the Nitro plugin to `vite.config` with its default node preset.
+- **Vite**: the `dist` output is served as a single-page app.
+- **Bun**: set `entrypoint` on the resource or `main` in `package.json`.
 
-export default defineConfig({
-  datasource: {
-    url: env("DIRECT_URL"),
-  },
-});
-```
-
-Keep `connection.databaseUrl` as the application's pooled `DATABASE_URL`. Run migrations separately or model them as a dependency before Compute, as shown in the linked TanStack Start example.
+To force one strategy, pass `build: { type: "auto", framework: "nextjs" }`. To run your own build, pass `build: { command, outdir, entrypoint }`. To upload a directory that is already built, pass `build: false`. Set `port` if your server listens on a port other than the framework's default.
 
 ### 3. Deploy and verify
 
@@ -102,42 +108,24 @@ npx alchemy deploy
 curl "<url-from-stack-output>"
 ```
 
-Alchemy shows the plan before creating the project, database, connection, and Compute deployment. Copy the printed `url` into the `curl` command.
+Alchemy shows the plan, creates the project, database, connection, and Compute deployment, and prints the stack output. Copy the printed `url` into the `curl` command.
 
-After changing your application or infrastructure, run the same commands again:
+Run `alchemy deploy` again after changing your application or infrastructure. Alchemy only updates what changed.
 
-```npm title="Terminal"
-npx alchemy deploy
-curl "<url-from-stack-output>"
-```
+Without `--stage`, `alchemy deploy` deploys to `$ALCHEMY_STAGE` or, when that is unset, to a stage named `live_<your-username>`. Pass `--stage` to choose one, for example `npx alchemy deploy --stage production`.
 
 ## Default or explicit database
 
-The complete stack above declares its database explicitly. The important wiring is:
-
-```ts title="Explicit database"
-const postgres = yield* Prisma.Postgres("database", { project });
-const connection = yield* Prisma.Connection("connection", {
-  database: postgres,
-});
-
-const app = yield* Prisma.Compute("app", {
-  project,
-  build: "auto",
-  env: {
-    DATABASE_URL: connection.databaseUrl,
-  },
-});
-```
+The stack above sets `createDatabase: false` and declares its database explicitly, so the database and connection are separate resources you can reference.
 
 Alternatively, let the project create its default database:
 
 ```ts title="Default database"
-const project = yield* Prisma.Project("project", {
+const project = yield* Prisma.Project("Project", {
   region: "us-east-1",
 });
 
-const app = yield* Prisma.Compute("app", {
+const app = yield* Prisma.Compute("App", {
   project,
   build: "auto",
 });
@@ -145,34 +133,67 @@ const app = yield* Prisma.Compute("app", {
 
 :::warning
 
-Prisma injects the default database's system-managed `DATABASE_URL` and `DATABASE_URL_POOLED` variables. Do not add either key to `env` when using the default database.
+Prisma injects the default database's `DATABASE_URL` into the application. Do not set `DATABASE_URL` in `env` when you use the default database. Alchemy rejects keys that Prisma manages.
 
 :::
+
+## Schema migrations
+
+Alchemy does not migrate your schema unless you add migration resources to the stack. For Prisma ORM 8, `Prisma.Contract` runs `prisma contract emit` (and plans a migration when the contract has changed), and `Prisma.Migrate` applies pending migrations to the database:
+
+```ts title="alchemy.run.ts"
+const contract = yield* Prisma.Contract("Contract");
+
+const migrate = yield* Prisma.Migrate("Migrate", {
+  url: connection.directConnectionString,
+  contract,
+});
+```
+
+`Prisma.Contract` reads `./prisma.config.ts` and the `./migrations` directory by default. Set `config` and `migrationsDir` if yours live elsewhere. Applying migrations is idempotent. Removing either resource from the stack leaves your database, emitted contract, and migrations untouched.
+
+Alchemy orders resources by the outputs they reference. To make sure migrations finish before Compute builds a new deployment, reference an output of `migrate` from the Compute resource, for example in the build environment:
+
+```ts title="alchemy.run.ts"
+const app = yield* Prisma.Compute("App", {
+  project,
+  build: {
+    type: "auto",
+    env: { SCHEMA_MARKER: migrate.markerHash },
+  },
+  env: {
+    DATABASE_URL: connection.databaseUrl,
+  },
+});
+```
+
+If you migrate another way, run your migrations against `connection.directConnectionString` before you deploy the application. See [Migrations](/orm/migrations/how-migrations-work) for how Prisma ORM plans and applies them.
 
 ## Local development
 
 Configure the local app process alongside the database:
 
 ```ts title="alchemy.run.ts"
-const postgres = yield* Prisma.Postgres("database", {
+const postgres = yield* Prisma.Postgres("Postgres", {
   project,
   dev: {
     persistenceMode: "stateful",
+    migrate: "npm run db:setup",
   },
 });
 
-const connection = yield* Prisma.Connection("connection", {
+const connection = yield* Prisma.Connection("Connection", {
   database: postgres,
 });
 
-const app = yield* Prisma.Compute("app", {
+const app = yield* Prisma.Compute("App", {
   project,
   build: "auto",
   env: {
     DATABASE_URL: connection.databaseUrl,
   },
   dev: {
-    command: "bun run dev",
+    command: "npm run dev",
     port: 3000,
   },
 });
@@ -182,14 +203,14 @@ const app = yield* Prisma.Compute("app", {
 npx alchemy dev
 ```
 
-Alchemy starts a local Prisma Postgres server, passes its connection string to the application, and runs the configured development command. Use `dev.migrate` on `Prisma.Postgres` when the local database needs a setup command before the application starts.
+`alchemy dev` starts a local Prisma Postgres server with `@prisma/dev`, runs the `dev.migrate` command once the database is ready, and then starts your app with the configured `dev.command`. The connection returns local connection strings, so the app reads the same `DATABASE_URL` locally and in production. Use `dev.env` on `Prisma.Compute` for values that apply only locally.
 
 ## Production options
 
-Use an application directory, health check, and old-deployment cleanup when needed:
+Set an application directory, a health check, and old-deployment cleanup when needed:
 
 ```ts title="alchemy.run.ts"
-const app = yield* Prisma.Compute("app", {
+const app = yield* Prisma.Compute("App", {
   project,
   path: "./apps/web",
   build: "auto",
@@ -197,12 +218,12 @@ const app = yield* Prisma.Compute("app", {
     DATABASE_URL: connection.databaseUrl,
   },
   healthCheck: {
-    path: "/health",
+    path: "/api/health",
   },
   destroyOldDeployment: true,
 });
 
-const domain = yield* Prisma.CustomDomain("domain", {
+const domain = yield* Prisma.CustomDomain("Domain", {
   app,
   hostname: "app.example.com",
 });
@@ -213,7 +234,13 @@ return {
 };
 ```
 
-Your application must return a successful response from the configured health-check path before promotion. Add the returned `dnsRecords` at your DNS provider to activate the custom domain. Custom domains can only attach to applications on the project's default branch.
+- `healthCheck` makes Alchemy request the path on the new deployment before promoting it and on the stable URL afterward. Any `2xx` response counts as healthy unless you set `statusCodes`.
+- `destroyOldDeployment` deletes the previous deployment after the new one is promoted.
+- `env` values are stored in Alchemy state. Wrap secrets in `Redacted.make(...)` from `effect/Redacted`.
+
+Prisma checks the domain's `CNAME` record when the custom domain is created. Before deploying, point `app.example.com` at your app's regional endpoint, `switchboard.<region>.prisma.build`. The returned `dnsRecords` list the records Prisma expects. Certificate provisioning continues after the deploy, so check the domain's `status` before you send production traffic to it.
+
+The package also exports `Prisma.Website` constructors, such as `Prisma.Website.Nextjs`, for framework sites. See the [examples](https://github.com/alchemy-run/alchemy/tree/main/examples) whose names start with `prisma-website-`.
 
 ## CI and cleanup
 
@@ -222,23 +249,22 @@ npx alchemy deploy --stage "pr-${PR_NUMBER}" --yes
 npx alchemy destroy --stage "pr-${PR_NUMBER}" --yes
 ```
 
-Use a unique preview stage for each pull request and destroy that same stage when it closes. Cleanup must never target `prod`.
+Use a unique preview stage for each pull request and destroy that same stage when it closes. Cleanup must never target your production stage.
 
-Use a shared [Alchemy state store](https://alchemy.run/state-store/) for team and CI deployments. State can contain database credentials, so never commit `.alchemy/`.
+Replace `Alchemy.localState()` with a shared [Alchemy state store](https://alchemy.run/state-store/) before deploying from CI or as a team. Local state is only suitable when one machine owns the stack. State can contain database credentials, so never commit `.alchemy/`.
 
-Replace `Alchemy.localState()` before deploying from CI. Local state is only suitable when one machine owns the stack.
-
-Destroying the stack deletes the Prisma project and everything inside it, including databases and applications.
+`alchemy destroy` deletes the stack's Compute apps and then the Prisma project, including its databases.
 
 ## API reference
 
-- [`Prisma.Project`](https://alchemy.run/providers/prisma/project/)
-- [`Prisma.Branch`](https://alchemy.run/providers/prisma/branch/)
-- [`Prisma.Database` and `Prisma.Postgres`](https://alchemy.run/providers/prisma/database/)
-- [`Prisma.Connection`](https://alchemy.run/providers/prisma/connection/)
-- [`Prisma.Compute`](https://alchemy.run/providers/prisma/compute/)
-- [`Prisma.App`](https://alchemy.run/providers/prisma/app/)
-- [`Prisma.Deployment`](https://alchemy.run/providers/prisma/deployment/)
-- [`Prisma.CustomDomain`](https://alchemy.run/providers/prisma/customdomain/)
-- [`Prisma.EnvironmentVariable`](https://alchemy.run/providers/prisma/environmentvariable/)
-- [`Prisma.SourceRepository`](https://alchemy.run/providers/prisma/sourcerepository/)
+Each resource's options and outputs are documented in the package source:
+
+- [`Prisma.Project`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/Project.ts)
+- [`Prisma.Database` and `Prisma.Postgres`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/Database.ts)
+- [`Prisma.Connection`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/Connection.ts)
+- [`Prisma.Compute`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/Compute.ts)
+- [`Prisma.CustomDomain`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/CustomDomain.ts)
+- [`Prisma.EnvironmentVariable`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/EnvironmentVariable.ts)
+- [`Prisma.Branch`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/Branch.ts)
+- [`Prisma.Contract`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/ORM/Contract.ts) and [`Prisma.Migrate`](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/ORM/Migrate.ts)
+- [All exports](https://github.com/alchemy-run/alchemy/blob/main/packages/prisma/src/index.ts)
