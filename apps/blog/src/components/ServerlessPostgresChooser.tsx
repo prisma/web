@@ -124,7 +124,7 @@ const tree: DecisionTreeData = {
       title: "Prisma Postgres",
       why: "Operation-based billing fits this shape: idle time costs nothing extra, and up to about 10M queries a month stays inside the plan allowances ($10 covers 1M, $49 covers 10M).",
       caveat:
-        "Prisma publishes this guide, so hold this recommendation to the same skepticism as the rest. Past roughly 24M queries a month the guide's own worked example shows an always-on Neon compute becomes cheaper.",
+        "Prisma publishes this guide. Past roughly 24M queries a month, the worked example in the pricing-models section shows an always-on Neon compute becomes cheaper.",
     },
     {
       id: "x-alwayson",
