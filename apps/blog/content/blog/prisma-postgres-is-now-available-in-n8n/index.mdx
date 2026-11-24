@@ -69,7 +69,7 @@ Some products give each customer their own database. With the Prisma Postgres no
 
 <WorkflowDiagram name="tenant" />
 
-The Postgres credential in this workflow reads its host, user, and password from the incoming item with expressions, so one Postgres node connects to whichever database was created in that run. The walkthrough below sets up the same kind of credential.
+**Database: Create** adds a database to an existing project and returns its ID, which the connection step reads with `{{ $json.id }}`. The Postgres credential reads its host, user, and password from the incoming item with expressions, so one Postgres node connects to whichever database was created in that run. The walkthrough below sets up the same kind of credential.
 
 A workflow like this needs a few safeguards before it runs in production. Authenticate the webhook and check the customer ID first, so that a retry does not create a second database. Store the connection details where your app reads them, such as a secrets manager, as the next step. Turn off saving of successful production executions in the workflow settings, because the output of each run contains a database password. Each database also counts toward the database limit of your [Prisma plan](https://www.prisma.io/pricing).
 
@@ -109,7 +109,7 @@ Add a second **Prisma Postgres** node with the **Connection** resource and the *
 
 ### 4. Connect the Postgres node and run a query
 
-Add a **Postgres** node with the **Execute Query** operation and create a new **Postgres** credential for it. Switch **Host**, **Database**, **User**, **Password**, and **Port** to expressions that read from the incoming item, and set **SSL** to **Require**.
+Add a **Postgres** node with the **Execute Query** operation and create a new **Postgres** credential for it. Hover over **Host**, **Database**, **User**, and **Password** in turn, select **Expression**, and enter the expression shown below. Leave **Port** at 5432 and set **SSL** to **Require**.
 
 This is how the values move from one node to the next:
 
@@ -129,7 +129,7 @@ VALUES ('Created from an n8n workflow')
 RETURNING id, body, created_at;
 ```
 
-Select **Execute workflow**. One run creates the project and its database, creates the connection, and inserts the first row.
+Select **Execute workflow**. One run creates the project and its database, creates the connection, and inserts the first row. In our test with n8n 2.49.5, the whole run took about seven seconds.
 
 The connection uses the pooled endpoint by default, which suits workflows that run often or in parallel. For migrations and long transactions, set **Endpoint Type** to **Direct** on the connection node.
 

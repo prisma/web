@@ -63,15 +63,15 @@ const STEPS: Step[] = [
   {
     node: "postgres",
     title: "Postgres credential",
-    where: "Fields, as expressions",
+    where: "Fields",
     lang: "js",
     code: `Host      {{ $json.host }}
 Database  {{ $json.database }}
 User      {{ $json.user }}
 Password  {{ $json.password }}
-Port      {{ $json.port }}
+Port      5432
 SSL       Require`,
-    marks: [1, 2, 3, 4, 5],
+    marks: [1, 2, 3, 4],
     note: "The credential reads its values from the incoming item, so the Postgres node connects to the database that this run created.",
   },
 ];
