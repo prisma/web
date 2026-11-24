@@ -17,6 +17,7 @@ import { BuildersDayBanner } from "@/components/builders-day-banner";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 import { OpenAiPixel } from "@prisma-docs/ui/components/openai-pixel";
+import { FreebuffPixel } from "@prisma-docs/ui/components/freebuff-pixel";
 import { PromptwatchScript } from "@prisma-docs/ui/components/promptwatch-script";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
 import "./globals.css";
@@ -111,6 +112,8 @@ export default function RootLayout({
         <GoogleTagManager section="website" />
         {/* ChatGPT ads pixel, consent-gated on the CookieYes advertisement category */}
         <OpenAiPixel />
+        {/* Freebuff ads pixel: queue stub always, tag only with advertisement consent */}
+        <FreebuffPixel />
         {/* Promptwatch visitor analytics — cookieless, loaded without a consent gate */}
         <PromptwatchScript />
         <JsonLd id="site-structured-data" data={siteStructuredData} />
@@ -140,4 +143,3 @@ export default function RootLayout({
     </html>
   );
 }
-
