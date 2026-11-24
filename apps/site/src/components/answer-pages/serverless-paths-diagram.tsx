@@ -1,77 +1,69 @@
+// Architecture of how serverless functions, edge runtimes and admin tools reach
+// Prisma Postgres, as docs/postgres/database/connection-pooling.mdx ("Application
+// → Connection Proxy → PgBouncer → Database") and serverless-driver.mdx describe
+// it. Brand-kit colours only: Ink #121212, Paper, and the three prism colours,
+// one per path. Inline SVG so it uses the page's Sora and Inter faces;
+// monospace only for hostnames and package names, which are code.
+
+const INK = "#121212";
+const MUTED = "#5F6063";
+const CYAN = "#01D7E4";
+const YELLOW = "#F3C306";
+const RED = "#F34A60";
+const HEADING = "var(--font-sora), Sora, system-ui, sans-serif";
+const BODY = "var(--font-inter), Inter, system-ui, sans-serif";
+const MONO = 'var(--font-code), ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+
 /** Text alternative, also used for the guide's Markdown rendition. */
 export const SERVERLESS_PATHS_DIAGRAM_TEXT =
   "How apps reach Prisma Postgres. Serverless functions and Prisma Compute apps connect over TCP to the pooled host, pooled.db.prisma.io, where PgBouncer in transaction mode shares a few database connections. Edge runtimes use the serverless driver over HTTP and WebSockets. Migrations, Prisma Studio and pg_dump use the direct host, db.prisma.io. All three paths reach one PostgreSQL 17 database in the region you chose.";
 
-// How apps reach Prisma Postgres: the pooled host, the serverless driver and
-// the direct host, as the docs describe them (postgres/database/
-// connection-pooling.mdx and serverless-driver.mdx). Inline SVG so it uses the
-// page's Sora and Inter faces. Brand values: light ground, #3A3B3C ink, Prism
-// Cyan #01D7E4 for the pooled path. Two layouts from the same rows: a wide one
-// from md up and a stacked one for phones, so text never drops below ~12px.
+function Markers({ id }: { id: string }) {
+  return (
+    <defs>
+      {[
+        ["cyan", CYAN],
+        ["yellow", YELLOW],
+        ["red", RED],
+      ].map(([name, color]) => (
+        <marker
+          key={name}
+          id={`${id}-${name}`}
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="7"
+          markerHeight="7"
+          orient="auto-start-reverse"
+        >
+          <path d="M0,0 L10,5 L0,10 z" fill={color} />
+        </marker>
+      ))}
+    </defs>
+  );
+}
 
-const INK = "#3A3B3C";
-const MUTED = "#6B6C6D";
-const CYAN = "#01D7E4";
-const CYAN_TINT = "#E6FBFC";
-const LINE = "#D9DADB";
-const HEADING = "var(--font-sora), Sora, system-ui, sans-serif";
-const BODY = "var(--font-inter), Inter, system-ui, sans-serif";
-const MONO = 'ui-monospace, "Cascadia Code", Menlo, Consolas, monospace';
-
-type Row = {
-  left: { title: string[]; lines: string[] };
-  mid: { title: string; mono: boolean; lines: string[] };
-  pooled: boolean;
-};
-
-const ROWS: Row[] = [
-  {
-    left: { title: ["Serverless functions"], lines: ["Node.js and Bun", "Prisma Compute apps"] },
-    mid: {
-      title: "pooled.db.prisma.io",
-      mono: true,
-      lines: ["PgBouncer pool", "Transaction mode", "TCP, port 5432"],
-    },
-    pooled: true,
-  },
-  {
-    left: { title: ["Edge runtimes"], lines: ["No TCP support"] },
-    mid: { title: "Serverless driver", mono: false, lines: ["HTTP and WebSockets"] },
-    pooled: false,
-  },
-  {
-    left: { title: ["Admin tools"], lines: ["Migrations, Studio", "pg_dump"] },
-    mid: { title: "db.prisma.io", mono: true, lines: ["Direct connection", "Session state kept"] },
-    pooled: false,
-  },
-];
-
-function Box({
+function Zone({
   x,
   y,
   w,
   h,
   title,
-  lines,
-  mono = false,
-  accent = false,
-  titleSize,
-  lineSize,
+  note,
+  dashed,
+  labelAtBottom = false,
 }: {
   x: number;
   y: number;
   w: number;
   h: number;
-  title: string[];
-  lines: string[];
-  mono?: boolean;
-  accent?: boolean;
-  titleSize: number;
-  lineSize: number;
+  title: string;
+  note?: string;
+  dashed: boolean;
+  /** Put the label along the bottom edge, clear of arrows entering from the top. */
+  labelAtBottom?: boolean;
 }) {
-  const pad = 14;
-  const titleGap = titleSize + 6;
-  const lineGap = lineSize + 7;
+  const labelY = labelAtBottom ? y + h - 14 : y + 26;
   return (
     <g>
       <rect
@@ -79,304 +71,390 @@ function Box({
         y={y}
         width={w}
         height={h}
-        rx={12}
-        fill={accent ? CYAN_TINT : "#FFFFFF"}
-        stroke={accent ? CYAN : LINE}
-        strokeWidth={accent ? 2 : 1}
+        rx={14}
+        fill={dashed ? "#FFFFFF" : "#F7F8F8"}
+        stroke={dashed ? "#BDBDBD" : INK}
+        strokeWidth={dashed ? 1.25 : 1.5}
+        strokeDasharray={dashed ? "5 5" : undefined}
       />
-      {title.map((t, i) => (
+      <text x={x + 16} y={labelY} fill={INK} fontFamily={HEADING} fontSize={13} fontWeight={600}>
+        {title}
+      </text>
+      {note ? (
         <text
-          key={t}
-          x={x + pad}
-          y={y + pad + titleSize + i * titleGap}
-          fill={INK}
-          fontFamily={mono ? MONO : HEADING}
-          fontSize={mono ? titleSize - 1 : titleSize}
-          fontWeight={600}
-        >
-          {t}
-        </text>
-      ))}
-      {lines.map((line, i) => (
-        <text
-          key={line}
-          x={x + pad}
-          y={y + pad + titleSize + (title.length - 1) * titleGap + 10 + (i + 1) * lineGap - 6}
+          x={x + w - 16}
+          y={labelY}
+          textAnchor="end"
           fill={MUTED}
           fontFamily={BODY}
-          fontSize={lineSize}
+          fontSize={11.5}
         >
-          {line}
+          {note}
         </text>
-      ))}
+      ) : null}
+    </g>
+  );
+}
+
+function Component({
+  x,
+  y,
+  w,
+  h,
+  title,
+  sub,
+  color,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  title: string;
+  sub: string;
+  color?: string;
+}) {
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height={h}
+        rx={8}
+        fill="#FFFFFF"
+        stroke={INK}
+        strokeWidth={1.25}
+      />
+      {color ? <rect x={x + 12} y={y + 15} width={8} height={8} rx={2} fill={color} /> : null}
+      <text
+        x={x + (color ? 27 : 12)}
+        y={y + 23}
+        fill={INK}
+        fontFamily={HEADING}
+        fontSize={13}
+        fontWeight={600}
+      >
+        {title}
+      </text>
+      <text x={x + 12} y={y + 41} fill={MUTED} fontFamily={BODY} fontSize={11.5}>
+        {sub}
+      </text>
     </g>
   );
 }
 
 function Database({
-  x,
-  y,
-  w,
-  h,
-  size,
+  cx,
+  top,
+  rx,
+  height,
 }: {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  size: number;
+  cx: number;
+  top: number;
+  rx: number;
+  height: number;
 }) {
-  const cx = x + w / 2;
+  const ry = 10;
+  const bottom = top + height;
   return (
     <g>
-      <rect
-        x={x}
-        y={y}
-        width={w}
-        height={h}
-        rx={12}
+      <path
+        d={`M${cx - rx},${top} V${bottom} A${rx},${ry} 0 0 0 ${cx + rx},${bottom} V${top}`}
         fill="#FFFFFF"
         stroke={INK}
         strokeWidth={1.5}
       />
-      <g transform={`translate(${cx - 16} ${y + 18})`} aria-hidden>
-        <ellipse cx={16} cy={6} rx={16} ry={6} fill={CYAN_TINT} stroke={INK} strokeWidth={1.5} />
-        <path
-          d="M0 6v22c0 3.3 7.2 6 16 6s16-2.7 16-6V6"
-          fill="none"
-          stroke={INK}
-          strokeWidth={1.5}
-        />
-        <path d="M0 17c0 3.3 7.2 6 16 6s16-2.7 16-6" fill="none" stroke={INK} strokeWidth={1.5} />
-      </g>
+      <ellipse cx={cx} cy={top} rx={rx} ry={ry} fill="#FFFFFF" stroke={INK} strokeWidth={1.5} />
       <text
         x={cx}
-        y={y + 76}
+        y={top + height / 2 + 6}
         textAnchor="middle"
         fill={INK}
         fontFamily={HEADING}
-        fontSize={size}
+        fontSize={13}
         fontWeight={600}
       >
-        Prisma Postgres
+        PostgreSQL
       </text>
       <text
         x={cx}
-        y={y + 76 + size + 6}
+        y={top + height / 2 + 23}
         textAnchor="middle"
         fill={MUTED}
         fontFamily={BODY}
-        fontSize={size - 2}
+        fontSize={11.5}
       >
-        PostgreSQL 17
-      </text>
-      <text
-        x={cx}
-        y={y + 76 + 2 * (size + 6)}
-        textAnchor="middle"
-        fill={MUTED}
-        fontFamily={BODY}
-        fontSize={size - 2}
-      >
-        One region
+        version 17
       </text>
     </g>
   );
 }
 
-function Legend({ x, y, size }: { x: number; y: number; size: number }) {
+/** A label pair on a connector: code on top, protocol under it. */
+function EdgeLabel({
+  x,
+  y,
+  code,
+  protocol,
+}: {
+  x: number;
+  y: number;
+  code: string;
+  protocol: string;
+}) {
   return (
     <g>
-      <line
-        x1={x}
-        y1={y - 4}
-        x2={x + 22}
-        y2={y - 4}
-        stroke={CYAN}
-        strokeWidth={3}
-        strokeLinecap="round"
-      />
-      <text x={x + 30} y={y} fill={MUTED} fontFamily={BODY} fontSize={size}>
-        App traffic shares a few pooled database connections
+      <text x={x} y={y - 8} textAnchor="middle" fill={INK} fontFamily={MONO} fontSize={11}>
+        {code}
+      </text>
+      <text x={x} y={y + 16} textAnchor="middle" fill={MUTED} fontFamily={BODY} fontSize={11}>
+        {protocol}
       </text>
     </g>
   );
 }
 
-/** Desktop layout, 600 by 500. */
+/** Desktop and tablet. */
 function WideDiagram() {
-  const rowsY = [72, 206, 320];
-  const heights = [110, 90, 110];
-  const leftX = 24;
-  const leftW = 170;
-  const midX = 236;
-  const midW = 190;
-  const dbX = 456;
-  const dbW = 124;
-  const dbY = 72;
-  const dbH = 358;
+  const W = 720;
+  const H = 318;
+  const id = "sp";
+  const appX = 16;
+  const appW = 172;
+  const pgX = 344;
+  const pgW = W - pgX - 16;
+  const rows = [98, 182, 266];
+  const boxW = 140;
+  const boxH = 52;
+  const boxX = appX + 16;
+  const boxRight = boxX + boxW;
+  const proxyX = pgX + 16;
+  const bouncerX = proxyX + 118;
+  const db = { cx: 646, rx: 46, top: 146, height: 100 };
+  const dbLeft = db.cx - db.rx;
+  const gapMid = (boxRight + pgX) / 2 + 8;
+
   return (
     <svg
-      viewBox="0 0 600 500"
-      width={600}
-      height={500}
+      viewBox={`0 0 ${W} ${H}`}
+      width={W}
+      height={H}
       role="img"
-      aria-labelledby="serverless-diagram-title serverless-diagram-desc"
-      className="hidden h-auto w-full md:block"
+      aria-labelledby="serverless-paths-title serverless-paths-desc"
+      className="hidden h-auto w-full sm:block"
     >
-      <title id="serverless-diagram-title">How apps reach Prisma Postgres</title>
-      <desc id="serverless-diagram-desc">{SERVERLESS_PATHS_DIAGRAM_TEXT}</desc>
-      <rect width={600} height={500} rx={20} fill="#FAFAFA" />
-      <text x={24} y={44} fill={INK} fontFamily={HEADING} fontSize={18} fontWeight={600}>
-        How apps reach Prisma Postgres
-      </text>
-      {ROWS.map((row, i) => {
-        const y = rowsY[i];
-        const h = heights[i];
-        const cy = y + h / 2;
-        const color = row.pooled ? CYAN : LINE;
-        const width = row.pooled ? 2.5 : 1.5;
-        return (
-          <g key={row.mid.title}>
-            {row.pooled ? (
-              // Many function instances converge on the pooler.
-              [-30, -10, 10, 30].map((dy) => (
-                <line
-                  key={dy}
-                  x1={leftX + leftW}
-                  y1={cy + dy}
-                  x2={midX}
-                  y2={cy}
-                  stroke={color}
-                  strokeWidth={1.5}
-                />
-              ))
-            ) : (
-              <line
-                x1={leftX + leftW}
-                y1={cy}
-                x2={midX}
-                y2={cy}
-                stroke={color}
-                strokeWidth={width}
-              />
-            )}
-            {row.pooled ? (
-              // ...and leave it as a small number of real connections.
-              [-12, 12].map((dy) => (
-                <line
-                  key={dy}
-                  x1={midX + midW}
-                  y1={cy + dy}
-                  x2={dbX}
-                  y2={cy + dy}
-                  stroke={color}
-                  strokeWidth={width}
-                />
-              ))
-            ) : (
-              <line x1={midX + midW} y1={cy} x2={dbX} y2={cy} stroke={color} strokeWidth={width} />
-            )}
-            <Box
-              x={leftX}
-              y={y}
-              w={leftW}
-              h={h}
-              title={row.left.title}
-              lines={row.left.lines}
-              titleSize={14}
-              lineSize={13}
-            />
-            <Box
-              x={midX}
-              y={y}
-              w={midW}
-              h={h}
-              title={[row.mid.title]}
-              lines={row.mid.lines}
-              mono={row.mid.mono}
-              accent={row.pooled}
-              titleSize={15}
-              lineSize={13}
-            />
-          </g>
-        );
-      })}
-      <Database x={dbX} y={dbY} w={dbW} h={dbH} size={13} />
-      <Legend x={24} y={472} size={13} />
+      <title id="serverless-paths-title">How apps reach Prisma Postgres</title>
+      <desc id="serverless-paths-desc">{SERVERLESS_PATHS_DIAGRAM_TEXT}</desc>
+      <Markers id={id} />
+
+      <Zone x={appX} y={16} w={appW} h={H - 32} title="Your app" dashed />
+      <Zone
+        x={pgX}
+        y={16}
+        w={pgW}
+        h={H - 32}
+        title="Prisma Postgres"
+        note="One region"
+        dashed={false}
+      />
+
+      {/* Pooled path: app → pooled host → proxy → PgBouncer → PostgreSQL */}
+      <path
+        d={`M${boxRight},${rows[0]} H${proxyX - 2}`}
+        stroke={CYAN}
+        strokeWidth={2}
+        markerEnd={`url(#${id}-cyan)`}
+      />
+      <path
+        d={`M${proxyX + 102},${rows[0]} H${bouncerX - 2}`}
+        stroke={CYAN}
+        strokeWidth={2}
+        markerEnd={`url(#${id}-cyan)`}
+      />
+      <path
+        d={`M${bouncerX + 58},${rows[0] + boxH / 2} V${db.top + 6} Q${bouncerX + 58},${db.top + 18} ${bouncerX + 70},${db.top + 18} H${dbLeft - 2}`}
+        fill="none"
+        stroke={CYAN}
+        strokeWidth={2}
+        markerEnd={`url(#${id}-cyan)`}
+      />
+      <EdgeLabel x={gapMid} y={rows[0]} code="pooled.db.prisma.io" protocol="TCP 5432" />
+
+      {/* Serverless driver */}
+      <path
+        d={`M${boxRight},${rows[1]} H${dbLeft - 2}`}
+        stroke={YELLOW}
+        strokeWidth={2}
+        markerEnd={`url(#${id}-yellow)`}
+      />
+      <EdgeLabel x={gapMid} y={rows[1]} code="@prisma/ppg" protocol="HTTPS, WebSocket" />
+
+      {/* Direct path */}
+      <path
+        d={`M${boxRight},${rows[2]} H${dbLeft - 60} C${dbLeft - 20},${rows[2]} ${dbLeft - 24},${db.top + db.height - 22} ${dbLeft - 2},${db.top + db.height - 22}`}
+        fill="none"
+        stroke={RED}
+        strokeWidth={2}
+        markerEnd={`url(#${id}-red)`}
+      />
+      <EdgeLabel x={gapMid} y={rows[2]} code="db.prisma.io" protocol="TCP 5432, direct" />
+
+      <Component
+        x={boxX}
+        y={rows[0] - boxH / 2}
+        w={boxW}
+        h={boxH}
+        title="Functions"
+        sub="Node.js, Bun"
+        color={CYAN}
+      />
+      <Component
+        x={boxX}
+        y={rows[1] - boxH / 2}
+        w={boxW}
+        h={boxH}
+        title="Edge runtime"
+        sub="No TCP"
+        color={YELLOW}
+      />
+      <Component
+        x={boxX}
+        y={rows[2] - boxH / 2}
+        w={boxW}
+        h={boxH}
+        title="Admin tools"
+        sub="Migrations, pg_dump"
+        color={RED}
+      />
+
+      <Component
+        x={proxyX}
+        y={rows[0] - boxH / 2}
+        w={102}
+        h={boxH}
+        title="Proxy"
+        sub="Connections"
+      />
+      <Component
+        x={bouncerX}
+        y={rows[0] - boxH / 2}
+        w={116}
+        h={boxH}
+        title="PgBouncer"
+        sub="Transaction mode"
+      />
+
+      <Database {...db} />
     </svg>
   );
 }
 
-/** Phone layout, 360 by 600: the three paths stacked, the database below. */
+/** Phones: the same architecture top to bottom. */
 function NarrowDiagram() {
-  const rowsY = [56, 184, 294];
-  const heights = [110, 92, 110];
-  const leftX = 12;
-  const leftW = 140;
-  const midX = 172;
-  const midW = 164;
-  const busXs = [355, 349, 343];
-  const dbY = 436;
-  const dbH = 120;
-  const narrowTitles = [["Serverless", "functions"], ["Edge", "runtimes"], ["Admin tools"]];
+  const W = 360;
+  const id = "sp-sm";
+  const cols = [64, 180, 296];
+  const boxW = 100;
+  const boxH = 50;
+  const appTop = 12;
+  const appBoxY = appTop + 38;
+  const pgTop = 196;
+  const proxyY = pgTop + 20;
+  const bouncerY = proxyY + 74;
+  const db = { cx: 180, rx: 150, top: bouncerY + boxH + 46, height: 62 };
+  const H = db.top + db.height + 10 + 44;
+  const lanes = [
+    { title: "Functions", sub: "Node.js, Bun", color: CYAN, marker: "cyan", label: "pooled host" },
+    { title: "Edge", sub: "@prisma/ppg", color: YELLOW, marker: "yellow", label: "HTTPS" },
+    { title: "Admin", sub: "Migrations", color: RED, marker: "red", label: "direct host" },
+  ];
+
   return (
     <svg
-      viewBox="0 0 360 600"
-      width={360}
-      height={600}
+      viewBox={`0 0 ${W} ${H}`}
+      width={W}
+      height={H}
       role="img"
-      aria-labelledby="serverless-diagram-title-sm serverless-diagram-desc-sm"
-      className="block h-auto w-full md:hidden"
+      aria-labelledby="serverless-paths-title-sm serverless-paths-desc-sm"
+      className="block h-auto w-full sm:hidden"
     >
-      <title id="serverless-diagram-title-sm">How apps reach Prisma Postgres</title>
-      <desc id="serverless-diagram-desc-sm">{SERVERLESS_PATHS_DIAGRAM_TEXT}</desc>
-      <rect width={360} height={600} rx={18} fill="#FAFAFA" />
-      <text x={12} y={34} fill={INK} fontFamily={HEADING} fontSize={16} fontWeight={600}>
-        How apps reach Prisma Postgres
-      </text>
-      {ROWS.map((row, i) => {
-        const y = rowsY[i];
-        const h = heights[i];
-        const cy = y + h / 2;
-        const color = row.pooled ? CYAN : LINE;
-        const width = row.pooled ? 2.5 : 1.5;
+      <title id="serverless-paths-title-sm">How apps reach Prisma Postgres</title>
+      <desc id="serverless-paths-desc-sm">{SERVERLESS_PATHS_DIAGRAM_TEXT}</desc>
+      <Markers id={id} />
+
+      <Zone x={6} y={appTop} w={W - 12} h={appBoxY + boxH + 14 - appTop} title="Your app" dashed />
+      <Zone
+        x={6}
+        y={pgTop}
+        w={W - 12}
+        h={H - pgTop - 6}
+        title="Prisma Postgres"
+        note="One region"
+        dashed={false}
+        labelAtBottom
+      />
+
+      {lanes.map((lane, i) => {
+        const cx = cols[i];
+        const start = appBoxY + boxH;
+        const end = i === 0 ? proxyY - 2 : db.top - 12;
         return (
-          <g key={row.mid.title}>
-            <line x1={leftX + leftW} y1={cy} x2={midX} y2={cy} stroke={color} strokeWidth={width} />
-            <polyline
-              points={`${midX + midW},${cy} ${busXs[i]},${cy} ${busXs[i]},${dbY + 24 + (2 - i) * 34} ${340},${dbY + 24 + (2 - i) * 34}`}
-              fill="none"
-              stroke={color}
-              strokeWidth={width}
+          <g key={lane.title}>
+            <path
+              d={`M${cx},${start} V${end}`}
+              stroke={lane.color}
+              strokeWidth={2}
+              markerEnd={`url(#${id}-${lane.marker})`}
             />
-            <Box
-              x={leftX}
-              y={y}
-              w={leftW}
-              h={h}
-              title={narrowTitles[i]}
-              lines={row.left.lines.slice(0, narrowTitles[i].length > 1 ? 1 : 2)}
-              titleSize={14}
-              lineSize={12}
-            />
-            <Box
-              x={midX}
-              y={y}
-              w={midW}
-              h={h}
-              title={[row.mid.title]}
-              lines={row.mid.lines}
-              mono={row.mid.mono}
-              accent={row.pooled}
-              titleSize={13}
-              lineSize={12}
-            />
+            <text x={cx + 6} y={start + 32} fill={MUTED} fontFamily={BODY} fontSize={11}>
+              {lane.label}
+            </text>
           </g>
         );
       })}
-      <Database x={12} y={dbY} w={328} h={dbH} size={14} />
-      <Legend x={12} y={584} size={11.5} />
+      <path
+        d={`M${cols[0]},${proxyY + boxH} V${bouncerY - 2}`}
+        stroke={CYAN}
+        strokeWidth={2}
+        markerEnd={`url(#${id}-cyan)`}
+      />
+      <path
+        d={`M${cols[0]},${bouncerY + boxH} V${db.top - 12}`}
+        stroke={CYAN}
+        strokeWidth={2}
+        markerEnd={`url(#${id}-cyan)`}
+      />
+
+      {lanes.map((lane, i) => (
+        <Component
+          key={lane.title}
+          x={cols[i] - boxW / 2}
+          y={appBoxY}
+          w={boxW}
+          h={boxH}
+          title={lane.title}
+          sub={lane.sub}
+          color={lane.color}
+        />
+      ))}
+      <Component
+        x={cols[0] - boxW / 2}
+        y={proxyY}
+        w={boxW}
+        h={boxH}
+        title="Proxy"
+        sub="Connection"
+      />
+      <Component
+        x={cols[0] - boxW / 2}
+        y={bouncerY}
+        w={boxW}
+        h={boxH}
+        title="PgBouncer"
+        sub="Transaction"
+      />
+
+      <Database {...db} />
     </svg>
   );
 }
@@ -384,9 +462,17 @@ function NarrowDiagram() {
 /** How serverless functions, edge runtimes and admin tools reach Prisma Postgres. */
 export function ServerlessPathsDiagram() {
   return (
-    <figure className="not-prose my-10 overflow-hidden rounded-xl border border-border bg-[#FAFAFA]">
-      <WideDiagram />
-      <NarrowDiagram />
+    <figure className="not-prose my-10 overflow-hidden rounded-xl border border-[#E5E5E4] bg-white">
+      <div className="p-2 sm:p-4">
+        <WideDiagram />
+        <NarrowDiagram />
+      </div>
+      <figcaption className="border-t border-[#E5E5E4] px-5 py-3.5 text-sm leading-relaxed text-muted-foreground">
+        App traffic uses the pooled host,{" "}
+        <code className="font-mono text-[0.9em] text-foreground">pooled.db.prisma.io</code>. Edge
+        runtimes use the serverless driver. Admin tools use the direct host,{" "}
+        <code className="font-mono text-[0.9em] text-foreground">db.prisma.io</code>.
+      </figcaption>
     </figure>
   );
 }
