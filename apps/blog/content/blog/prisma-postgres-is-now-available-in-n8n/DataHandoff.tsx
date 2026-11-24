@@ -32,7 +32,7 @@ const STEPS: Step[] = [
   }
 }`,
     marks: [5],
-    note: "Output shortened. The node returns once the new database accepts connections, and the next node needs the database ID.",
+    note: "The output is shortened. The next node needs the ID of the new database.",
   },
   {
     node: "prisma",
@@ -58,13 +58,13 @@ const STEPS: Step[] = [
   "ssl": "require"
 }`,
     marks: [3, 4, 5, 6, 7],
-    note: "Output shortened. By default, this is the only operation that returns a password. The marked fields are the ones the Postgres credential asks for.",
+    note: "The output is shortened. The marked fields are the ones the Postgres credential asks for.",
   },
   {
     node: "postgres",
-    title: "Postgres credential",
+    title: "Postgres credential (n8n)",
     where: "Fields",
-    lang: "js",
+    lang: "txt",
     code: `Host      {{ $json.host }}
 Database  {{ $json.database }}
 User      {{ $json.user }}

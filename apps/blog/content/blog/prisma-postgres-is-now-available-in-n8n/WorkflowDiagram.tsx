@@ -109,6 +109,7 @@ const DIAGRAMS = {
         nodes: [
           { name: "Schedule Trigger", action: "2 am", icon: "schedule" },
           { name: "Notion", action: "Get policy pages", icon: "notion" },
+          { name: "Postgres", action: "Delete old version", icon: "postgres" },
           {
             name: "PGVector Store",
             action: "Insert documents",
