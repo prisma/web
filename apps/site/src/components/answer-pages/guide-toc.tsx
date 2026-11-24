@@ -8,8 +8,8 @@ export type GuideTocItem = { url: string; title: ReactNode };
 /** Distance from the top of the viewport at which a heading counts as "being read". */
 const READING_LINE = 140;
 
-/** How long a clicked or hash-targeted item stays highlighted while the page scrolls to it. */
-const PIN_MS = 900;
+/** Reader input that ends a pin: the reader has taken over the scroll. */
+const READER_INPUT = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
 
 /**
  * The guide's "On this page" list. The section being read is marked as the
@@ -18,13 +18,13 @@ const PIN_MS = 900;
  */
 export function GuideToc({ items }: { items: readonly GuideTocItem[] }) {
   const [active, setActive] = useState(items[0]?.url);
-  // After a click or a hash change, keep that item pinned until the smooth
-  // scroll it starts has settled, so the highlight doesn't flicker through
-  // the sections in between (same idea as compare/article-toc.tsx).
-  const pinnedUntil = useRef(0);
+  // After a click or a hash change, keep that item pinned through the
+  // programmatic scroll it starts, and release it on the reader's next input,
+  // as compare/article-toc.tsx does. No timer guesses when scrolling settles.
+  const pinned = useRef<string | null>(null);
 
   const pin = (url: string) => {
-    pinnedUntil.current = performance.now() + PIN_MS;
+    pinned.current = url;
     setActive(url);
   };
 
@@ -34,15 +34,18 @@ export function GuideToc({ items }: { items: readonly GuideTocItem[] }) {
       .filter((el): el is HTMLElement => el !== null);
     if (targets.length === 0) return;
 
+    const release = () => {
+      pinned.current = null;
+    };
     const followHash = () => {
-      const hash = window.location.hash;
+      const hash = decodeURIComponent(window.location.hash);
       if (items.some((item) => item.url === hash)) pin(hash);
     };
 
     let frame = 0;
     const update = () => {
       frame = 0;
-      if (performance.now() < pinnedUntil.current) return;
+      if (pinned.current) return;
       let current = targets[0];
       for (const el of targets) {
         if (el.getBoundingClientRect().top <= READING_LINE) current = el;
@@ -62,7 +65,9 @@ export function GuideToc({ items }: { items: readonly GuideTocItem[] }) {
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     window.addEventListener("hashchange", followHash);
+    for (const type of READER_INPUT) window.addEventListener(type, release, { passive: true });
     return () => {
+      for (const type of READER_INPUT) window.removeEventListener(type, release);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       window.removeEventListener("hashchange", followHash);
