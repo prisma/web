@@ -9,7 +9,9 @@ const script = readFileSync(new URL("../public/console-analytics.js", import.met
 function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } = {}) {
   const messages: unknown[][] = [];
   const scripts: Record<string, unknown>[] = [];
-  const timers: (() => void)[] = [];
+  // Pending timers by handle; handles are never reused, as in a browser.
+  const timers = new Map<number, () => void>();
+  let nextTimer = 1;
   // The real tag replaces the queue stub with its own `freebuff` (v: 2) and
   // drains the queue; the fake keeps the stub, so tests can read the queue.
   const loadTag = (node: Record<string, any>) => {
@@ -27,10 +29,12 @@ function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } =
   vm.runInNewContext(script, {
     window,
     URL,
-    setTimeout: (callback: () => void) => timers.push(callback),
-    clearTimeout: (id: number) => {
-      timers[id - 1] = () => {};
+    setTimeout: (callback: () => void) => {
+      const id = nextTimer++;
+      timers.set(id, callback);
+      return id;
     },
+    clearTimeout: (id: number) => timers.delete(id),
     document: {
       createElement: () => ({}),
       head: {
@@ -49,7 +53,12 @@ function setup({ freebuffLoad = "auto" }: { freebuffLoad?: "auto" | "manual" } =
     /** Fires the `index`th Freebuff tag's load event after the tag took over. */
     loadFreebuff: (index = 0) => loadTag(scripts.filter((s) => s.src === FREEBUFF_TAG_SRC)[index]!),
     /** Fires every pending timer, as if its delay had passed. */
-    elapse: () => timers.splice(0).forEach((callback) => callback()),
+    elapse: () => {
+      for (const [id, callback] of [...timers]) {
+        timers.delete(id);
+        callback();
+      }
+    },
     send: (
       data: unknown,
       origin = "https://console.prisma.io",
@@ -538,6 +547,24 @@ test("late events from a timed-out Freebuff load do not clobber the retry", () =
   assert.equal(
     JSON.stringify(app.messages.at(-1)?.[0]),
     JSON.stringify({ type: "console-analytics-accepted", id: "c" }),
+  );
+});
+
+test("a stale error does not cancel the retry's timeout", () => {
+  const app = setup({ freebuffLoad: "manual" });
+  app.send(grant);
+  app.elapse();
+  app.send(grant);
+  (freebuffScripts(app)[0] as Record<string, () => void>).onerror();
+  app.send(grant);
+  assert.equal(app.messages.length, 1, "the retry is still loading");
+  app.elapse();
+  app.send(grant);
+  assert.equal(freebuffScripts(app).length, 2, "no third attempt");
+  assert.equal(
+    JSON.stringify(app.messages.at(-1)?.[0]),
+    JSON.stringify({ type: "console-analytics-accepted", id: "handoff-1" }),
+    "the retry's own timeout fired and released the acknowledgement",
   );
 });
 
