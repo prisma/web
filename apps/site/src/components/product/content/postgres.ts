@@ -176,6 +176,11 @@ export const postgresContent: ProductPageContent = {
         "Yes. Prisma Postgres is fully managed PostgreSQL hosting: it runs, scales and secures the database, with daily [automatic backups](/docs/postgres/database/backups) on paid plans, so you never manage servers or connection pooling. It's built to work with the rest of your stack. Prisma ORM gives you type-safe queries and migrations out of the box, and Prisma Compute lets you deploy your app right next to your database, so your data, your queries and your app all live on one platform. You can start on the free plan, or create a temporary database in seconds with [`npx create-db`](/docs/postgres/npx-create-db), no account needed.",
     },
     {
+      question: "Can I use PostgreSQL online without installing anything?",
+      answer:
+        "Yes. Prisma Postgres runs PostgreSQL in the cloud, so there is no database server to install or run on your machine: create a database in the Prisma Console or with `npx create-db`, then connect with its connection string from any Postgres client, or browse and edit rows in Prisma Studio in your browser. Add Prisma ORM when you want type-safe queries and migrations, and Prisma Compute when you want your app hosted in the same project as its database.",
+    },
+    {
       question: "What happens when I reach the Free plan limit?",
       answer:
         "Your workspace's databases stop accepting queries until the allowance resets at the start of the next month, or until you upgrade, which usually restores access within a minute. If you need time to export your data first, you can [lift the limit for 24 hours](/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) from the Console, once per workspace. Paid plans bill operations beyond the included amount at your plan's rate, up to a spend limit if you set one in the Console.",
