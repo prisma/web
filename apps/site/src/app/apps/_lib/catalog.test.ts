@@ -92,10 +92,7 @@ test("unknown templates still render with fallbacks", () => {
     unknown.stack.map((item) => item.id),
     ["prisma-orm", "prisma-postgres", "bun", "typescript"],
   );
-  assert.ok(
-    unknown.featuredRank > Math.max(...Object.values(TEMPLATE_META).map((m) => m.featuredRank)),
-    "unknown templates sort after every curated one",
-  );
+  assert.equal(unknown.featured, false);
 });
 
 test("every template is by Prisma unless the manifest or registry says otherwise", () => {
@@ -307,11 +304,44 @@ test("a template is new for sixty days after it lands", () => {
   assert.equal(later.find((t) => t.id === "personal-site")?.isNew, false);
 });
 
-test("featured order follows the curated ranks, then manifest order", () => {
+test("at most one template is featured, and it is Room Booking", () => {
+  const featured = Object.entries(TEMPLATE_META)
+    .filter(([, meta]) => meta.featured)
+    .map(([id]) => id);
+  assert.deepEqual(featured, ["room-booking-prisma-template"]);
+});
+
+test("the default view pins the featured template first, then lists newest first", () => {
+  const community: ManifestTemplate[] = [
+    {
+      id: "room-booking-prisma-template",
+      name: "Room Booking",
+      description: "Meeting room booking.",
+      path: "compute/room-booking-prisma-template",
+      framework: "nextjs",
+    },
+    {
+      id: "scalable-indexing-platform-template",
+      name: "Resource Discovery",
+      description: "Searchable resource directory.",
+      path: "compute/scalable-indexing-platform-template",
+      framework: "nextjs",
+    },
+  ];
+  const live = enrichTemplates([...MANIFEST, ...community], new Date("2026-11-24T00:00:00Z"));
   assert.deepEqual(
-    sortTemplates(catalog, "featured").map((t) => t.id),
-    ["nextjs", "hono", "tanstack-start", "personal-site", "remix-run-blog"],
+    sortTemplates(live, "newest").map((t) => t.id),
+    [
+      "room-booking-prisma-template",
+      "scalable-indexing-platform-template",
+      "personal-site",
+      "hono",
+      "nextjs",
+      "tanstack-start",
+      "remix-run-blog",
+    ],
   );
+  assert.equal(live.find((t) => t.id === "room-booking-prisma-template")?.featured, true);
 });
 
 test("newest order is by landing date, undated last, manifest order as tie-break", () => {
@@ -346,11 +376,11 @@ test("filters narrow by framework and never throw on an empty result", () => {
   assert.deepEqual(filterTemplates(catalog, { framework: "sveltekit" }), []);
 });
 
-test("framework options list only frameworks present, in featured order, with counts", () => {
+test("framework options list only frameworks present, in gallery order, with counts", () => {
   const options = frameworkOptions(catalog);
   assert.deepEqual(
     options.map((o) => o.framework.id),
-    ["nextjs", "hono", "tanstack-start", "astro", "remix-run"],
+    ["astro", "hono", "nextjs", "tanstack-start", "remix-run"],
   );
   assert.ok(options.every((o) => o.count === 1));
   assert.ok(

@@ -19,13 +19,13 @@ import { TemplateCard } from "./template-card";
 import { FrameworkLogo } from "./template-preview";
 
 // The browsable gallery: one grid of every template, a row of framework pills
-// and a sort control above it. The default view is the curated Featured
-// order, so the full-stack apps come first and the personal site closes.
+// and a sort control above it. The default view pins the featured template
+// first, then lists the rest newest first, so new templates lead.
 //
 // Filter state lives in the URL (?framework=nextjs&sort=newest) so a
 // filtered view can be linked from docs or a tweet, but it is read with
 // useSyncExternalStore rather than useSearchParams: the server renders the
-// default view (everything, Featured) into the static HTML, and the client
+// default view (everything, newest first) into the static HTML, and the client
 // applies the query string on hydration without a Suspense boundary blanking
 // the grid for crawlers.
 
@@ -60,7 +60,7 @@ type GalleryState = {
   sort: SortKey;
 };
 
-const DEFAULTS: GalleryState = { framework: "all", sort: "featured" };
+const DEFAULTS: GalleryState = { framework: "all", sort: "newest" };
 
 export function TemplateGallery({ templates }: { templates: GalleryTemplate[] }) {
   const search = useQueryString();
@@ -75,7 +75,7 @@ export function TemplateGallery({ templates }: { templates: GalleryTemplate[] })
         framework && frameworks.some((option) => option.framework.id === framework)
           ? framework
           : "all",
-      sort: isSortKey(sort) ? sort : "featured",
+      sort: isSortKey(sort) ? sort : DEFAULTS.sort,
     };
   }, [search, frameworks]);
 
