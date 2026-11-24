@@ -104,8 +104,16 @@ test("the shared CSP allows the Freebuff tag and its requests", () => {
   assert.match(policy.match(/connect-src[^;]*;/)?.[0] ?? "", /https:\/\/freebuff\.com/);
 });
 
-test("the site layout mounts the Freebuff pixel once", () => {
-  const source = readFileSync(join(repoRoot, "apps/site/src/app/layout.tsx"), "utf8");
-  assert.equal(source.split("<FreebuffPixel />").length - 1, 1);
-  assert.doesNotMatch(source, /freebuff-tag/);
+// Ad landing pages live in every zone (e.g. /docs/postgres/npx-create-db), and
+// the tag only captures a bfcid on the page it lands on.
+test("the site, docs and blog layouts each mount the Freebuff pixel once", () => {
+  for (const relative of [
+    "apps/site/src/app/layout.tsx",
+    "apps/docs/src/app/layout.tsx",
+    "apps/blog/src/app/layout.tsx",
+  ]) {
+    const source = readFileSync(join(repoRoot, relative), "utf8");
+    assert.equal(source.split("<FreebuffPixel />").length - 1, 1, relative);
+    assert.doesNotMatch(source, /freebuff-tag/, relative);
+  }
 });

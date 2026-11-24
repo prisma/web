@@ -11,6 +11,7 @@ import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 import { OpenAiPixel } from "@prisma-docs/ui/components/openai-pixel";
+import { FreebuffPixel } from "@prisma-docs/ui/components/freebuff-pixel";
 import { PromptwatchScript } from "@prisma-docs/ui/components/promptwatch-script";
 
 // Inter's shared Unicode-ranged CSS keeps one composite family, including
@@ -70,6 +71,8 @@ export default function Layout({ children }: LayoutProps<"/">) {
         <GoogleTagManager section="blog" />
         {/* ChatGPT ads pixel, consent-gated on the CookieYes advertisement category */}
         <OpenAiPixel />
+        {/* Freebuff ads pixel: queue stub always, tag only with advertisement consent */}
+        <FreebuffPixel />
         {/* Promptwatch visitor analytics — cookieless, loaded without a consent gate */}
         <PromptwatchScript />
       </head>
