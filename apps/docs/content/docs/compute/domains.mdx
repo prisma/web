@@ -87,7 +87,7 @@ npx prisma service domain retry shop.acme.com --service web
 
 `show` prints the custom domain's state, what it is waiting on, the DNS records still to publish, and the certificate's expiry.
 
-The platform looks your DNS up when you add a custom domain, once more ten minutes later if it found nothing, and after that only when you ask. `retry` asks it to check now: it looks the DNS records up again, and if the last certificate failed, it orders a new one. A workspace can order a limited number of new certificates per hour. When that limit or the API's rate limit is reached, `retry` fails with `SERVICE.DOMAIN_RETRY_RATE_LIMITED` and says when to run it again.
+The platform looks your DNS up when you add a custom domain, once more ten minutes later if it found nothing, and after that only when you ask. `retry` asks it to check now: it looks the DNS records up again, and if the last certificate failed, it orders a new one. Each new certificate counts toward the workspace's [hourly limit](#limits). When that limit or the API's rate limit is reached, `retry` fails with `SERVICE.DOMAIN_RETRY_RATE_LIMITED` and says when to run it again.
 
 ## A custom domain on another branch
 
@@ -120,7 +120,7 @@ A custom domain reports two fields. `status` is `pending` until the custom domai
 | `no_service`               | The app the custom domain pointed at was deleted     | Add the custom domain to another app           |
 | `in_use_elsewhere`         | Another app holds the hostname                       | Delete the custom domain from that app if it is yours. This app takes the hostname once the other gives it up |
 | `provisioning_certificate` | The TLS certificate is being issued                  | Nothing                                        |
-| `updating`                 | The platform is bringing the custom domain up to date | Nothing                                        |
+| `updating`                 | The platform is bringing the custom domain up to date, or waiting for the [hourly certificate limit](#limits) | Nothing                                        |
 | `certificate_failed`       | The certificate could not be issued                  | Read the platform's reason, then run `retry`   |
 | `update_failed`            | The platform's last update failed and is being retried | Nothing, or run `retry` to try again now     |
 | `active`                   | The custom domain serves your app                    | Nothing                                        |
@@ -140,6 +140,7 @@ When the platform gave no reason, the CLI says that provisioning failed for reas
 - Routing uses CNAME records only. Apex domains need a DNS provider that supports CNAME-like records (ALIAS, ANAME, or CNAME flattening) at the apex.
 - Wildcard hostnames such as `*.acme.com` are rejected.
 - Up to 3 custom domains per app. Adding more returns `SERVICE.DOMAIN_QUOTA_EXCEEDED`.
+- A workspace can order 10 new certificates in an hour, and the hour starts at its first order. Each new custom domain orders one, and so does `retry` after a failed certificate; renewals don't count. Once the 10 are used, a custom domain waiting for its certificate shows `updating`, and the platform orders the certificate by itself when the hour ends. To wait that long, pass a longer timeout: `npx prisma service domain wait shop.acme.com --service web --timeout 1h`.
 - The CLI has no workspace-wide list of custom domains or domain ownership records.
 
 ## Next steps
