@@ -9,7 +9,11 @@ import {
   PRESETS as CALCULATOR_PRESET_LIST,
 } from "@/components/sections/calculator-options/calc";
 import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
-import { COMPARISON_BASIS } from "@/components/sections/pricing-comparison";
+import {
+  COMPARISON_BASIS,
+  PRICING_ALTERNATIVES,
+  PRISMA,
+} from "@/components/sections/pricing-comparison";
 import {
   NEVER_BILLED,
   PRICING_FLOW_LEDE,
@@ -132,36 +136,18 @@ const COMPUTE_APP_TYPES = APP_PROFILES.filter((p) => p.id !== "none").map(
   (p) => `${p.label} — each request ${p.perRequest} (from the ${p.source} example)`,
 );
 
-// PRISMA + ALTERNATIVES in components/sections/pricing-comparison.tsx. The
-// label column has no header in the HTML (the cost bars are decoration and are
+// PRICING_ALTERNATIVES + PRISMA in components/sections/pricing-comparison.tsx,
+// read from the constants so the table can't drift from the page. The label
+// column has no header in the HTML (the cost bars are decoration and are
 // skipped); "Feature" is added so the table parses cleanly.
-const COMPARISON_HEADERS = [
-  "Feature",
-  "Typical stack (Neon + Vercel)",
-  "Supabase Pro",
-  "Prisma Pro",
-];
-
+const COMPARISON_COLUMNS = [...PRICING_ALTERNATIVES, PRISMA];
+const COMPARISON_HEADERS = ["Feature", ...COMPARISON_COLUMNS.map((c) => c.name)];
 const COMPARISON_ROWS = [
-  ["Monthly cost at ~50K MAU", "$110–270", "$95–145", "$72–90"],
-  [
-    "Billing",
-    "Billed through Vercel via the Marketplace, or as separate Neon and Vercel bills",
-    "Platform subscription + Postgres compute + function usage",
-    "One bill, one platform",
-  ],
-  [
-    "Database data transfer",
-    "500 GB egress per project included, then $0.10 per GB",
-    "250 GB egress included, then $0.09 per GB",
-    "Included",
-  ],
-  [
-    "Spend limits",
-    "Neon: spending notifications at 80% and 100%. Vercel: a spend budget with an optional pause",
-    "Spend cap on by default for covered usage; database compute excluded",
-    "Hard cap you set, on every paid plan",
-  ],
+  ["Monthly cost at ~50K MAU", ...COMPARISON_COLUMNS.map((c) => c.cost)],
+  ...PRISMA.rows.map((row) => [
+    row.label,
+    ...COMPARISON_COLUMNS.map((c) => c.rows.find((r) => r.label === row.label)?.value ?? ""),
+  ]),
 ];
 
 // GROUPS + PLAN_ROW in components/sections/pricing-spec-table.tsx. `yes` cells
@@ -372,9 +358,8 @@ export function renderPricingMarkdown(): string {
 
     heading(2, "See how Prisma compares at scale"),
     paragraphs([
-      "At around 50K monthly active users, Prisma Pro can cost less than half as much as a typical " +
-        "Neon + Vercel setup, with one bill, included database data transfer, and a hard spend limit " +
-        "you set.",
+      "At around 50K monthly active users, Prisma Pro can cost less than half as much as Netlify " +
+        "Pro, with database data transfer included and a hard spend limit you set.",
     ]),
     table(COMPARISON_HEADERS, COMPARISON_ROWS),
     paragraphs(COMPARISON_BASIS),

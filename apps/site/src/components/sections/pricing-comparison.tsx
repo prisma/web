@@ -1,4 +1,3 @@
-import { RoleKicker } from "@/components/brand/role-kicker";
 import { Reveal } from "@/components/motion/reveal";
 import { CostBar } from "./pricing-cost-bar";
 
@@ -40,11 +39,55 @@ import { CostBar } from "./pricing-cost-bar";
 //    like-for-like plan, so it was replaced.
 // Re-check these figures whenever any of the four pricing pages change.
 
-// What the three costs assume, shown under the cards. Keep in step with the
-// provenance note above; update the date whenever the figures are rechecked.
+// /pricing compares Netlify, Supabase and Railway (client, 2026-11-24:
+// "use Netlify instead of Vercel", "also add Railway"). The Neon + Vercel
+// column above stays in ALTERNATIVES for /lp/providers and the home page,
+// whose copy names Vercel; /pricing renders PRICING_ALTERNATIVES below.
+//
+// Provenance, checked 2026-11-24 against netlify.com/pricing, the Netlify
+// billing docs (credit-based plans, how credits work, auto recharge) and
+// railway.com/pricing, docs.railway.com (plans, cost control, workspaces).
+// Same basis as above, plus about 250 GB of data out: the bandwidth this
+// page's own calculator gives Prisma for 10M requests (calc.ts, "API or web
+// app"), so every column now prices the same transfer.
+//  - Netlify Pro $130-240, app and database on Netlify (client, 2026-11-24:
+//    "they have their own db now"). Netlify Database is billed in Netlify
+//    credits on credit-based plans (docs.netlify.com/build/data-and-storage/
+//    netlify-database/billing-and-usage): 10 credits per database compute
+//    unit, 20 credits per GB of data out of the database, storage free for
+//    now (40 GB is inside Pro's 100 GB per database). Netlify Pro: $20 a month
+//    with 3,000 credits and unlimited members (no seat fees). Usage in
+//    credits: web requests 10M at 2 per 10,000 = 2,000; function compute
+//    400-1,300 GB-hours (the same range as Vercel's provisioned memory above)
+//    at 10 per GB-hour = 4,000-13,000; bandwidth 250 GB at 20 per GB = 5,000;
+//    database compute 1-2 units always on, 730-1,460 unit-hours at 10 =
+//    7,300-14,600; database data out 20-40 GB (about 2 KB per operation) at
+//    20 per GB = 400-800. Total 18,700-35,400, less 3,000 included =
+//    15,700-32,400 extra, bought in Pro packs of 1,500 credits for $10 (auto
+//    recharge): 11-22 packs = $110-220. Netlify $130-240. Production deploys
+//    (15 credits each) are left out, so this is the low side. The larger Pro
+//    credit tiers would be cheaper per credit, but Netlify doesn't publish
+//    their prices, so the packs are what can be checked.
+//  - Railway Pro $70-125. $20 a month per workspace, which counts towards
+//    usage; unlimited seats; billed per second on the CPU, memory and disk
+//    actually used ($20 per vCPU-month, $10 per GB-month of memory, $0.15 per
+//    GB-month of volume, $0.05 per GB egress). App: 0.5-1 GB resident memory
+//    all month $5-10, 100-200 vCPU-hours $3-5. Postgres on Railway, sized like
+//    the 1-2 Neon CU above (4-8 GB memory, 0.25-0.5 vCPU on average): $40-80
+//    memory, $5-10 CPU. Volume 40 GB $6. Egress 250 GB $12.50 (app-to-database
+//    traffic stays on the private network). Usage $71-124, above the $20 fee,
+//    so the bill is the usage: $70-125.
+//  - Prisma Pro $72-90 already includes ~250 GB out (see above).
+//  - Midpoints: Netlify $185, Supabase $120, Railway $97.50, Prisma $81.
+//    Prisma is about 44% of Netlify, so "less than half as much" holds; Railway is close to Prisma, and the page says so plainly.
+// Re-check whenever any of these pricing pages change.
+
+// What the costs assume, shown under the columns. Keep in step with the
+// provenance notes above; update the date whenever the figures are rechecked.
 export const COMPARISON_BASIS =
   "Estimated at list prices for about 50K monthly active users: 10M requests, 10–20M database " +
-  "operations, a 40 GB database and 1–3 developer seats. Prices checked 22 November 2026.";
+  "operations, a 40 GB database, about 250 GB of data out and 1–3 developer seats. Prices " +
+  "checked 24 November 2026.";
 
 // Placeholder marker. Anything using PENDING is awaiting figures from the
 // client — never fill these in with estimates.
@@ -120,6 +163,63 @@ export const ALTERNATIVES = [
   },
 ];
 
+// The columns /pricing shows (see the provenance note above COMPARISON_BASIS).
+export const PRICING_ALTERNATIVES = [
+  {
+    id: "netlify",
+    name: "Netlify Pro",
+    shortName: "Netlify",
+    compareHref: "/blog/prisma-vs-netlify",
+    cost: "$130–240",
+    pending: false,
+    // Netlify docs: Pro is credit-based; "all of your web projects
+    // (sites/apps) are paused" when credits run out, unless auto recharge
+    // (off by default) buys more. Netlify Database is paid in the same
+    // credits; 20 credits per GB out is $0.13 at the $10 per 1,500 pack.
+    rows: [
+      {
+        label: "Billing",
+        value: "One Netlify bill; app and database usage both paid in credits",
+      },
+      {
+        label: "Database data transfer",
+        value: "20 credits per GB out of the database (about $0.13 per GB)",
+      },
+      {
+        label: "Spend limits",
+        value: "Sites pause when credits run out, unless auto recharge is on",
+      },
+    ],
+  },
+  ALTERNATIVES[1],
+  {
+    id: "railway",
+    name: "Railway Pro",
+    shortName: "Railway",
+    compareHref: "/blog/app-hosting-platforms-with-managed-postgres-2026",
+    cost: "$70–125",
+    pending: false,
+    // Railway docs: billed per second "for the CPU, memory, and disk your
+    // services actually use"; private networking keeps traffic "within
+    // Railway's private network"; a hard usage limit takes "all your
+    // workloads ... offline", with email reminders at 75%, 90% and 100%.
+    rows: [
+      {
+        label: "Billing",
+        value: "One bill for app and database, on the CPU, memory and disk used",
+      },
+      {
+        label: "Database data transfer",
+        value: "Egress $0.05 per GB; app-to-database traffic stays on the private network",
+      },
+      {
+        label: "Spend limits",
+        value: "Email alerts and a hard usage limit you set; services go offline when it's hit",
+      },
+    ],
+  },
+];
+
 // Prisma's own column keeps the approved V2 marketing copy for the three rows.
 // The client's comparison doc phrases them analytically ("Postgres operations
 // and storage + application Compute usage", "Unlimited database data transfer",
@@ -156,9 +256,14 @@ function costMidpoint(cost: string): number | null {
 const COSTS = [...ALTERNATIVES.map((a) => a.cost), PRISMA.cost];
 const MAX_COST = Math.max(...COSTS.map((c) => costMidpoint(c) ?? 0));
 
+// The bars on /pricing scale to its own widest column (Netlify).
+const PAGE_MAX_COST = Math.max(
+  ...[...PRICING_ALTERNATIVES.map((a) => a.cost), PRISMA.cost].map((c) => costMidpoint(c) ?? 0),
+);
+
 function costFraction(cost: string): number | null {
   const mid = costMidpoint(cost);
-  return mid === null || !MAX_COST ? null : mid / MAX_COST;
+  return mid === null || !PAGE_MAX_COST ? null : mid / PAGE_MAX_COST;
 }
 
 // The headline multiple, rounded from the figures rather than hardcoded, so it
@@ -193,10 +298,22 @@ function PendingBadge() {
 // too much, let's quieten this section by a whole bunch"). No panel, wash,
 // beams, glass prism, grain, cards, counting numbers, ticks or spectrum bar:
 // three plain columns on hairlines, like the Compare plans table, with the
-// heading on the page's left edge like the other sections. Prisma is marked
-// by its cyan dot only; the figures make the case.
+// heading on the page's left edge like the other sections. Each column is
+// marked by its logo; Prisma's cost bar is the one in colour.
+// Each column's logo(s), in place of the kicker's dot (client, 2026-11-24).
+// The marks only, not wordmarks: the column names already say who they are.
+const LOGOS: Record<string, string[]> = {
+  netlify: ["/icons/companies/netlify-logo.svg"],
+  railway: ["/logos/railway.svg"],
+  supabase: ["/icons/companies/supabase.svg"],
+  prisma: ["/logos/prisma-logo-mark.svg"],
+};
+
 export function PricingComparison() {
-  const columns = [...ALTERNATIVES, { ...PRISMA, id: "prisma", pending: false, compareHref: null }];
+  const columns = [
+    ...PRICING_ALTERNATIVES,
+    { ...PRISMA, id: "prisma", pending: false, compareHref: null },
+  ];
   return (
     <section id="compare" className="scroll-mt-24 bg-white px-4 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
@@ -207,9 +324,8 @@ export function PricingComparison() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">
-            At around 50K monthly active users, Prisma Pro can cost less than half as much as a
-            typical Neon + Vercel setup, with one bill, included database data transfer, and a hard
-            spend limit you set.
+            At around 50K monthly active users, Prisma Pro can cost less than half as much as
+            Netlify Pro, with database data transfer included and a hard spend limit you set.
           </p>
         </Reveal>
 
@@ -217,17 +333,24 @@ export function PricingComparison() {
             facts, link); each column takes all eight as a subgrid, so every
             row starts at the same height in all three columns however its
             text wraps (client, 2026-11-24: "now let's fix this"). */}
-        <div className="mt-10 grid border-t border-black/[0.08] lg:grid-cols-3 lg:grid-rows-[repeat(8,auto)] lg:divide-x lg:divide-black/[0.06]">
+        <div className="mt-10 grid border-t border-black/[0.08] md:grid-cols-2 md:gap-x-8 xl:grid-cols-4 xl:grid-rows-[repeat(8,auto)] xl:gap-x-0 xl:divide-x xl:divide-black/[0.06]">
           {columns.map((col, i) => {
             const prisma = col.id === "prisma";
             return (
               <div
                 key={col.id}
-                className="flex flex-col border-b border-black/[0.06] py-8 last:border-b-0 lg:row-span-8 lg:grid lg:grid-rows-subgrid lg:border-b-0 lg:px-8 lg:first:pl-0 lg:last:pr-0"
+                className="flex flex-col border-b border-black/[0.06] py-8 xl:row-span-8 xl:grid xl:grid-rows-subgrid xl:border-b-0 xl:px-6 xl:first:pl-0 xl:last:pr-0"
               >
-                <RoleKicker color={prisma ? "bg-prism-cyan-400" : "bg-foreground/20"}>
+                <p className="flex items-center gap-2.5 text-sm font-semibold text-foreground/80">
+                  <span className="flex items-center gap-1.5">
+                    {/* Decorative beside the name, so alt is empty. */}
+                    {(LOGOS[col.id] ?? []).map((src) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={src} src={src} alt="" className="size-[18px]" />
+                    ))}
+                  </span>
                   {col.name}
-                </RoleKicker>
+                </p>
                 {col.pending ? (
                   <p className="mt-4 flex h-9 items-center">
                     <PendingBadge />

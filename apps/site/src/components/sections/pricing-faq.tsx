@@ -25,9 +25,9 @@ export const PRICING_FAQS: (FaqItem & { answer: string })[] = [
       "An operation is a single action against your Prisma Postgres database: a create, read, update, or delete. A simple write and a complex query with multiple joins each count as one operation.",
   },
   {
-    question: "How does Prisma pricing compare with Neon and Supabase?",
+    question: "How does Prisma pricing compare with Netlify, Supabase and Railway?",
     answer:
-      "At around 50K monthly active users, Prisma Pro comes to about $72–90 a month, against $95–145 for Supabase Pro and $110–270 for a typical Neon + Vercel setup. You also get one bill, included database data transfer and a hard spend limit. [See the comparison](#compare).",
+      "At around 50K monthly active users, Prisma Pro comes to about $72–90 a month, against $70–125 for Railway Pro, $95–145 for Supabase Pro and $130–240 for Netlify Pro. Database data transfer is included, and you can set a hard spend limit. [See the comparison](#compare).",
   },
   {
     question: "Is usage-based pricing cheaper than a fixed plan for a small app?",

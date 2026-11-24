@@ -162,7 +162,7 @@ const NOT_AVAILABLE = "Not available";
 const JUMP_LINKS = [
   { href: "/pricing/calculator", label: "Estimate your bill" },
   { href: "#compare-plans", label: "Compare all features" },
-  { href: "#compare", label: "Prisma vs Neon, Supabase and Vercel" },
+  { href: "#compare", label: "Prisma vs Netlify, Supabase and Railway" },
 ];
 
 const LINE = "border-black/[0.06]";
