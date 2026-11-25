@@ -43,7 +43,7 @@ export function KeepReading({ posts }: { posts: BlogCardItem[] }) {
   if (posts.length === 0) return null;
 
   return (
-    <section aria-labelledby="keep-reading" className="mt-14">
+    <section aria-labelledby="keep-reading" className="mt-10">
       <h2
         id="keep-reading"
         className="m-0 mb-4 text-base font-semibold leading-snug text-foreground-neutral-strong"

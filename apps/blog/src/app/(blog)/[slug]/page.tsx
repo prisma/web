@@ -369,30 +369,32 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             </div>
           </article>
 
-          {/* The post's ending, on one left edge and one 56px rhythm (client,
-              2026-11-25: "light, simple, and elegant"): share right where the
-              article ends, then the author, the series, related posts and
-              the CTA last. */}
-          {/* From md the share links sit in the right column; on phones,
+          {/* The post's ending, on the article text's 44rem column and one
+              40px rhythm (client, 2026-11-25: "light, simple, and elegant",
+              then "how can we tighten this up?"): the author, the series,
+              related posts and the CTA last, none wider than the text above. */}
+          <div className="max-w-[44rem]">
+            {/* From md the share links sit in the right column; on phones,
               where that column is hidden, they stay under the article. */}
-          <div className="mt-2 md:hidden">
-            <BlogShare desc={page.data.metaDescription as string} />
-          </div>
+            <div className="mt-2 md:hidden">
+              <BlogShare desc={page.data.metaDescription as string} />
+            </div>
 
-          <AuthorBio authors={page.data.authors} />
+            <AuthorBio authors={page.data.authors} />
 
-          {seriesContext ? (
-            <>
-              <SeriesBanner series={seriesContext} />
-              <SeriesNavigation series={seriesContext} />
-            </>
-          ) : null}
-          <KeepReading posts={relatedPosts} />
+            {seriesContext ? (
+              <>
+                <SeriesBanner series={seriesContext} />
+                <SeriesNavigation series={seriesContext} />
+              </>
+            ) : null}
+            <KeepReading posts={relatedPosts} />
 
-          {/* Conversion CTA. A post can relabel it and point it at a tracked
+            {/* Conversion CTA. A post can relabel it and point it at a tracked
             Console URL through the `cta` frontmatter field instead of adding
             a second button inside the article. */}
-          <BlogCTA {...(page.data.cta ?? {})} />
+            <BlogCTA {...(page.data.cta ?? {})} />
+          </div>
         </div>
         <aside className="hidden md:block">
           <nav

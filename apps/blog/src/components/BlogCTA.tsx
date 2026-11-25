@@ -79,7 +79,7 @@ export const BlogCTA = ({
   return (
     <section
       aria-labelledby="blog-cta-title"
-      className="brand-agent-loop relative mt-14 overflow-hidden rounded-[1.25rem] border border-stroke-neutral bg-cover bg-center p-2 sm:p-3 dark:rounded-xl dark:border-0 dark:p-0 dark:[background-image:none]!"
+      className="brand-agent-loop @container relative mt-10 overflow-hidden rounded-[1.25rem] border border-stroke-neutral bg-cover bg-center p-2 sm:p-3 dark:rounded-xl dark:border-0 dark:p-0 dark:[background-image:none]!"
     >
       <DeferredVideo
         src={`${BLOG_PREFIX}/brand/cta-clouds-loop.mp4`}
@@ -128,8 +128,8 @@ export const BlogCTA = ({
 
           {/* Dark mode, after the docs' DeployCallout: no clouds, a very
               faint spectral wash along the bottom edge (a surface quality,
-              not a glow) and one glass prism cropped into the top-right
-              corner, behind the content. */}
+              not a glow). The glass prism that sat in the top-right corner
+              is gone, so the panel reads clean (client, 2026-11-25). */}
           <div
             className="absolute inset-0 hidden dark:block"
             style={{
@@ -139,12 +139,6 @@ export const BlogCTA = ({
                 "radial-gradient(45% 45% at 88% 100%, color-mix(in srgb, var(--color-prism-red-300) 6%, transparent), transparent 70%)",
               ].join(","),
             }}
-          />
-          <GlassPrismSpin
-            shape="hexagon"
-            period={40}
-            initialAngle={0.9}
-            className="-right-14 -top-16 hidden w-44 opacity-30 dark:block"
           />
 
           <div className="absolute inset-0 overflow-hidden opacity-[0.06] mix-blend-multiply dark:hidden">
@@ -157,7 +151,7 @@ export const BlogCTA = ({
             heading and one line of copy on the left, the two buttons on the
             right from lg up (narrower columns squeeze the heading); stacked below. The site panel's row of
             checks is left out here. */}
-        <div className="relative z-10 flex flex-col gap-6 px-6 py-7 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+        <div className="relative z-10 flex flex-col gap-5 px-6 py-7 sm:px-8 @3xl:flex-row @3xl:items-center @3xl:justify-between @3xl:gap-8">
           <div className="min-w-0">
             <h2
               id="blog-cta-title"

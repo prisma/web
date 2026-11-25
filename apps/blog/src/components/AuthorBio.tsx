@@ -112,7 +112,10 @@ export function AuthorBio({ authors = [] }: { authors?: string[] }) {
   // the same left edge as everything else in the post's ending. The section
   // heading stays for screen readers only.
   return (
-    <section aria-labelledby="about-the-author" className="mt-14 border-t border-stroke-neutral pt-10">
+    <section
+      aria-labelledby="about-the-author"
+      className="mt-4 border-t border-stroke-neutral pt-8"
+    >
       <h2 id="about-the-author" className="sr-only">
         {profiles.length === 1 ? "About the author" : "About the authors"}
       </h2>
@@ -145,10 +148,10 @@ export function AuthorBio({ authors = [] }: { authors?: string[] }) {
                   </Link>
                 </h3>
               </div>
-              <p className="mt-4 mb-0 max-w-[44rem] text-[15px] leading-[1.7] text-foreground-neutral-weak">
+              <p className="mt-3 mb-0 text-[15px] leading-[1.7] text-foreground-neutral-weak">
                 {bio?.bio}
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
                 <AuthorSocialLinks socials={bio?.socials ?? []} name={name} plain />
                 <Link
                   href={`/author/${slug}`}
