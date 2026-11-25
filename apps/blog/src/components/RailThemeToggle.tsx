@@ -1,42 +1,61 @@
 "use client";
 
 import { useTheme } from "@prisma-docs/ui/components/theme-provider";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import { Airplay, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
-import { RAIL_ROW } from "./BlogShare";
 
-const ORDER = ["light", "dark", "system"] as const;
-type Choice = (typeof ORDER)[number];
-const ICON = { light: Sun, dark: Moon, system: Airplay } as const;
-const LABEL = { light: "Light theme", dark: "Dark theme", system: "System theme" } as const;
+const OPTIONS = [
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
+  { value: "system", label: "System", Icon: Airplay },
+] as const;
+type Choice = (typeof OPTIONS)[number]["value"];
 
 /**
- * The light/dark switch as a row of the post's right column (client,
- * 2026-11-25: it left the navbar so the navbar matches the homepage, and
- * belongs in the rail with the share links). The row names the current
- * theme and steps light → dark → system on click, like the docs' navbar
- * control (apps/docs/src/components/layout/theme-toggle.tsx).
+ * The theme switch at the top of the post's right column (client,
+ * 2026-11-25: it left the navbar so the navbar matches the homepage, then
+ * "move the themes to the top and make it obviously a button"). A bordered
+ * three-way control, Light / Dark / System, each labelled, the current one
+ * filled in neutral ink rather than the brand cyan, so it reads at a glance
+ * as a control and shows every choice.
  */
 export function RailThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const current: Choice = mounted && ORDER.includes(theme as Choice) ? (theme as Choice) : "system";
-  const next = ORDER[(ORDER.indexOf(current) + 1) % ORDER.length];
-  const Icon = ICON[current];
+  const current: Choice | null =
+    mounted && OPTIONS.some((o) => o.value === theme) ? (theme as Choice) : null;
 
   return (
-    <button
-      type="button"
+    <div
+      role="radiogroup"
+      aria-label="Colour theme"
       data-theme-toggle=""
-      aria-label={`${LABEL[current]}. Switch to ${LABEL[next].toLowerCase()}`}
-      title={`Switch to ${LABEL[next].toLowerCase()}`}
-      onClick={() => setTheme(next)}
-      className={RAIL_ROW}
+      className="grid grid-cols-3 gap-0.5 rounded-lg border border-stroke-neutral p-0.5"
     >
-      <Icon aria-hidden />
-      {LABEL[current]}
-    </button>
+      {OPTIONS.map(({ value, label, Icon }) => {
+        const active = current === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => setTheme(value)}
+            className={cn(
+              "inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 rounded-md text-[13px] font-medium outline-none transition-colors duration-[120ms] ease-out hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none",
+              active
+                ? "bg-fd-foreground/[0.07] text-fd-foreground"
+                : "text-fd-muted-foreground hover:bg-fd-foreground/[0.04] hover:text-fd-foreground",
+            )}
+          >
+            <Icon aria-hidden className="size-3.5" />
+            {label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

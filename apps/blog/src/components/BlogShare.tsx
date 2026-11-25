@@ -20,6 +20,10 @@ const SHARE_BUTTON =
 export const RAIL_ROW =
   "inline-flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md text-sm text-fd-muted-foreground no-underline transition-colors duration-[120ms] ease-out outline-none hover:text-fd-foreground hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none [&_svg]:size-3.5 [&_svg]:shrink-0";
 
+// One 16px box per icon, so the brand glyphs (wider than lucide's) and the
+// link icon start every label on the same line.
+const ICON_BOX = "inline-flex size-4 shrink-0 items-center justify-center";
+
 export const BlogShareList = ({ desc }: { desc: string }) => {
   const [copied, setCopied] = useState(false);
   const pathname = usePathname();
@@ -36,7 +40,9 @@ export const BlogShareList = ({ desc }: { desc: string }) => {
             rel="noopener"
             className={RAIL_ROW}
           >
-            <i aria-hidden className={cn(socialLink.icon, "w-3.5 text-center text-[14px]")} />
+            <span aria-hidden className={ICON_BOX}>
+              <i className={cn(socialLink.icon, "text-[14px]")} />
+            </span>
             Share on {socialLink.label}
           </a>
         ) : socialLink.copy ? (
@@ -50,7 +56,9 @@ export const BlogShareList = ({ desc }: { desc: string }) => {
             }}
             className={RAIL_ROW}
           >
-            {copied ? <Check aria-hidden /> : <Link2 aria-hidden />}
+            <span aria-hidden className={ICON_BOX}>
+              {copied ? <Check /> : <Link2 />}
+            </span>
             {copied ? "Link copied" : "Copy link"}
           </button>
         ) : null,

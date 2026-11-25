@@ -400,12 +400,14 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3 [scrollbar-color:var(--color-stroke-neutral)_transparent] [scrollbar-width:thin]"
           >
             {/* As in the docs' right column (client, 2026-11-25: "same as we
-                have in docs", with the share links and the theme switch): a
-                quiet list of rows, a hairline, then "On this page" with its
-                icon over the outline. */}
+                have in docs", with the theme switch first, then the share
+                links): a hairline, then "On this page" with its icon over
+                the outline. */}
             <div className="mb-5 border-b border-stroke-neutral pb-4">
-              <BlogShareList desc={page.data.metaDescription as string} />
               <RailThemeToggle />
+              <div className="mt-3">
+                <BlogShareList desc={page.data.metaDescription as string} />
+              </div>
             </div>
             <p className="m-0 mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-fd-muted-foreground">
               <TextIcon aria-hidden className="size-4" />
