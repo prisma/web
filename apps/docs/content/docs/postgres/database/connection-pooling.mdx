@@ -30,7 +30,7 @@ Your application opens a connection to the pooled hostname (`pooled.db.prisma.io
 Because PgBouncer operates in transactional mode:
 
 - **Session state is not tied to your client.** The pooler can run each transaction on a different backend connection, so prepared statements, session-level advisory locks, and temporary tables do not carry over from one transaction to the next. If your workload depends on session state, use a direct connection.
-- **A `SET` outside a transaction can affect other clients.** The setting stays on the backend connection after your transaction ends, and it then applies to whichever client is assigned that connection next. A changed `search_path`, for example, can make another client's statements run against the wrong schema without an error. Use `SET LOCAL` inside a transaction, which ends with the transaction, or use a direct connection.
+- **A `SET` that is not `SET LOCAL` can affect other clients.** A plain `SET` changes the backend connection itself, whether it runs outside a transaction or inside one that commits. The setting stays on that connection, and it then applies to whichever client is assigned the connection next. A changed `search_path`, for example, can make another client's statements run against the wrong schema without an error. Use `SET LOCAL` inside a transaction, which ends with the transaction, or use a direct connection.
 - **`LISTEN` is accepted but notifications are not delivered.** The statement succeeds, so a client that listens through the pooler waits without an error. Use a direct connection for `LISTEN` / `NOTIFY`.
 - **Queries are limited to 10 minutes.** Queries exceeding this timeout are terminated. For long-running jobs, use a direct connection.
 
@@ -45,7 +45,7 @@ Because PgBouncer operates in transactional mode:
 - Prisma Studio and admin tooling
 - `pg_dump` / `pg_restore`
 - `LISTEN` / `NOTIFY`
-- Workloads that use session-level `SET` commands or prepared statements outside transactions
+- Workloads that use session-level `SET` commands (any `SET` that is not `SET LOCAL`) or prepared statements outside transactions
 - Queries that may exceed 10 minutes
 
 Getting this wrong has asymmetric failure modes. Running migrations through the pooler usually produces clear errors (lock failures, session state errors), but a session-level `SET` or a `LISTEN` fails silently. Running application traffic over direct connections works fine at low concurrency but causes silent connection exhaustion under load, the kind of issue that only surfaces in production.
@@ -66,7 +66,7 @@ The pooled connection string was used for a migration or admin workflow that req
 
 ### Session state not persisting between queries
 
-This is expected behavior in transactional pool mode. The pooler returns the backend connection to the pool after each transaction, so temporary tables, prepared statements, and session-level advisory locks do not carry over. A `SET` outside a transaction is not reliable either: your next query can run on a connection without it, and another client can run on the connection that has it. Use a direct connection for session-dependent workloads.
+This is expected behavior in transactional pool mode. The pooler returns the backend connection to the pool after each transaction, so temporary tables, prepared statements, and session-level advisory locks do not carry over. A `SET` that is not `SET LOCAL` is not reliable either: your next query can run on a connection without it, and another client can run on the connection that has it. Use a direct connection for session-dependent workloads.
 
 ### Query killed after 10 minutes
 
