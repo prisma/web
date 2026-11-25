@@ -20,7 +20,7 @@ import { ProtectionLayers, ResetAttempt, RenameWalkthrough, PolicyOutcomes, Appl
 
 In July 2026, a developer tried a coding agent on their project for the first time, and ten minutes later [every table in their database was empty](https://www.reddit.com/r/Anthropic/comments/1v9iurd/and_just_like_that_opus_5_ultracode_wipes_the/). The agent had run `prisma migrate diff`, a command that compares schemas, and passed the live connection string as the shadow database. Prisma ORM 7 resets a shadow database before using it, so it reset the real one.
 
-Three weeks earlier, [another team lost production the same way](https://www.reddit.com/r/ClaudeAI/comments/1uqhqlf/claude_code_wiped_my_entire_production_database/) and got it back through point-in-time recovery. A year before that, a developer's agent [ran `prisma migrate reset --force` against production](https://www.reddit.com/r/vibecoding/comments/1mo0j3p/never_touching_cursor_again/).
+Three weeks earlier, [another team lost production the same way](https://www.reddit.com/r/ClaudeAI/comments/1uqhqlf/claude_code_wiped_my_entire_production_database/) and got it back through point-in-time recovery. A year before that, a developer's agent [ran `prisma migrate reset --force` on their database](https://www.reddit.com/r/vibecoding/comments/1mo0j3p/never_touching_cursor_again/).
 
 People were making these mistakes long before agents did. One of the older open issues on the Prisma repository is titled ["Too EASY to DELETE ALL database"](https://github.com/prisma/orm/issues/9114), and a [request to disable resets](https://github.com/prisma/orm/issues/21483) includes several teams whose developers wiped a shared database by answering `y` to a prompt. An agent makes the same mistakes faster, because it can edit a schema, generate a migration, and apply it before you've read the first diff.
 
@@ -186,7 +186,7 @@ The hash covers the compiled migration files, not the source `migration.ts`. If 
 
 In development, `prisma db update` applies schema changes without creating migration files, which suits experimenting. On production you want every change to go through a migration, so that it can be reviewed, tracked, and deployed the same way each time. None of the checks so far enforces that. Anyone who holds the production connection string, often an agent, can run `db update` against it.
 
-Database policies enforce it, and they're the one check that is off by default. You declare them once for each database you want to protect. A change policy says which commands may change the database, and a data protection policy says whether the database may lose data at all.
+Database policies enforce it, and they're the one check that is off by default. They need `prisma@8.0.0-rc.35` or later, and you declare them once for each database you want to protect. A change policy says which commands may change the database, and a data protection policy says whether the database may lose data at all.
 
 <PolicyOutcomes />
 
@@ -311,9 +311,10 @@ The skills can't know which of your databases matter or when you want to be aske
   `ops.json` or `migration.json` by hand.
 - For changes to columns that a running app reads, plan separate
   migrations: add the new column, make the app write to both columns,
-  backfill the new one, switch reads to it, and remove the old column in
-  a later release. If the app can't write to both, pause writes from the
-  backfill until every old instance has stopped.
+  backfill the new one, switch reads to it, stop writing to the old
+  column, and remove it in a later release. If the app can't write to
+  both, pause writes from the backfill until every old instance has
+  stopped.
 ```
 
 Most of these rules have a Prisma check behind them that catches the agent when it breaks one. The rules about raw SQL, older CLIs, and connection strings don't. Instructions alone are weak protection for those, because agents forget them in long sessions, and developers who have tried to stop a reset with a rules file alone [report](https://forum.cursor.com/t/agent-decides-again-to-wipe-entire-db/123619) that it doesn't hold.
@@ -328,7 +329,8 @@ A migration that preserves the data can also break a running application. Renami
 2. Make the application write to both columns.
 3. Backfill the new column.
 4. Switch reads to the new column.
-5. Remove the old column in a later release.
+5. Stop writing to the old column, and wait until no running instance still uses it.
+6. Remove the old column in a later release.
 
 Without the dual-write step, an older instance that updates `username` after the backfill leaves `handle` stale, and removing `username` loses that update. If the application can't write to both columns, pause writes from the backfill until every old instance has stopped.
 
@@ -340,7 +342,7 @@ The rest depends on how you set up the databases you care about:
 
 1. **Keep production credentials out of the agent's environment.** Most of the incidents in this post started with a production connection string in a development shell. Let your deployment pipeline hold it.
 2. **Record policies on the databases that matter.** Declare `change: ["migrate"]` on production, and add `data-loss-forbidden` where no migration should ever remove data.
-3. **Run `prisma migration check` in CI.** A migration that was edited after review then fails before it reaches a deploy.
+3. **Run `prisma migration check` in CI.** A compiled migration that someone edited by hand then fails before it reaches a deploy. A migration that was recompiled from an edited `migration.ts` passes this check, so it needs a new review.
 4. **Make sure you can restore.** The one team in this post that got its data back did it through point-in-time recovery. Prisma Postgres takes [daily backups](https://www.prisma.io/docs/postgres/database/backups) on paid plans. Whatever database you use, test a restore before you need one.
 
 ### Further reading

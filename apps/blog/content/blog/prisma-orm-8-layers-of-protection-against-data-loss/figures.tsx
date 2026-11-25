@@ -155,7 +155,8 @@ const LAYERS: Layer[] = [
   },
   {
     heading: "Destructive operations are labeled",
-    summary: "The preview and the migration both mark every operation that deletes data.",
+    summary:
+      "The preview and the migration both mark every operation Prisma plans that deletes data.",
     effect: "Warns",
     href: "#destructive-operations-are-visible-in-review",
   },
