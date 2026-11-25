@@ -173,7 +173,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "My Next.js app is already on Vercel. Can I use Prisma Postgres?",
       answer:
-        "Yes. Add it from the [Vercel Marketplace](/docs/guides/postgres/vercel): it sets the direct connection string as `DATABASE_URL` and the pooled one as `DATABASE_URL_POOLED`, and the database bills through your Vercel account. It has no cold starts and no instance to size or upgrade, PgBouncer pooling is built in, and any Postgres client works, including Drizzle and Kysely; Prisma ORM is optional. The integration does not create a database per preview deployment: connect a separate database to your Preview environment so previews never use production data.",
+        "Yes. Add it from the [Vercel Marketplace](/docs/guides/postgres/vercel): it sets the direct connection string as `DATABASE_URL` and the pooled one as `DATABASE_URL_POOLED`, and the database bills through your Vercel account. It has no cold starts and no instance to size or upgrade, PgBouncer pooling is built in, and any Postgres client works, including Drizzle and Kysely; Prisma ORM is optional. The integration does not create a database per preview deployment: connect a separate database to your Preview environment only, take Preview off the production database's connection, and redeploy, so new previews don't use production data.",
     },
     {
       question: "Is Prisma Postgres managed PostgreSQL hosting (Postgres as a service)?",
