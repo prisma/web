@@ -58,6 +58,11 @@ function track(text: string, destination: string) {
  * A post's `cta:` frontmatter still relabels the heading, description and
  * primary button and points it at a tracked Console URL.
  *
+ * In dark mode the whole panel is greyscale (client, 2026-11-25): the
+ * coloured clouds and spectral wash under a dark glass card read as muddy,
+ * so the filter keeps the texture and motion but drops the colour. The
+ * summary line steps up a tone there so it stays legible on the dark glass.
+ *
  * Clicks go through `trackCTA`, which pushes `cta_click` to the GTM
  * dataLayer (consent-gated) and dispatches the DOM event the blog's PostHog
  * client turns into `site:cta_clicked`. UtmPersistence rewrites the primary
@@ -73,7 +78,7 @@ export const BlogCTA = ({
   return (
     <section
       aria-labelledby="blog-cta-title"
-      className="brand-agent-loop relative mb-12 overflow-hidden rounded-[1.25rem] border border-stroke-neutral bg-cover bg-center p-2 sm:p-3"
+      className="brand-agent-loop relative mb-12 overflow-hidden rounded-[1.25rem] border border-stroke-neutral bg-cover bg-center p-2 sm:p-3 dark:grayscale"
     >
       <DeferredVideo
         src={`${BLOG_PREFIX}/brand/cta-clouds-loop.mp4`}
@@ -138,7 +143,7 @@ export const BlogCTA = ({
             >
               {title}
             </h2>
-            <p className="mt-2 mb-0 max-w-[46ch] text-pretty text-sm leading-relaxed text-foreground-neutral-weak">
+            <p className="mt-2 mb-0 max-w-[46ch] text-pretty text-sm leading-relaxed text-foreground-neutral-weak dark:text-foreground-neutral">
               {description}
             </p>
           </div>
