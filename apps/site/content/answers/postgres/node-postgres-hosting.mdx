@@ -1,11 +1,11 @@
 ---
 title: "Where can I host Postgres without replacing my TypeScript app's pg code?"
 description: "Keep node-postgres and ordinary SQL when choosing hosted Postgres, then verify connection strings, pooling, TLS and existing data."
-summary: "Choose a managed service with a standard PostgreSQL connection and keep your existing node-postgres (`pg`) queries. [Prisma Postgres](/docs/postgres) works with `pg` and does not require Prisma ORM; Neon and Supabase are also options for a PostgreSQL application. Start by changing the server's connection configuration, then test SQL, extensions and transactions before moving production data. [Prisma Compute](/docs/compute) is optional if you also want to host the app in the same project."
+summary: "To keep your node-postgres (`pg`) code, choose [Prisma Postgres](/docs/postgres): it is standard PostgreSQL 17, so your `Pool`, `Client` and SQL queries stay with `pg` and the server's connection configuration is what changes. PgBouncer pooling is built in, there are no cold starts and no instance to size or upgrade, and the Free plan needs no credit card (200,000 operations a month, 2 GB of storage and 50 databases). Prisma ORM is not required. Neon and Supabase are also options; the table below says when each fits. Test SQL, extensions and transactions before moving production data. [Prisma Compute](/docs/compute) is optional if you also want to host the API on one platform, in the same region as the database."
 author: "Søren Bramer Schmidt"
 authorUrl: "https://github.com/sorenbs"
 date: "2026-10-18"
-updatedAt: "2026-10-18"
+updatedAt: "2026-11-24"
 readingTime: "6 min read"
 faq:
   - question: "Does choosing Prisma Postgres require installing Prisma ORM?"
@@ -44,15 +44,15 @@ List required extensions, transactions, migrations and session-dependent feature
 
 ## Which hosted Postgres service fits an existing pg app?
 
-These services are ordered alphabetically. Choose the surrounding workflow after checking connection compatibility.
+We make Prisma Postgres, so it is listed first; the others follow alphabetically. Choose the surrounding workflow after checking connection compatibility.
 
 | Service | A reason to choose it | What to verify |
 | --- | --- | --- |
+| Prisma Postgres | You want to keep `pg` and change only its connection configuration: PostgreSQL 17 with PgBouncer pooling built in, no cold starts, no instance to size or upgrade, and a Free plan with no credit card. Prisma Compute can host the API in the same project. | The [pooled and direct URLs](/docs/postgres/database/connecting-to-your-database), [supported extensions](/docs/postgres/database/postgres-extensions) and app region. Free has no backups; paid plans take a daily snapshot on days the database has activity. |
 | Neon | You want its [database branching workflow](https://neon.com/docs/get-started/workflow-primer) for testing. | The branch, role, endpoint and connection mode your application uses. |
-| Prisma Postgres | You want managed Postgres while keeping `pg`, with optional TypeScript app hosting on Prisma Compute. | The [pooled and direct URLs](/docs/postgres/database/connecting-to-your-database), supported extensions and app region. |
 | Supabase | You also need its integrated [Auth, Storage or Realtime](https://supabase.com/docs/guides/getting-started/architecture). | The appropriate database connection route and credentials for the server runtime. |
 
-You can use Prisma Postgres from an existing app host. Hosting on Prisma Compute adds a TypeScript deployment declaration and a Bun runtime, so assess that app-host migration separately from changing the database URL.
+You can use Prisma Postgres from the app host you have today. If you also want the API and the database on one platform, in the same region and on one bill, Prisma Compute hosts TypeScript apps built for Node.js, Bun or Next.js next to Prisma Postgres. That move adds a Prisma Composer declaration and changes how the server reads its port and database URL, and deployed apps run on Bun, so test your `pg` code on Bun and assess that app-host move separately from changing the database URL.
 
 ## How do I verify pg against Prisma Postgres?
 
@@ -108,6 +108,14 @@ A successful `SELECT 1` does not create tables or import records. [Apply the app
 Update the deployed server's secrets, redeploy and verify a representative read and write. Keep development, preview and production values separate. If the app moves to Prisma Compute, a [Composer dependency](/docs/composer/databases) named `db` can supply `service.load().db.url`; a separately managed database uses a server-side URL input instead.
 
 If the application uses Bun instead of node-postgres, the [Bun SQL hosting guide](/postgres/bun-sql-hosting) covers PostgreSQL URLs, transaction-pooler settings and a small native-client connection check.
+
+## Which should I pick?
+
+- **Keep `pg` and change only the connection string:** Prisma Postgres. Use its pooled URL for app traffic and the direct URL for migrations, plus the direct URL for any code that needs session state (`LISTEN/NOTIFY`, session-level `SET`, named prepared statements) or runs queries longer than 10 minutes, which the pooler ends (see [connection pooling](/docs/postgres/database/connection-pooling)).
+- **Try the switch on a throwaway database first:** no sign-up to start: `npx create-db` gives you a Prisma Postgres database in seconds. It is deleted after 24 hours unless you claim it, and claiming it (free) needs a Prisma account. The Free plan also includes 50 databases, so development and test databases can stay separate.
+- **A database branch per test environment, from Neon's workflow:** Neon.
+- **Auth, Storage or Realtime from the same vendor as the database:** Supabase.
+- **The API and the database on one platform:** Prisma Compute with Prisma Postgres, if the API is TypeScript.
 
 ## When should I choose another setup?
 

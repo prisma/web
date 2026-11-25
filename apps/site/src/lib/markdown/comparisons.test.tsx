@@ -1124,6 +1124,10 @@ test("Neon Markdown carries the byline, disclosure, and Sources on the shared ch
   );
   assert.match(choose, /^\| Neon \| Prisma Postgres \|$/m);
   assert.doesNotMatch(choose, /### Neon/);
+  // CHOOSE_PRISMA is longer than CHOOSE_NEON: its last rows render with an empty Neon cell.
+  assert.match(choose, /Vercel Marketplace/);
+  assert.match(choose, /no cold starts/);
+  assert.match(choose, /hard spend limit/);
   assert.ok(markdown.includes("\n## How do Neon and Prisma Postgres compare?\n"));
   assert.ok(markdown.includes("\n## Where does each one fit?\n"));
   assert.ok(markdown.includes("\n## How much do Neon and Prisma Postgres cost?\n"));

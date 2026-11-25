@@ -29,8 +29,6 @@ faq:
 related:
   - title: "What is serverless Postgres, and when should I use it?"
     href: "/postgres/serverless"
-  - title: "What is the Postgres connection string format?"
-    href: "/postgres/connection-string"
   - title: "Hosted Postgres says \"too many connections\""
     href: "/postgres/too-many-connections"
   - title: "Prisma Postgres connection pooling and limits"
@@ -91,7 +89,7 @@ DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 - **Pooled, `pooled.db.prisma.io`:** all application traffic, such as API handlers, background workers and serverless functions.
 - **Direct, `db.prisma.io`:** migrations, Prisma Studio, `pg_dump` and `pg_restore`, `LISTEN` and `NOTIFY`, session-level `SET` commands, and queries that may run longer than 10 minutes.
 
-Get both in the [Prisma Console](https://console.prisma.io): open the database, select **Connect to your database**, then **Generate new connection string**. The [Postgres connection string](/postgres/connection-string) guide breaks down each part of the format.
+Get both in the [Prisma Console](https://console.prisma.io): open the database, select **Connect to your database**, then **Generate new connection string**. [Connecting to your database](/docs/postgres/database/connecting-to-your-database) breaks down each part of the format.
 
 ### Connection limits
 
@@ -154,14 +152,12 @@ For serverless functions, Prisma ORM's [serverless client](/docs/orm/reference/t
 npx prisma project env add DATABASE_URL=postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require --role production
 ```
 
-Compute scales an idle app to zero and closes idle database connections. Keep each instance's pool small and ready to reconnect. The [Composer docs](/docs/composer/deploying#production-behavior) use one connection with a 10-second idle timeout:
+Compute scales an idle app to zero and closes idle database connections. Keep each instance's pool small and ready to reconnect. The [Composer docs](/docs/composer/deploying#production-behavior) recommend one connection with a 10-second idle timeout. Read the pooled string from `DATABASE_URL`:
 
 ```ts title="src/server.ts"
 import { SQL } from "bun";
-import service from "./service.ts";
 
-const { db } = service.load();
-const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10, prepare: false });
+const sql = new SQL({ url: process.env.DATABASE_URL!, max: 1, idleTimeout: 10, prepare: false });
 ```
 
 ## Common connection pooling mistakes and how to fix them
