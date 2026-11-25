@@ -171,9 +171,14 @@ function RegionPill() {
 function RouteCell({ route }: { route: Route }) {
   if (route.key === "pooled") {
     return (
-      <div className="flex h-full items-stretch rounded-xl border border-[#E6E6E6] bg-[#F2F2F2] p-2">
-        <Box title="Proxy" sub="Connections" className="w-[100px] flex-none" />
-        <Arrowhead color={CYAN} className="mx-2.5 self-center" />
+      // Below 400px of figure width there is no room for the two cards side by
+      // side, so they stack with the arrow pointing down.
+      <div className="flex h-full items-stretch rounded-xl border border-[#E6E6E6] bg-[#F2F2F2] p-2 @max-[400px]:flex-col">
+        <Box title="Proxy" sub="Connections" className="w-[100px] flex-none @max-[400px]:w-auto" />
+        <Arrowhead
+          color={CYAN}
+          className="mx-2.5 self-center @max-[400px]:mx-0 @max-[400px]:my-1.5 @max-[400px]:rotate-90"
+        />
         <Box
           title="PgBouncer"
           sub="Transaction mode"
