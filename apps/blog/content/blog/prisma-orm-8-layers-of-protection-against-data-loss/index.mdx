@@ -133,13 +133,13 @@ $ npx prisma db update --yes
 → Run the command again with --delete User.username
 ```
 
-An agent therefore can't approve a destructive change by accepting every prompt. The approval has to name the field, which gives you something specific to look for in review. It doesn't control who gives the approval, though. An agent can pass `--delete User.username` itself, so the [agent instructions](#what-should-you-tell-your-coding-agent) later in this post tell it to ask you first.
+An agent therefore can't approve a destructive change by accepting every prompt. The approval has to name the field, which gives you something specific to look for in review. It doesn't control who gives the approval, though, and an agent can pass `--delete User.username` itself. The [agent instructions](#what-should-you-tell-your-coding-agent) later in this post tell it to ask you first.
 
 Other changes that can lose data are handled in a similar way:
 
 - **A lossy type change** asks the same question, and you answer with a conversion or an explicit `--delete`.
 - **Making a column required** is caught when the migration is applied. The run stops if existing rows hold `NULL`.
-- **A new required field with no default** isn't blocked. Prisma fills existing rows with a temporary value, such as `''` for text or `0` for a number, and names it in the command's output. To set the values yourself, pass `--backfill` to `migration plan`, which writes a backfill step for you to fill in.
+- **A new required field with no default** isn't blocked. Prisma fills existing rows with a temporary value, such as `''` for text or `0` for a number, and names it in the command's output. To set the values yourself, pass `--backfill` to `migration plan`, which writes a backfill step for you to fill in. A field that is unique, part of a key, or an enum has no temporary value, so its migration fails on a table that already has rows.
 
 ## Destructive operations are visible in review
 
@@ -341,7 +341,7 @@ The rest depends on how you set up the databases you care about:
 1. **Keep production credentials out of the agent's environment.** Most of the incidents in this post started with a production connection string in a development shell. Let your deployment pipeline hold it.
 2. **Record policies on the databases that matter.** Declare `change: ["migrate"]` on production, and add `data-loss-forbidden` where no migration should ever remove data.
 3. **Run `prisma migration check` in CI.** A migration that was edited after review then fails before it reaches a deploy.
-4. **Make sure you can restore.** The teams that recovered had backups they could restore from. Prisma Postgres takes [daily backups](https://www.prisma.io/docs/postgres/database/backups) on paid plans. Whatever database you use, test a restore before you need one.
+4. **Make sure you can restore.** The one team in this post that got its data back did it through point-in-time recovery. Prisma Postgres takes [daily backups](https://www.prisma.io/docs/postgres/database/backups) on paid plans. Whatever database you use, test a restore before you need one.
 
 ### Further reading
 
