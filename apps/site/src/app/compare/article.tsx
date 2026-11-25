@@ -173,9 +173,15 @@ export function comparisonChooseTable({
       labelledBy={labelledBy}
       columns={[competitor, prisma]}
       minWidth="40rem"
-      rows={competitorItems.map((item, index) => ({
-        cells: [renderFaqAnswer(item), renderFaqAnswer(prismaItems[index] ?? "")],
-      }))}
+      rows={Array.from(
+        { length: Math.max(competitorItems.length, prismaItems.length) },
+        (_, index) => ({
+          cells: [
+            renderFaqAnswer(competitorItems[index] ?? ""),
+            renderFaqAnswer(prismaItems[index] ?? ""),
+          ],
+        }),
+      )}
     />
   );
 }
