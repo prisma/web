@@ -58,10 +58,11 @@ function track(text: string, destination: string) {
  * A post's `cta:` frontmatter still relabels the heading, description and
  * primary button and points it at a tracked Console URL.
  *
- * In dark mode the whole panel is greyscale (client, 2026-11-25): the
- * coloured clouds and spectral wash under a dark glass card read as muddy,
- * so the filter keeps the texture and motion but drops the colour. The
- * summary line steps up a tone there so it stays legible on the dark glass.
+ * Dark mode follows the docs' DeployCallout instead (client, 2026-11-25:
+ * "something darker like this"): the cloud frame, video, beams and grain
+ * drop out, leaving the docs' card surface with a hairline, a very faint
+ * spectral wash along the bottom and one faint glass prism in the top-right
+ * corner. The summary line steps up a tone there.
  *
  * Clicks go through `trackCTA`, which pushes `cta_click` to the GTM
  * dataLayer (consent-gated) and dispatches the DOM event the blog's PostHog
@@ -78,18 +79,18 @@ export const BlogCTA = ({
   return (
     <section
       aria-labelledby="blog-cta-title"
-      className="brand-agent-loop relative mb-12 overflow-hidden rounded-[1.25rem] border border-stroke-neutral bg-cover bg-center p-2 sm:p-3 dark:grayscale"
+      className="brand-agent-loop relative mb-12 overflow-hidden rounded-[1.25rem] border border-stroke-neutral bg-cover bg-center p-2 sm:p-3 dark:rounded-xl dark:border-0 dark:p-0 dark:[background-image:none]!"
     >
       <DeferredVideo
         src={`${BLOG_PREFIX}/brand/cta-clouds-loop.mp4`}
-        className="pointer-events-none absolute inset-0 size-full object-cover"
+        className="pointer-events-none absolute inset-0 size-full object-cover dark:hidden"
       />
       {/* translucent over the clouds: the video ghosts through the glass */}
-      <div className="relative isolate overflow-hidden rounded-xl border border-stroke-neutral bg-[color-mix(in_srgb,var(--color-fd-card)_72%,transparent)] shadow-[0_12px_32px_-14px_rgba(21,21,21,0.18)] backdrop-blur-lg">
+      <div className="relative isolate overflow-hidden rounded-xl border border-stroke-neutral bg-[color-mix(in_srgb,var(--color-fd-card)_72%,transparent)] shadow-[0_12px_32px_-14px_rgba(21,21,21,0.18)] backdrop-blur-lg dark:bg-fd-card dark:shadow-none dark:backdrop-blur-none">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
           {/* the spectral bottom: wash and beam fan, dispersing upward */}
           <div
-            className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
+            className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2 dark:hidden"
             style={{
               background: [
                 "radial-gradient(64% 52% at 26% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 34%, transparent), transparent 72%)",
@@ -98,34 +99,55 @@ export const BlogCTA = ({
               ].join(","),
             }}
           />
-          <div className="absolute bottom-[-24rem] left-[16%] h-[60rem] w-52 origin-bottom rotate-[-24deg] bg-prism-cyan-300/50 blur-[96px]" />
-          <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-40 origin-bottom -translate-x-1/2 rotate-[5deg] bg-prism-yellow-200/50 blur-[72px]" />
-          <div className="absolute bottom-[-28rem] right-[14%] h-[60rem] w-52 origin-bottom rotate-[24deg] bg-prism-red-300/50 blur-[96px]" />
+          <div className="absolute bottom-[-24rem] left-[16%] h-[60rem] w-52 origin-bottom rotate-[-24deg] bg-prism-cyan-300/50 blur-[96px] dark:hidden" />
+          <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-40 origin-bottom -translate-x-1/2 rotate-[5deg] bg-prism-yellow-200/50 blur-[72px] dark:hidden" />
+          <div className="absolute bottom-[-28rem] right-[14%] h-[60rem] w-52 origin-bottom rotate-[24deg] bg-prism-red-300/50 blur-[96px] dark:hidden" />
           <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-t from-transparent via-white/30 to-white/50 dark:hidden" />
 
           {/* glass prisms breaking opposite corners, light behind them */}
           <div
-            className="absolute bottom-[-4rem] right-[-3rem] h-[10rem] w-[16rem] rounded-full opacity-25 blur-[56px]"
+            className="absolute bottom-[-4rem] right-[-3rem] h-[10rem] w-[16rem] rounded-full opacity-25 blur-[56px] dark:hidden"
             style={{ backgroundImage: SPECTRUM }}
           />
           <GlassPrismSpin
             shape="hexagon"
             period={21}
             initialAngle={0.9}
-            className="bottom-[-2.75rem] right-[-1.75rem] w-[6.5rem]"
+            className="bottom-[-2.75rem] right-[-1.75rem] w-[6.5rem] dark:hidden"
           />
           <div
-            className="absolute left-[-3.5rem] top-[-2rem] h-[10rem] w-[16rem] rounded-full opacity-20 blur-[48px]"
+            className="absolute left-[-3.5rem] top-[-2rem] h-[10rem] w-[16rem] rounded-full opacity-20 blur-[48px] dark:hidden"
             style={{ backgroundImage: SPECTRUM }}
           />
           <GlassPrismSpin
             shape="rect"
             period={32}
             initialAngle={2.2}
-            className="left-[-2.25rem] top-[-1rem] w-[6.5rem]"
+            className="left-[-2.25rem] top-[-1rem] w-[6.5rem] dark:hidden"
           />
 
-          <div className="absolute inset-0 overflow-hidden opacity-[0.06] mix-blend-multiply">
+          {/* Dark mode, after the docs' DeployCallout: no clouds, a very
+              faint spectral wash along the bottom edge (a surface quality,
+              not a glow) and one glass prism cropped into the top-right
+              corner, behind the content. */}
+          <div
+            className="absolute inset-0 hidden dark:block"
+            style={{
+              background: [
+                "radial-gradient(45% 45% at 12% 100%, color-mix(in srgb, var(--color-prism-cyan-300) 8%, transparent), transparent 70%)",
+                "radial-gradient(40% 40% at 50% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 6%, transparent), transparent 68%)",
+                "radial-gradient(45% 45% at 88% 100%, color-mix(in srgb, var(--color-prism-red-300) 6%, transparent), transparent 70%)",
+              ].join(","),
+            }}
+          />
+          <GlassPrismSpin
+            shape="hexagon"
+            period={40}
+            initialAngle={0.9}
+            className="-right-14 -top-16 hidden w-44 opacity-30 dark:block"
+          />
+
+          <div className="absolute inset-0 overflow-hidden opacity-[0.06] mix-blend-multiply dark:hidden">
             <BrandGrain />
           </div>
         </div>

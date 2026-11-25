@@ -206,10 +206,15 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   const showUpdated = Boolean(updatedDay) && updatedDay !== publishedDay;
 
   return (
-    <div className="z-1 mx-auto w-full max-w-[66.5rem] px-4 pt-10 pb-8 md:pt-16">
+    <div className="z-1 mx-auto w-full max-w-[88rem] px-4 pt-10 pb-8 sm:px-6 md:pt-16 lg:px-10">
       {blogPostingJsonLd ? (
         <JsonLd id="blog-posting-structured-data" data={blogPostingJsonLd} />
       ) : null}
+      {/* Page width like the docs and Attio (client, 2026-11-25: "both of
+          them, and our docs, use the page width much better"): up to 88rem
+          with responsive gutters, so the article column grows to ~970px at
+          1440 for tables, code and figures while running text keeps its
+          44rem measure (global.css). */}
       {/* The post header, after Attio's article layout (client, 2026-11-25):
           one quiet metadata line (breadcrumb on the left, dates and reading
           time on the right), then the title across the full width with the
@@ -272,7 +277,7 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             aren't variant-aware utilities), so the title was 30px at every
             width. The size is set directly, scaling 30px → 52px; `!` because
             type-title-3xl's own font-size comes later in the same layer. */}
-        <h1 className="type-title-3xl mt-10 max-w-4xl text-[clamp(1.875rem,1rem+3vw,3.25rem)]! leading-[1.1]! tracking-[-0.01em] text-balance break-words text-foreground-neutral-strong md:mt-14">
+        <h1 className="type-title-3xl mt-10 max-w-5xl text-[clamp(1.875rem,1rem+3vw,3.25rem)]! leading-[1.1]! tracking-[-0.01em] text-balance break-words text-foreground-neutral-strong md:mt-14">
           {page.data.title}
         </h1>
         {page.data.excerpt ? (
@@ -293,7 +298,7 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
           to ~1,000px, push the rail off-screen and scroll the whole page
           sideways. With the floor at 0 the table scrolls inside its own
           wrapper. */}
-      <div className="mt-10 gap-12 md:mt-12 md:grid md:grid-cols-[minmax(0,1fr)_220px]">
+      <div className="mt-10 gap-12 md:mt-12 md:grid md:grid-cols-[minmax(0,1fr)_220px] lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-16 xl:gap-24">
         <div className="post-contents w-full min-w-0">
           {/* Body */}
           <article className="flex w-full min-w-0 flex-col pb-8">
