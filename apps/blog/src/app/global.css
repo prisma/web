@@ -3559,10 +3559,154 @@ g[data-top="true"] .vector-demo-point {
    figures have room, but running text at that width is ~88 characters a
    line (up to ~140 in callouts); comfortable reading is 60-75. Paragraphs,
    lists, quotes and definition lists in the post body stop at 44rem, about
-   67 characters of Inter at 16px (measured). Everything else keeps the full
-   column. */
-.prose > :is(p, ul, ol, blockquote, dl) {
+   67 characters of Inter at 16px (measured).
+   Code blocks stop there too (client, 2026-11-25: "match them to the text
+   width"), as in the docs, so a one-line command no longer sits in a box
+   wider than the paragraphs around it; longer lines scroll inside the
+   block. This covers plain blocks (figure.shiki), tabbed code groups and
+   bare <pre>, anywhere in a post. Images and wide tables keep their room. */
+.prose > :is(p, ul, ol, blockquote, dl),
+.prose :is(figure.shiki, [class~="rounded-square"]:has(> [role="tablist"])),
+.prose > pre {
   max-width: 44rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Code blocks, as in the docs (apps/docs/src/app/global.css, "Code blocks in
+   docs prose"; client, 2026-11-25: "match the code block on the blog to the
+   code blocks in the docs ... in terms of their design"). Copied rule for
+   rule so the two read the same: one surface instead of Fumadocs' bordered
+   box with a title band and darker well (a faint ink tint in dark mode,
+   white with a hairline in light mode), 14px code on 24px lines with 20px
+   side padding, a small muted filename, a copy button that shows on hover,
+   and ink tabs with an ink underline. Width is the reading measure above. */
+.prose :where([class~="rounded-square"]:has(> [role="tablist"])) figure.shiki {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* One surface, no frame: code sits on a faint ink tint of the page instead
+   of Fumadocs' bordered box with a title band and a darker inner well (three
+   tones and two lines inside the page panel). The filename is a small muted
+   caption, and the copy button shows on hover or keyboard focus where a
+   pointer can hover; on touch screens it stays visible. Dark mode only for
+   the tint; light mode below. */
+.prose figure.shiki:not(dialog *, [class~="rounded-square"]:has(> [role="tablist"]) *),
+.prose [class~="rounded-square"]:has(> [role="tablist"]):not(dialog *) {
+  border: 0;
+  border-radius: 0.75rem;
+  background: color-mix(in oklab, var(--color-fd-foreground) 4%, transparent);
+  box-shadow: none;
+}
+
+.prose figure.shiki:not(dialog *) > div:first-child:has(> figcaption) {
+  height: auto;
+  padding: 0.75rem 1.25rem 0;
+  border: 0;
+  font-size: 0.8125rem;
+}
+
+.prose figure.shiki:not(dialog *) figcaption {
+  color: color-mix(in srgb, var(--color-fd-foreground) 76%, transparent);
+}
+
+/* Light mode keeps code on white with a hairline instead of the tint:
+   github-light's red and comment grey are ~4.5:1 on white, and any tint
+   pushes them under AA. */
+html:not(.dark)
+  .prose
+  figure.shiki:not(dialog *, [class~="rounded-square"]:has(> [role="tablist"]) *),
+html:not(.dark) .prose [class~="rounded-square"]:has(> [role="tablist"]):not(dialog *) {
+  background: var(--color-fd-background, #fff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fd-foreground) 10%, transparent);
+}
+
+.prose figure.shiki:not(dialog *) .fd-scroll-container {
+  background: transparent;
+}
+
+.prose figure.shiki:not(dialog *) .line {
+  padding-inline: 1.25rem;
+}
+
+.prose [class~="rounded-square"]:not(dialog *) > [role="tablist"] {
+  border: 0;
+  background: transparent;
+}
+
+@media (hover: hover) {
+  .prose figure.shiki:not(dialog *) button {
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+  }
+
+  .prose figure.shiki:not(dialog *):hover button,
+  .prose figure.shiki:not(dialog *):focus-within button,
+  .prose figure.shiki:not(dialog *) button:focus-visible {
+    opacity: 1;
+  }
+}
+
+.prose figure.shiki:not(dialog *) :where(pre, code) {
+  font-size: 0.875rem;
+}
+
+.prose figure.shiki:not(dialog *) .line {
+  line-height: 1.5rem;
+}
+
+.prose figure.shiki:not(dialog *) .fd-scroll-container {
+  padding-block: 1rem;
+}
+
+.prose figure.shiki:not(dialog *) > div:first-child:has(> figcaption) + .fd-scroll-container {
+  padding-top: 0.75rem;
+}
+
+.prose figure.shiki:not(dialog *) button {
+  width: 2rem;
+  height: 2rem;
+}
+
+.prose [class~="rounded-square"] > [role="tablist"] [role="tab"] {
+  /* 72% ink keeps the 14px labels at 4.5:1 on white. */
+  color: color-mix(in srgb, var(--color-fd-foreground) 72%, transparent);
+}
+
+.prose [class~="rounded-square"] > [role="tablist"] [role="tab"]:hover,
+.prose [class~="rounded-square"] > [role="tablist"] [role="tab"][data-state="active"] {
+  color: var(--color-fd-foreground);
+}
+
+.prose [class~="rounded-square"] > [role="tablist"] [role="tab"][data-state="active"] > div {
+  height: 1.5px;
+  background: var(--color-fd-foreground);
+}
+
+/* Code comments in dark mode: github-dark's #6a737d is 3.98:1 on the
+   #1a1a1a code panel, under WCAG AA. Lift it to GitHub's current dark comment
+   grey, #8b949e (~5.6:1), for the token classes that carry it (the generated
+   packages/ui/src/styles/shiki-tokens.css, which must not be hand-edited).
+   Light mode's #6a737d on white already passes. */
+.dark
+  :is(
+    .skcbxi6,
+    .skcd985,
+    .skckhfm,
+    .skcot3f,
+    .skcpnqm,
+    .skcqmoa,
+    .skcv8nw,
+    .skcwaxg,
+    .skcx9h0,
+    .skcxg9y,
+    .skcxq7e,
+    .skcy1bf,
+    .skczn2m
+  ) {
+  --shiki-dark: #8b949e;
 }
 
 /* The docs' quiet, crisp hover for header controls (apps/docs global.css):
