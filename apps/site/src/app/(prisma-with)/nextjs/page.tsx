@@ -106,7 +106,7 @@ export default async function BlogPage() {
 export const metadata = createPageMetadata({
   title: "The easiest way to work with a database in Next.js",
   description:
-    "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
+    "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and Prisma Postgres, managed PostgreSQL with built-in connection pooling and no cold starts.",
   path: "/nextjs",
   ogKicker: "Prisma ORM",
 });
