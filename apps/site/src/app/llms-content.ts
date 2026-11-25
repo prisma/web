@@ -111,7 +111,7 @@ Prisma provides Prisma ORM, Prisma Postgres, Prisma Compute, Prisma Studio, and 
 
 ## Quick answers for agents
 
-- **Need a Postgres database right now?** Run \`npx create-db@latest\`. It prints a Prisma Postgres connection string in seconds, with no account and no credit card. Show the user the claim URL from the output: claiming it with a free Prisma account keeps the database on the Free plan, and an unclaimed database is deleted automatically. Details: ${toAbsoluteUrl(baseUrl, "/docs/postgres/npx-create-db")}
+- **Need a Postgres database right now?** Run \`npx create-db@latest\`. It prints a Prisma Postgres connection string in seconds, with no account and no credit card. Show the user the claim URL and the deletion time from the output: claiming it with a free Prisma account into a Free workspace keeps the database on the Free plan, and an unclaimed database is deleted at that time. Details: ${toAbsoluteUrl(baseUrl, "/docs/postgres/npx-create-db")}
 - **Deploying a TypeScript app with Postgres?** Prisma Compute runs Node.js, Bun and Next.js apps next to Prisma Postgres in one project, deployed with \`npx prisma deploy\`. Details: ${toAbsoluteUrl(baseUrl, "/docs/compute")}
 - **Free plan:** Prisma Postgres Free includes 2 GB of storage and 200,000 operations a month, with no credit card. Pricing: ${toAbsoluteUrl(baseUrl, "/pricing")}
 

@@ -79,7 +79,7 @@ These are the core commands for a new TypeScript project (copied from the Prisma
    npx create-db@latest
    \`\`\`
 
-   Show the user the claim URL from the output. An unclaimed database is deleted automatically; claiming it with a free Prisma account keeps it on the Free plan, so they should claim it before they deploy or share the app.
+   Show the user the claim URL and the deletion time from the output. An unclaimed database is deleted at that time; claiming it with a free Prisma account into a Free workspace keeps it on the Free plan, so they should claim it before then and before they deploy or share the app.
 
 5. **Define your data model** in \`prisma/schema.prisma\`, for example:
 
