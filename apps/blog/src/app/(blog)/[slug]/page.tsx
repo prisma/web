@@ -404,8 +404,8 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
                 links): a hairline, then "On this page" with its icon over
                 the outline. */}
             <div className="mb-5 border-b border-stroke-neutral pb-4">
-              <RailThemeToggle />
-              <div className="mt-3">
+              <RailThemeToggle className="-ml-2" />
+              <div className="mt-2">
                 <BlogShareList desc={page.data.metaDescription as string} />
               </div>
             </div>
