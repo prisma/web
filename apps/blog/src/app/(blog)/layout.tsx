@@ -7,14 +7,6 @@ import { SITE_NAV, SITE_PLATFORM, SITE_STACK_LINK } from "@prisma-docs/ui/data/s
 
 const toSiteUrl = (href: string) => `https://www.prisma.io${href}`;
 
-// FontAwesome glyphs for the Platform menu (the site draws its own product
-// icons, which live in apps/site).
-const PLATFORM_ICON: Record<(typeof SITE_PLATFORM)[number]["href"], string> = {
-  "/postgres": "fa-regular fa-chart-pyramid",
-  "/compute": "fa-regular fa-microchip",
-  "/orm": "fa-regular fa-database",
-};
-
 export function baseOptions() {
   return {
     nav: {
@@ -31,11 +23,25 @@ export function baseOptions() {
           text: label,
           url: toSiteUrl(href),
           desc: description,
-          icon: PLATFORM_ICON[href],
+          // The site navbar's own product glyphs, shared so both match.
+          glyph: href,
         })),
         footer: { text: SITE_STACK_LINK.label, url: toSiteUrl(SITE_STACK_LINK.href) },
       },
-      ...SITE_NAV.map(({ label, href }) => ({ text: label, url: toSiteUrl(href) })),
+      ...SITE_NAV.map((item) =>
+        "items" in item
+          ? {
+              text: item.label,
+              col: 2,
+              sub: item.items.map((link) => ({
+                text: link.label,
+                url: link.href.startsWith("http") ? link.href : toSiteUrl(link.href),
+                glyph: link.href,
+                external: "external" in link ? link.external : undefined,
+              })),
+            }
+          : { text: item.label, url: toSiteUrl(item.href) },
+      ),
     ] satisfies NavLink[],
   };
 }

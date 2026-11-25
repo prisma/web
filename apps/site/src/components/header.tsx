@@ -21,12 +21,24 @@ import { SiteLink } from "@/components/site-link";
 import { siteConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
+import { RESOURCE_GLYPHS } from "@prisma-docs/ui/components/site-nav-glyphs";
+
+// A Resources item's glyph, shared with the blog's navbar.
+function ResourceGlyph({ href }: { href: string }) {
+  const Glyph = RESOURCE_GLYPHS[href];
+  return Glyph ? <Glyph aria-hidden className="size-3.5" strokeWidth={1.5} /> : null;
+}
 
 // Product glyphs resolve through the canonical shared mapping so the navbar
 // never drifts from the product pages (see product/icons.ts).
 const PLATFORM_ICONS = Object.fromEntries(
   Object.entries(PLATFORM_PRODUCT_ICONS).map(([href, name]) => [href, PRODUCT_ICONS[name]]),
 );
+
+// The nav's menu triggers (Platform, Resources): bare 14px labels like the
+// links beside them, darkening on hover and while open.
+const NAV_TRIGGER =
+  "h-auto bg-transparent p-0 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground focus:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-foreground data-[state=open]:hover:bg-transparent data-[state=open]:focus:bg-transparent";
 
 // At the very top of the page the navbar sits docked inside the hero wrapper.
 // From the first scroll it detaches into a sticky floating pill with its own
@@ -68,9 +80,7 @@ export function Header() {
           <NavigationMenu viewport={false}>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <NavigationMenuTrigger className="h-auto bg-transparent p-0 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground focus:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-foreground data-[state=open]:hover:bg-transparent data-[state=open]:focus:bg-transparent">
-                  Platform
-                </NavigationMenuTrigger>
+                <NavigationMenuTrigger className={NAV_TRIGGER}>Platform</NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <ul className="grid w-[19rem] gap-0.5">
                     {siteConfig.platform.map(({ label, href, description }) => {
@@ -107,15 +117,53 @@ export function Header() {
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
-          {siteConfig.nav.map((item) => (
-            <SiteLink
-              key={item.href}
-              href={item.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {item.label}
-            </SiteLink>
-          ))}
+          {siteConfig.nav.map((item) =>
+            "items" in item ? (
+              // The Resources menu: the same entries and glyphs as the blog's
+              // (@prisma-docs/ui/data/site-nav), two to a row.
+              <NavigationMenu key={item.label} viewport={false}>
+                <NavigationMenuList>
+                  <NavigationMenuItem>
+                    <NavigationMenuTrigger className={NAV_TRIGGER}>
+                      {item.label}
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                      <ul className="grid w-[26rem] grid-cols-2 gap-0.5">
+                        {item.items.map((link) => (
+                          <li key={link.href}>
+                            <NavigationMenuLink asChild>
+                              <SiteLink
+                                href={link.href}
+                                className="flex-row items-center gap-3 p-2.5"
+                                {...(link.external
+                                  ? { target: "_blank", rel: "noopener noreferrer" }
+                                  : {})}
+                              >
+                                <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card">
+                                  <ResourceGlyph href={link.href} />
+                                </span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {link.label}
+                                </span>
+                              </SiteLink>
+                            </NavigationMenuLink>
+                          </li>
+                        ))}
+                      </ul>
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+                </NavigationMenuList>
+              </NavigationMenu>
+            ) : (
+              <SiteLink
+                key={item.href}
+                href={item.href}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {item.label}
+              </SiteLink>
+            ),
+          )}
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
@@ -186,17 +234,41 @@ export function Header() {
                   </Link>
                 ))}
                 <div className="border-t pt-4 flex flex-col gap-4">
-                  {siteConfig.nav.map((item) => (
-                    <SiteLink
-                      key={item.href}
-                      href={item.href}
-                      className="text-lg font-medium"
-                      onClick={() => setOpen(false)}
-                    >
-                      {item.label}
-                    </SiteLink>
-                  ))}
+                  {siteConfig.nav.map((item) =>
+                    "items" in item ? null : (
+                      <SiteLink
+                        key={item.href}
+                        href={item.href}
+                        className="text-lg font-medium"
+                        onClick={() => setOpen(false)}
+                      >
+                        {item.label}
+                      </SiteLink>
+                    ),
+                  )}
                 </div>
+                {siteConfig.nav.map((item) =>
+                  "items" in item ? (
+                    <div key={item.label} className="border-t pt-4 flex flex-col gap-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {item.label}
+                      </p>
+                      {item.items.map((link) => (
+                        <SiteLink
+                          key={link.href}
+                          href={link.href}
+                          className="text-lg font-medium"
+                          onClick={() => setOpen(false)}
+                          {...(link.external
+                            ? { target: "_blank", rel: "noopener noreferrer" }
+                            : {})}
+                        >
+                          {link.label}
+                        </SiteLink>
+                      ))}
+                    </div>
+                  ) : null,
+                )}
                 <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
                   <Button variant="outline" asChild>
                     <a

@@ -21,6 +21,11 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 import { ArrowRight, Menu, Search } from "lucide-react";
 import { preloadSearch } from "@/components/search";
 import { useEffect, useState } from "react";
+import {
+  PLATFORM_GLYPHS,
+  RESOURCE_GLYPHS,
+  type NavGlyph,
+} from "@prisma-docs/ui/components/site-nav-glyphs";
 import { Logo } from "./logo";
 import {
   NavMenu,
@@ -37,7 +42,14 @@ export interface NavSubLink {
   text: string;
   url: string;
   external?: boolean;
+  /** A FontAwesome class list. */
   icon?: string;
+  /**
+   * The route whose shared SVG glyph to draw instead of `icon`
+   * (@prisma-docs/ui/components/site-nav-glyphs). A key rather than the
+   * component itself, because the nav data comes from a server component.
+   */
+  glyph?: string;
   desc?: string;
 }
 
@@ -64,13 +76,22 @@ function externalProps(external?: boolean) {
   return external ? { target: "_blank", rel: "noopener noreferrer" } : {};
 }
 
-// FontAwesome glyphs come from the nav data itself (`fa-regular fa-database`
-// and friends); the kit is loaded app-wide, and reusing the existing strings
-// keeps every destination's icon identical to what shipped before.
-function SubLinkGlyph({ icon }: { icon?: string }) {
+// Each menu item's glyph in a small box, styled like the site header's
+// (apps/site/src/components/header.tsx): a hairline square on the card
+// colour with the glyph in ink. Glyphs come from the shared
+// @prisma-docs/ui/components/site-nav-glyphs, the same ones the site's navbar
+// draws (client, 2026-11-25).
+function SubLinkGlyph({ icon, glyph }: { icon?: string; glyph?: string }) {
+  const Glyph = glyph
+    ? ((PLATFORM_GLYPHS as Record<string, NavGlyph | undefined>)[glyph] ?? RESOURCE_GLYPHS[glyph])
+    : undefined;
   return (
-    <span className="border-stroke-neutral bg-card-wash rounded-square-low mt-0.5 flex size-7 shrink-0 items-center justify-center border">
-      {icon ? <i aria-hidden className={cn(icon, "text-foreground-ppg text-xs")} /> : null}
+    <span className="border-stroke-neutral bg-fd-card text-foreground-neutral mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border">
+      {Glyph ? (
+        <Glyph aria-hidden className="size-3.5" strokeWidth={1.5} />
+      ) : icon ? (
+        <i aria-hidden className={cn(icon, "text-xs")} />
+      ) : null}
     </span>
   );
 }
@@ -147,7 +168,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                       <ul
                         className={cn(
                           "grid gap-0.5",
-                          link.col === 2 ? "w-[30rem] grid-cols-2" : "w-[21rem]",
+                          link.col === 2 ? "w-[26rem] grid-cols-2" : "w-[19rem]",
                         )}
                       >
                         {link.sub.map((item) => (
@@ -157,7 +178,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                               className={item.desc ? undefined : "items-center"}
                               {...externalProps(item.external)}
                             >
-                              <SubLinkGlyph icon={item.icon} />
+                              <SubLinkGlyph icon={item.icon} glyph={item.glyph} />
                               <span className="flex flex-col gap-0.5">
                                 <span className="text-foreground-neutral text-sm font-medium">
                                   {item.text}
