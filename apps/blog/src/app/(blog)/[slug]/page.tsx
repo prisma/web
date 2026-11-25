@@ -212,11 +212,16 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             dek, then the byline row. */}
         <header className="w-full">
           <BackToBlogLink className="mb-8" />
-          <h1 className="type-title-3xl md:type-title-4xl lg:type-title-5xl text-balance break-words hyphens-auto text-foreground-neutral-strong">
+          {/* `md:type-title-4xl lg:type-title-5xl` never applied (type-title-*
+              aren't variant-aware utilities), so the title was 30px at every
+              width. The size is set directly, scaling 30px → 48px like the
+              site's guides; `!` because type-title-3xl's own font-size comes
+              later in the same layer. */}
+          <h1 className="type-title-3xl text-[clamp(1.875rem,1.1rem+2.6vw,3rem)]! leading-[1.15]! text-balance break-words hyphens-auto text-foreground-neutral-strong">
             {page.data.title}
           </h1>
           {page.data.excerpt ? (
-            <p className="mt-5 text-lg leading-relaxed text-foreground-neutral-weak">
+            <p className="mt-5 max-w-[44rem] text-lg leading-relaxed text-foreground-neutral-weak">
               {page.data.excerpt}
             </p>
           ) : null}
