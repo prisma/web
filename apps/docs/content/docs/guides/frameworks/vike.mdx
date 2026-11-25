@@ -1,0 +1,530 @@
+---
+title: Vike
+description: 'Add Prisma ORM to a Vike app, store its to-do list in Prisma Postgres, and deploy the app to Prisma Compute.'
+url: /guides/frameworks/vike
+metaTitle: How to use Prisma ORM with Vike
+metaDescription: 'Scaffold a Vike app with React and Hono, add Prisma ORM with orm init, read and write a Prisma Postgres database from a +data hook and an API route, and deploy to Prisma Compute.'
+---
+
+## Introduction
+
+[Vike](https://vike.dev) is a full-stack framework built on Vite. Its `+data` hooks and its server run on the server, which is where you call Prisma ORM to read from and write to a PostgreSQL database.
+
+In this guide, you scaffold a Vike app with React and Hono, add Prisma ORM to it with `orm init`, and create a [Prisma Postgres](/postgres) database. The scaffolded app has a to-do page that forgets new items when you reload it. You make that page read and write the database, then deploy the app to [Prisma Compute](/compute), where it gets a production database of its own.
+
+Every command, file, and response below was run end to end against a live Prisma Postgres database and a live Prisma Compute deploy.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) 24.11 or newer
+- A [Prisma Data Platform account](https://pris.ly/pdp), free to create. You only need it for the deploy step.
+
+## 1. Scaffold the Vike app
+
+Create the app with Vike's scaffolder, then install its dependencies:
+
+```npm
+npm create vike@latest -- --react --hono my-vike-app
+cd my-vike-app
+npm install
+```
+
+```text no-copy
+✓ Project created: my-vike-app/
+  - Vike
+  - React
+  - Hono
+```
+
+`--react` picks the UI framework, and `--hono` adds a [Hono](https://hono.dev) server in `+server.ts`, which is the server Prisma Compute runs in production. Without the flags, the scaffolder at [vike.dev/new](https://vike.dev/new) lets you pick the same options in the browser.
+
+Two parts of the scaffold matter for this guide. The page at `pages/todo/` loads its items from a `+data.ts` hook that returns a hard-coded list, and `server/create-todo-handler.ts` handles `POST /api/todo/create` by logging the new item and discarding it.
+
+## 2. Add Prisma ORM
+
+Run `orm init` from the project root. The flags preselect PostgreSQL and the Prisma Schema Language, and you can drop `--yes` and `--authoring` to answer those questions interactively:
+
+```npm
+npx prisma@latest orm init --yes --target postgres --authoring psl
+```
+
+```text no-copy
+✔ Emit the contract
+│  target:     postgres
+│  authoring:  psl
+│  schema:     src/prisma/contract.prisma
+
+written
+├─ src/prisma/contract.prisma
+├─ prisma.config.ts
+├─ src/prisma/db.ts
+├─ prisma-8.md
+├─ .env.example
+├─ tsconfig.json
+├─ .gitignore
+├─ .gitattributes
+└─ package.json
+installed
+├─ @prisma/orm-postgres
+├─ dotenv
+├─ pg
+├─ prisma@latest (dev)
+└─ @prisma/cli-engine@0.10.4 (dev)
+
+✔ Done. Open prisma-8.md to get started.
+```
+
+The command installs the runtime and writes three files you work with in this guide:
+
+- `src/prisma/contract.prisma`: the contract, which is where you declare your models
+- `src/prisma/db.ts`: the Prisma ORM client, created once and imported wherever you query
+- `prisma.config.ts`: tells the CLI where the contract lives and reads `DATABASE_URL` from `.env`
+
+Replace the contents of the contract with a single `Todo` model:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+
+model Todo {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now()) @onCreate(now())
+}
+```
+
+Then emit the contract. This writes `src/prisma/contract.json` and `src/prisma/contract.d.ts`, the files your queries are type-checked against, so there is no `prisma generate` step and no generated client directory:
+
+```npm
+npx prisma contract emit
+```
+
+```text no-copy
+✔ Emitted contract.json and contract.d.ts
+```
+
+## 3. Create a Prisma Postgres database
+
+Create a database for local development. The `--env` flag writes its connection string to `.env` as `DATABASE_URL`, which both the CLI and the app read:
+
+```npm
+npx create-db@latest --env .env
+```
+
+```text no-copy
+Wrote DATABASE_URL and CLAIM_URL to .env
+```
+
+The database is deleted after 24 hours unless you open the `CLAIM_URL` from `.env` and claim it with your Prisma account. To use a PostgreSQL database you already have, set `DATABASE_URL` in `.env` to its connection string instead.
+
+Create the table the contract declares:
+
+```npm
+npx prisma db init
+```
+
+```text no-copy
+✔ Applied 1 operation(s) across 1 contract space
+
+App space
+├─ Create table "Todo"
+└─ marker cd4525243c064488efe7404892f3dca2b0d95d32e4a9d71f39f151422f86604c
+```
+
+If `db init` stops with a connection error, the new database is still starting, so wait a few seconds and run it again.
+
+## 4. Read and write to-dos
+
+Load the page's items from the database. A [`+data` hook](https://vike.dev/data) runs only on the server by default, so the Prisma ORM client and the connection string never reach the browser:
+
+```ts title="pages/todo/+data.ts"
+// https://vike.dev/data
+
+import type { PageContextServer } from "vike/types";
+import { db } from "../../src/prisma/db";
+
+export type Data = Awaited<ReturnType<typeof data>>;
+
+export async function data(_pageContext: PageContextServer) {
+  const todoItemsInitial = await db.orm.public.Todo.select("id", "text")
+    .orderBy((todo) => todo.id.asc())
+    .all();
+  return { todoItemsInitial };
+}
+```
+
+On PostgreSQL, you reach a model through the database schema it is in, so the `Todo` model in the `public` schema is `db.orm.public.Todo`. The rows are typed by the contract, and the page component needs no change because each row still has a `text` field.
+
+Next, save new items. The handler changes in three places: it imports the client, it calls `create()` where the scaffold logged the item with `console.log`, and it adds the inserted row to the response. The scaffold's two comments are left out here for brevity:
+
+```ts title="server/create-todo-handler.ts"
+import { enhance, type UniversalHandler } from "@universal-middleware/core";
+import { db } from "../src/prisma/db";
+
+export const createTodoHandler: UniversalHandler<Universal.Context & object> = enhance(
+  async (request, _context, _runtime) => {
+    const newTodo = (await request.json()) as { text: string };
+
+    const todo = await db.orm.public.Todo.create({ text: newTodo.text });
+
+    return new Response(JSON.stringify({ status: "OK", todo }), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+  },
+  { name: "my-app:todo-handler", path: `/api/todo/create`, method: ["GET", "POST"], immutable: false },
+);
+```
+
+`create()` returns the inserted row, database defaults included, so the response needs no second query.
+
+Start the dev server:
+
+```npm
+npm run dev
+```
+
+Open [http://localhost:3000/todo](http://localhost:3000/todo), add an item, and reload the page. The item is still there. To check from a second terminal instead, create an item and read the page back:
+
+```bash
+curl -X POST http://localhost:3000/api/todo/create \
+  -H "content-type: application/json" \
+  -d '{"text":"Buy milk"}'
+```
+
+```json no-copy
+{"status":"OK","todo":{"createdAt":"2026-11-25T10:20:17.433Z","id":1,"text":"Buy milk"}}
+```
+
+```bash
+curl -s http://localhost:3000/todo | grep -o '<ul>.*</ul>'
+```
+
+```text no-copy
+<ul><li>Buy milk</li></ul>
+```
+
+Stop the dev server with `Ctrl+C`.
+
+## 5. Set the app up for Prisma Compute
+
+Prisma Compute runs the server that `vike build` writes to `dist/server/index.mjs`, so Vike needs no adapter. You describe the app and its database for [Prisma Composer](/composer) in a few small files, and the deploy creates both. Install the Composer packages:
+
+```npm
+npm install @prisma/composer @prisma/composer-prisma-cloud
+```
+
+Wrap the emitted contract once, so the service and the database share the same schema:
+
+```ts title="src/prisma/composer.ts"
+import { dataContract } from "@prisma/composer-prisma-cloud/orm";
+import type { Contract } from "./contract.d.ts";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const appContract = dataContract<Contract>(contractJson);
+```
+
+Declare the service. `dir` is the build output directory and `entry` is the server file inside it. Vite leaves npm packages as imports in `dist/server/`, and `dependencies: "external"` ships those packages with the deploy:
+
+```ts title="service.ts"
+import node from "@prisma/composer/node";
+import { compute } from "@prisma/composer-prisma-cloud";
+import { postgres } from "@prisma/composer-prisma-cloud/orm";
+import { appContract } from "./src/prisma/composer.ts";
+
+export default compute({
+  name: "web",
+  deps: { database: postgres(appContract) },
+  build: node({
+    module: import.meta.url,
+    dir: "./dist",
+    entry: "server/index.mjs",
+    dependencies: "external",
+  }),
+});
+```
+
+Declare the app, which is the service plus the Prisma Postgres database it depends on. The module name becomes the project name on Compute:
+
+```ts title="module.ts"
+import { module } from "@prisma/composer";
+import { postgres } from "@prisma/composer-prisma-cloud/orm";
+import { appContract } from "./src/prisma/composer.ts";
+import web from "./service.ts";
+
+export default module("my-vike-app", ({ provision }) => {
+  const database = provision(
+    postgres({ name: "database", contract: appContract, config: "./prisma.config.ts" }),
+  );
+  provision(web, { deps: { database } });
+});
+```
+
+Add a `composer` section to the config that `orm init` wrote. The `region` applies when the first deploy creates the project, and it cannot change afterwards:
+
+```ts title="prisma.config.ts"
+import 'dotenv/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+import { defineConfig as composer } from '@prisma/composer/config'; // [!code ++]
+import { nodeBuild } from '@prisma/composer/node/control'; // [!code ++]
+import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control'; // [!code ++]
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
+  composer: composer({ // [!code ++]
+    entry: './module.ts', // [!code ++]
+    extensions: [prismaCloud({ region: 'us-east-1' }), nodeBuild()], // [!code ++]
+    state: prismaState(), // [!code ++]
+  }), // [!code ++]
+});
+```
+
+On Compute there is no `DATABASE_URL` to set. The deploy creates the database and the service receives a client that is already connected to it. Change `db.ts` to use that client when the service provides one, and to keep using `DATABASE_URL` with `npm run dev`:
+
+```ts title="src/prisma/db.ts"
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
+import service from '../../service.ts';
+import type { Contract } from './contract.d.js';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const contract = contractFromJson<Contract>(contractJson);
+
+// On Prisma Compute and under `prisma dev`, the service hands over a client
+// that is already connected. Everywhere else, connect with DATABASE_URL.
+function composerClient() {
+  try {
+    return service.load().database.client;
+  } catch {
+    return undefined;
+  }
+}
+
+export const db =
+  composerClient() ??
+  postgres({
+    contract,
+    url: process.env['DATABASE_URL']!,
+  });
+```
+
+Make the production server listen on all network interfaces, which is what Compute expects. The scaffold already reads the port from `PORT`, which Compute sets:
+
+```ts title="+server.ts"
+import type { Server } from "vike/types";
+import { app } from "./server/hono";
+
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+// https://vike.dev/server
+export default {
+  fetch: app.fetch,
+  prod: {
+    port,
+    hostname: "0.0.0.0", // [!code ++]
+  },
+} satisfies Server;
+```
+
+The new files import each other with `.ts` extensions, so allow that in `tsconfig.json`:
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true // [!code ++]
+  }
+}
+```
+
+Composer writes local state to `.alchemy/` and `.prisma-composer/`. Add both to `.gitignore`:
+
+```bash title=".gitignore"
+/.alchemy
+/.prisma-composer
+```
+
+Last, plan a migration. A deploy changes the production database only by applying the migrations in `migrations/`, so it needs one that creates the `Todo` table:
+
+```npm
+npx prisma migration plan --name init
+```
+
+```text no-copy
+baseline:  migrations/app/20261125T1019_baseline
+
+ℹ DDL preview
+
+CREATE SCHEMA IF NOT EXISTS "public";
+CREATE TABLE "public"."Todo" (
+  "createdAt" timestamptz(3) DEFAULT (now()) NOT NULL,
+  "id" SERIAL NOT NULL,
+  "text" text NOT NULL,
+  PRIMARY KEY ("id")
+);
+```
+
+A first migration is named `baseline` whatever name you pass. You don't need to apply it to your development database, because `db init` already created the table there. Commit the `migrations/` directory with the rest of your code.
+
+## 6. Run it the way Compute does
+
+Before you deploy, run the production build locally under Composer. No account is needed:
+
+```npm
+npm run build
+npx prisma dev
+```
+
+```text no-copy
+dev: ready
+my-vike-app.web: http://localhost:3000
+```
+
+`prisma dev` starts a local Postgres database, applies `migrations/` to it, and runs the built server with a client connected to that database. The database starts empty and is separate from the one in `.env`. Use the URL that `prisma dev` prints, because the port is often not 3000. Open it, add an item on the to-do page, then stop `dev` with `Ctrl+C`.
+
+## 7. Deploy to Prisma Compute
+
+Sign in once, which opens your browser:
+
+```npm
+npx prisma auth login
+```
+
+Then build and deploy. The deploy does not build the app for you, so it ships whatever is in `dist/`:
+
+```npm
+npm run build
+npx prisma deploy
+```
+
+```text no-copy
+my-vike-app.web: https://abc123.ewr.prisma.build
+✔ Deployed my-vike-app to production in 45.1s.
+
+Address               Deployed
+my-vike-app.database  postgres-database db_abc123
+my-vike-app.web       compute-service cps_abc123
+```
+
+The first deploy creates a project named `my-vike-app` in your workspace, with its own Prisma Postgres database. It applies your migration to that database before the app starts. If a project with that name already exists and its deploy state cannot be verified, the deploy stops with `HostedStateBootstrapError`, in which case rename the module in `module.ts` or pass `--name <unique-name>` on every deploy.
+
+Verify the live app by creating an item and reading the page back, with your own URL in place of the example:
+
+```bash
+curl -X POST https://abc123.ewr.prisma.build/api/todo/create \
+  -H "content-type: application/json" \
+  -d '{"text":"Deployed on Prisma Compute"}'
+```
+
+```json no-copy
+{"status":"OK","todo":{"createdAt":"2026-11-25T10:22:56.277Z","id":1,"text":"Deployed on Prisma Compute"}}
+```
+
+```bash
+curl -s https://abc123.ewr.prisma.build/todo | grep -o '<ul>.*</ul>'
+```
+
+```text no-copy
+<ul><li>Deployed on Prisma Compute</li></ul>
+```
+
+Running `npx prisma deploy` again updates the same project and keeps its URL and its data. To deploy on every push instead of from your terminal, see [Deploy on push](/compute/deploy-on-push).
+
+## Change the schema
+
+Every schema change follows the same four commands. For example, add a `done` field to the model:
+
+```prisma title="src/prisma/contract.prisma"
+model Todo {
+  id        Int      @id @default(autoincrement())
+  text      String
+  done      Boolean  @default(false) // [!code ++]
+  createdAt DateTime @default(now()) @onCreate(now())
+}
+```
+
+Emit the contract, plan the migration, and apply it to your development database:
+
+```npm
+npx prisma contract emit
+npx prisma migration plan --name add-todo-done
+npx prisma db migrate
+```
+
+```text no-copy
+✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
+
+App space
+├─ Add column "done" to "Todo"
+└─ marker ebb14be41316dbaa7b98dd70161199a72a33c7291592b8b3eb0d0b190815d421
+```
+
+Then build and deploy again. The deploy applies the new migration to the production database before it starts the new version of the app:
+
+```npm
+npm run build
+npx prisma deploy
+```
+
+Items you create on the live app now come back with `"done":false`.
+
+## Environment variables
+
+The app reads two kinds of configuration, and they are set in different places:
+
+- **The database connection.** Locally, `DATABASE_URL` in `.env` is read by `prisma.config.ts` for CLI commands and by `db.ts` for `npm run dev`. On Compute, you don't set it at all, because the deploy connects the service to the database that `module.ts` declares.
+- **Everything else.** For a value such as an API key, add a project variable and read it from `process.env` on the server. A variable reaches the app on the next deploy:
+
+```npm
+npx prisma project env add GREETING=hello --role production --project my-vike-app
+```
+
+Vike exposes only variables prefixed with `PUBLIC_ENV__` to client code, so anything else stays on the server. For preview scopes and per-branch values, see [Environment variables](/compute/environment-variables).
+
+## Common gotchas
+
+- **Every route returns a 502 after a deploy.** The server crashed while starting. Run `npx prisma service logs my-vike-app.web --project my-vike-app` to read the error. A common cause in a Vike app is a Hono route added above the `vike(app)` call, which fails with `[@vikejs/hono] Wrong installation: GET /api/example was registered before vike(app)`. Register your own routes after `vike(app, ...)` in `server/hono.ts`.
+- **`TS5097: An import path can only end with a '.ts' extension`.** `allowImportingTsExtensions` is missing from `tsconfig.json` (step 5).
+- **`migration plan` prints `No changes detected` after you edit the contract.** The emitted contract is stale. Run `npx prisma contract emit` first, then plan again.
+- **`SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'`.** `db init`, `db migrate`, and the dev server print this warning. It comes from the `pg` driver and is harmless. To silence it, change `sslmode=require` to `sslmode=verify-full` in the `DATABASE_URL` in `.env`.
+- **Don't call `db.close()` in a `+data` hook or a route handler.** The client is created once and its connection pool is shared across requests.
+
+## Use with your agent
+
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Create a Vike app that stores its to-do list in Prisma Postgres through Prisma ORM, and deploy it to Prisma Compute. Follow https://www.prisma.io/docs/guides/frameworks/vike.md.
+
+1. Scaffold: `npm create vike@latest -- --react --hono my-vike-app`, then `cd my-vike-app` and `npm install`.
+2. Add Prisma ORM: `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Replace the models in `src/prisma/contract.prisma` with the `Todo` model from the guide and run `npx prisma contract emit`.
+3. Create a database with `npx create-db@latest --env .env`, show me the claim URL it writes to `.env`, and run `npx prisma db init`.
+4. Change `pages/todo/+data.ts` to read to-dos with `db.orm.public.Todo` and `server/create-todo-handler.ts` to insert one with `db.orm.public.Todo.create`. Start `npm run dev` in the background, verify `POST /api/todo/create` saves an item and `/todo` lists it, then stop the dev server.
+5. Install `@prisma/composer` and `@prisma/composer-prisma-cloud`. Add `src/prisma/composer.ts`, `service.ts`, and `module.ts`, and update `prisma.config.ts`, `src/prisma/db.ts`, `+server.ts`, `tsconfig.json`, and `.gitignore` exactly as the guide shows. Run `npx prisma migration plan --name init`.
+6. Deploy: check `npx prisma auth whoami`. If I am not signed in, stop and ask me to run `npx prisma auth login`. Then run `npm run build` followed by `npx prisma deploy`, and verify the live URL by creating a to-do and reading `/todo` back. Do not pass the local `DATABASE_URL` to the deploy. If the deploy fails with `HostedStateBootstrapError`, deploy again with `--name <a unique name>`.
+```
+
+</AgentPrompt>
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, add a checkbox to each to-do that updates its `done` field."
+- "Add a `DELETE /api/todo/:id` route and a delete button on the to-do page."
+- "Set up deploy on push for this app on Prisma Compute."
+
+## Next steps
+
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Deploy on push](/compute/deploy-on-push): deploy on every Git push, with a preview and its own database for every branch.
+- [Databases in Prisma Composer](/composer/databases): how the `postgres()` database, its client, and deploy-time migrations work.
+- [Vike documentation](https://vike.dev/data-fetching) for data fetching, routing, and rendering modes.
