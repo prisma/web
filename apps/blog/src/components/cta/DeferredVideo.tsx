@@ -77,7 +77,10 @@ export function DeferredVideo({ src, className }: { src: string; className?: str
   useEffect(() => {
     const video = ref.current;
     if (!video) return;
-    if (!active) {
+    // `active` comes from the render; the ref is the live preference. If
+    // reduced motion turned on between the commit and this effect, treat the
+    // video as inactive rather than load it.
+    if (!active || !motionOkRef.current) {
       // Removing `src` alone doesn't abort a download in progress; load()
       // with no source runs the media load algorithm, which cancels it. Only
       // after the source was attached, so first mount does nothing.
