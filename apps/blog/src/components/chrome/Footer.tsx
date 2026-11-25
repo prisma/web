@@ -1,204 +1,118 @@
-// Blog chrome, modelled on apps/site-redesign/src/components/footer.tsx:
-// brand block (logo, one-line description, social icons) on the left, link
-// columns on the right, a quiet bottom bar, and the giant ghost wordmark rising
-// out of the page's bottom edge.
+// The blog footer matches the homepage footer (apps/site/src/components/
+// footer.tsx; client, 2026-11-25: "match the footer to the homepage"): the
+// brand block on the left (logo, email, Google link, copyright), five link
+// columns on the right, and the giant ghost wordmark rising out of the
+// page's bottom edge. The links come from the same shared data the site
+// uses (@prisma-docs/ui/data/site-footer), so the two can't drift apart.
 //
-// The link data is the blog's existing footer data (@prisma-docs/ui/data/footer)
-// so no destination is invented or lost. Two shape differences from CF: the
-// "Legal" entry is a dropdown in that data, and CF's footer has no dropdowns —
-// so its children are flattened into the bottom bar next to the copyright,
-// which is where CF keeps legal links anyway. The compliance badges, the
-// platform-status readout, and the newsletter form are existing blog features
-// and are carried over rather than dropped.
+// Differences from the site's, kept on purpose:
+// - colours are eclipse tokens, so dark mode works (the site is light-only);
+// - social icons are FontAwesome brands (the site's forma icons live in
+//   apps/site), at the same 16px.
 //
-// CF's original is light-only (`bg-white`, `border-black/[0.06]`); here the
-// surfaces are eclipse tokens so dark mode works.
-import footerData from "@prisma-docs/ui/data/footer";
+// The blog's earlier extras (description, newsletter form, compliance
+// badges, platform status, legal bar) are dropped to match; the Legal &
+// Trust column carries the legal links and the status page.
+import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-preferred-source";
 import {
-  HIPAA_BADGE_HREF,
-  gdpr,
-  hipaa,
-  iso27,
-  soc2,
-} from "@prisma-docs/ui/components/footer-badges";
-import PDPStatus from "@prisma-docs/ui/components/pdp-status";
-import {
-  GooglePreferredSourceButton,
-  eclipseButtonClass,
-} from "@prisma-docs/ui/components/google-preferred-source";
-import { cn } from "@prisma-docs/ui/lib/cn";
-import type { ReactNode } from "react";
-import { BLOG_HOME_DESCRIPTION } from "@/lib/blog-metadata";
-import { BLOG_PREFIX } from "@/lib/url";
+  SITE_CONTACT_EMAIL,
+  SITE_FOOTER_COLUMNS,
+  SITE_SOCIALS,
+} from "@prisma-docs/ui/data/site-footer";
 import { AnimatedWordmark } from "./AnimatedWordmark";
 import { Logo } from "./logo";
 
-interface FooterLink {
-  title: string;
-  url: string;
-  external?: boolean;
-}
-
-interface FooterEntry extends Partial<FooterLink> {
-  _type: string;
-  title: string;
-  links?: FooterLink[];
-}
-
-interface FooterColumn {
-  title: string;
-  links: FooterEntry[];
-}
-
-const COLUMNS = footerData.footerItems as unknown as FooterColumn[];
-
-// Everything the source data files under a dropdown (today: Legal) moves to the
-// bottom bar; everything else stays a column link.
-const LEGAL: FooterLink[] = COLUMNS.flatMap((column) =>
-  column.links
-    .filter((link) => link._type !== "footerLinkType")
-    .flatMap((link) => link.links ?? []),
-);
-
-const SOCIALS = footerData.socialIcons as Array<{ title: string; icon: string; url: string }>;
+const SOCIAL_ICON: Record<(typeof SITE_SOCIALS)[number]["key"], string> = {
+  twitter: "fa-brands fa-x-twitter",
+  linkedin: "fa-brands fa-square-linkedin",
+  github: "fa-brands fa-github",
+  youtube: "fa-brands fa-youtube",
+  bluesky: "fa-brands fa-bluesky",
+};
 
 const linkClass =
-  "text-foreground-neutral-weak hover:text-foreground-neutral text-sm no-underline transition-colors duration-300 motion-reduce:transition-none";
+  "text-foreground-neutral-weak hover:text-foreground-neutral block text-sm leading-5 no-underline transition-colors motion-reduce:transition-none";
+const contactLinkClass =
+  "text-foreground-neutral-weak hover:text-foreground-neutral inline-flex items-center gap-2.5 text-sm leading-5 no-underline transition-colors motion-reduce:transition-none";
 
-function FooterLinkAnchor({ link }: { link: FooterLink }) {
-  return (
-    <a
-      href={link.url}
-      className={linkClass}
-      {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-    >
-      {link.title}
-    </a>
-  );
-}
+const isExternal = (href: string) => /^https?:\/\//.test(href);
 
-export function Footer({ newsletterComponent }: { newsletterComponent?: ReactNode }) {
+export function Footer() {
   return (
-    // The footer sits on the brand paper tone (#f9faf5 light / #1a1a1a dark)
-    // behind a hairline — the same one-step-off-the-page surface the docs
-    // sidebar rests on — so every page closes on the tone the hero wash opens
-    // with instead of dissolving into flat white/ink.
-    <footer className="bg-paper border-stroke-neutral relative z-1 mt-24 w-full overflow-hidden border-t pt-16">
-      <div className="mx-auto max-w-[87.5rem] px-6 sm:px-10">
-        <div className="grid gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
-          <div className="max-w-xs">
-            <Logo />
-            <p className="text-foreground-neutral-weak mt-5 text-sm leading-relaxed">
-              {BLOG_HOME_DESCRIPTION}
-            </p>
-            <div className="mt-7 flex items-center gap-4">
-              {SOCIALS.map((social) => (
-                <a
-                  key={social.title}
-                  href={social.url}
-                  aria-label={social.title}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-foreground-neutral-weak hover:text-foreground-neutral text-lg transition-colors duration-300 motion-reduce:transition-none"
-                >
-                  <i aria-hidden className={`fa-brands fa-${social.icon}`} />
-                </a>
-              ))}
+    <footer className="bg-background-default relative z-1 mt-24 w-full overflow-hidden pt-16">
+      <div className="mx-auto max-w-[96rem] px-6 sm:px-10">
+        <div className="grid items-start gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
+          {/* Brand block: the same 12px step between the logo, email, Google
+              link and copyright as the column links, as on the site. */}
+          <div className="flex max-w-xs flex-col items-start">
+            <Logo className="self-start [&_img]:h-7!" />
+            <div className="mt-3 flex flex-col items-start gap-3">
+              <a href={`mailto:${SITE_CONTACT_EMAIL}`} className={contactLinkClass}>
+                <i aria-hidden className="fa-regular fa-envelope w-4 text-center" />
+                {SITE_CONTACT_EMAIL}
+              </a>
+              <GooglePreferredSourceButton
+                monochrome
+                className={`${contactLinkClass} rounded-none border-0 bg-transparent p-0 font-normal shadow-none hover:bg-transparent`}
+                data-attr="footer-google-preferred-source"
+              />
             </div>
-            {newsletterComponent ? (
-              <div className="mt-8 w-full max-w-[280px]">{newsletterComponent}</div>
-            ) : null}
-            <GooglePreferredSourceButton
-              className={cn("mt-8", eclipseButtonClass)}
-              data-attr="footer-google-preferred-source"
-            />
+            <p className="text-foreground-neutral-weak mt-3 mb-0 text-sm leading-5">
+              &copy; {new Date().getFullYear()} Prisma. All rights reserved.
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
-            {COLUMNS.map((column) => (
-              <div key={column.title}>
-                <h3 className="text-foreground-neutral mb-4 text-sm font-semibold">
-                  {column.title}
+          <div className="grid grid-cols-2 items-start gap-x-8 gap-y-8 sm:grid-cols-4 xl:grid-cols-5">
+            {SITE_FOOTER_COLUMNS.map(({ title, items }) => (
+              <div key={title}>
+                <h3 className="text-foreground-neutral m-0 mb-3 text-sm leading-5 font-semibold">
+                  {title}
                 </h3>
-                <ul className="space-y-3">
-                  {column.links
-                    .filter(
-                      (link): link is FooterEntry & FooterLink => link._type === "footerLinkType",
-                    )
-                    .map((link) => (
-                      <li key={link.url}>
-                        <FooterLinkAnchor link={link} />
-                      </li>
-                    ))}
+                <ul className="m-0 list-none space-y-3 p-0">
+                  {items.map((item) => (
+                    <li key={item.href}>
+                      <a
+                        href={item.href}
+                        className={linkClass}
+                        {...(isExternal(item.href)
+                          ? { target: "_blank", rel: "noopener noreferrer" }
+                          : {})}
+                      >
+                        {item.label}
+                      </a>
+                    </li>
+                  ))}
                 </ul>
               </div>
             ))}
-          </div>
-        </div>
 
-        <div className="border-stroke-neutral mt-16 flex flex-col gap-6 border-t py-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-            <p className="text-foreground-neutral-weak text-sm">
-              &copy; {new Date().getFullYear()} Prisma Data, Inc.
-            </p>
-            {LEGAL.map((link) => (
-              <FooterLinkAnchor key={link.url} link={link} />
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-6">
-            <PDPStatus className="justify-start" />
-            <div className="flex items-center gap-5">
-              {/* HIPAA is the odd one out — it links to /postgres/hipaa (the
-                  Business-plan HIPAA landing page) rather than the Trust
-                  Center, so each entry carries its own href. */}
-              {[
-                {
-                  label: "GDPR Compliance – Prisma Trust",
-                  badge: gdpr,
-                  href: "https://trust.prisma.io/",
-                  external: true,
-                },
-                {
-                  label: "HIPAA on the Business plan",
-                  badge: hipaa,
-                  href: HIPAA_BADGE_HREF,
-                  external: false,
-                },
-                {
-                  label: "ISO 27001 – Prisma Trust",
-                  badge: iso27,
-                  href: "https://trust.prisma.io/",
-                  external: true,
-                },
-                {
-                  label: "SOC 2 – Prisma Trust",
-                  badge: soc2,
-                  href: "https://trust.prisma.io/",
-                  external: true,
-                },
-              ].map(({ label, badge, href, external }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target={external ? "_blank" : undefined}
-                  rel={external ? "noopener noreferrer" : undefined}
-                  aria-label={label}
-                  className="opacity-80 transition-opacity duration-300 hover:opacity-100 motion-reduce:transition-none"
-                >
-                  {/* the badge helper builds `${basePath}/badges/*.svg`, so it
-                      wants the prefix without a trailing slash */}
-                  {badge(BLOG_PREFIX)}
-                </a>
-              ))}
+            <div>
+              <h3 className="text-foreground-neutral m-0 mb-3 text-sm leading-5 font-semibold">
+                Social Media
+              </h3>
+              <ul className="m-0 list-none space-y-3 p-0">
+                {SITE_SOCIALS.map(({ key, label, href }) => (
+                  <li key={key}>
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={contactLinkClass}
+                    >
+                      <i aria-hidden className={`${SOCIAL_ICON[key]} w-4 text-center`} />
+                      {label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
 
         {/* the giant footer wordmark — kept inside the page's max-width so it
-            never grows wider than the rest of the content; the letters span the
-            content width and the rays bleed off past the right. */}
-        <div className="pointer-events-none relative mt-10 pb-6">
+            never grows wider than the rest of the content; the letters span
+            the content width and the rays bleed off past the right. */}
+        <div className="pointer-events-none relative mt-12 pb-6">
           <div className="w-[116.1%]">
             <AnimatedWordmark />
           </div>

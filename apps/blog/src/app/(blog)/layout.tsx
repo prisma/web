@@ -1,9 +1,7 @@
-import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { Footer } from "@/components/chrome/Footer";
 import { NavigationWrapper } from "@/components/navigation-wrapper";
 import { UtmPersistence } from "@/components/utm-persistence";
-import { withBlogBasePath } from "@/lib/url";
 export function baseOptions() {
   return {
     nav: {
@@ -109,11 +107,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <UtmPersistence />
       <NavigationWrapper links={baseOptions().links} />
       {children}
-      <Footer
-        newsletterComponent={
-          <FooterNewsletterForm stacked apiUrl={withBlogBasePath("/api/newsletter")} />
-        }
-      />
+      <Footer />
     </ThemeProvider>
   );
 }

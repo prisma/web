@@ -1,3 +1,5 @@
+import { SITE_FOOTER_LINKS, SITE_SOCIAL_LINKS } from "@prisma-docs/ui/data/site-footer";
+
 export const siteConfig = {
   name: "Prisma",
   description:
@@ -36,48 +38,8 @@ export const siteConfig = {
     { label: "Docs", href: "/docs" },
     { label: "Blog", href: "/blog" },
   ],
-  footer: {
-    product: [
-      { label: "Postgres", href: "/postgres" },
-      { label: "Compute", href: "/compute" },
-      { label: "ORM", href: "/orm" },
-      { label: "Stack", href: "/stack" },
-      { label: "Pricing", href: "/pricing" },
-      { label: "Changelog", href: "/changelog" },
-    ],
-    company: [
-      { label: "About", href: "/company" },
-      { label: "Careers", href: "/company/careers" },
-      { label: "Blog", href: "/blog" },
-      { label: "Customers", href: "/customers" },
-      { label: "Programs", href: "/programs" },
-    ],
-    resources: [
-      { label: "Docs", href: "/docs" },
-      { label: "Postgres guides", href: "/postgres/guides" },
-      { label: "Compute guides", href: "/compute/guides" },
-      { label: "Apps", href: "/apps" },
-      { label: "Compare", href: "/compare" },
-      { label: "Extensions", href: "/extensions" },
-      { label: "Data Guide", href: "https://www.prisma.io/dataguide" },
-      { label: "Support", href: "/support" },
-      { label: "Community", href: "/community" },
-    ],
-    legalTrust: [
-      { label: "All Legal Documents", href: "/legal" },
-      { label: "DPA", href: "/legal/dpa" },
-      { label: "Security & Compliance", href: "/legal/security-and-compliance" },
-      { label: "SLA", href: "/legal/sla" },
-      { label: "Status", href: "https://www.prisma-status.com" },
-      { label: "Terms of Service", href: "/legal/terms" },
-      { label: "Trust Center", href: "https://trust.prisma.io/" },
-    ],
-  },
-  social: {
-    twitter: "https://twitter.com/prisma",
-    linkedin: "https://linkedin.com/company/prisma-io",
-    github: "https://github.com/prisma",
-    youtube: "https://www.youtube.com/prismadata",
-    bluesky: "https://bsky.app/profile/prisma.io",
-  },
+  // The footer's links live in the shared UI package so the blog's footer
+  // uses the same ones (@prisma-docs/ui/data/site-footer).
+  footer: SITE_FOOTER_LINKS,
+  social: SITE_SOCIAL_LINKS,
 };
