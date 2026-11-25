@@ -73,9 +73,19 @@ export function DeferredVideo({ src, className }: { src: string; className?: str
   // once it's attached if the panel is still on screen. Nothing loads while
   // reduced motion is on.
   const active = loaded && motionOk;
+  const wasActiveRef = useRef(false);
   useEffect(() => {
     const video = ref.current;
-    if (!active || !video) return;
+    if (!video) return;
+    if (!active) {
+      // Removing `src` alone doesn't abort a download in progress; load()
+      // with no source runs the media load algorithm, which cancels it. Only
+      // after the source was attached, so first mount does nothing.
+      if (wasActiveRef.current) video.load();
+      wasActiveRef.current = false;
+      return;
+    }
+    wasActiveRef.current = true;
     video.load();
     if (visibleRef.current && motionOkRef.current) void video.play().catch(() => {});
   }, [active]);
