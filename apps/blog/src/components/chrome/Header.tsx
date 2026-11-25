@@ -115,13 +115,17 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
       <header className="fixed inset-x-0 top-0 z-50">
         {/* one element morphs between two states: docked at the site content
             width (transparent, no shadow) and the floating pill. Every property
-            is transitioned so the change is smooth in both directions. */}
+            is transitioned so the change is smooth in both directions. Both
+            states use the site header's exact spacing (apps/site/src/
+            components/header.tsx: 28px down, 96rem wide, 64px gutters docked;
+            a 4xl pill with 20px padding floating), so the bar sits in the same
+            place when you move between the site and the blog. */}
         <div
           className={cn(
             "mx-auto flex items-center justify-between gap-3 rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
             floating
-              ? "border-stroke-neutral bg-background-default-075 mt-3 h-14 max-w-[calc(100%-1.5rem)] px-4 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-5xl sm:px-5 dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_24px_-8px_rgba(0,0,0,0.8)]"
-              : "bg-background-default/0 mt-4 h-16 max-w-[87.5rem] border-transparent px-4 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-6 sm:h-18 sm:px-10 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
+              ? "border-stroke-neutral bg-background-default-075 mt-3 h-14 max-w-[calc(100%-1.5rem)] px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-4xl dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_24px_-8px_rgba(0,0,0,0.8)]"
+              : "bg-background-default/0 mt-5 h-16 max-w-[96rem] border-transparent px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
           )}
         >
           {/* Right-clicking the logo opens the shared brand menu (the same one
