@@ -18,12 +18,24 @@ import { variable } from '@prisma/composer-prisma-cloud';
 import webService from './service.ts';
 
 export default appRoot('my-app', ({ provision }) => {
+  const region = provision(variable({ name: 'REGION' }));
   const sessionSecret = provision(variable.secret({ name: 'SESSION_SECRET' }));
-  provision(webService, { input: { sessionSecret } });
+  provision(webService, { input: { region, sessionSecret } });
 });
 ```
 
-The service still declares the field with `secretString()` and reads it with `service.input().sessionSecret.expose()`. Only `appRoot()` can provision a platform variable, and a deploy does not copy values from your shell or `.env` files to the platform. Set each value with `npx prisma project env add`.
+A field that takes a plain variable must be wrapped with `field()`, because the value is known only when the service starts. A plain `'string'` field refuses it at compile time. A secret field stays `secretString()`:
+
+```typescript title="service.ts (excerpt)"
+import { field, secretString } from '@prisma/composer/arktype';
+import { type } from 'arktype';
+
+input: type({ region: field(type('string')), sessionSecret: secretString() }),
+```
+
+The service reads both with `service.input()`, and the secret with `.expose()`. Only `appRoot()` can provision a platform variable, and a deploy does not copy values from your shell or `.env` files to the platform. Set each value with `npx prisma project env add`.
+
+A platform variable cannot be listed in `resolve()`, which needs a value that is known at deploy. Declare that value as a field of the app root's `input` schema instead.
 
 Until this page is updated, the reference for the current API ships with the package: `node_modules/@prisma/composer/skills/prisma-composer-core-concepts/SKILL.md`.
 
