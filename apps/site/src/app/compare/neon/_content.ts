@@ -16,20 +16,22 @@ export const NEON_AUTHOR = {
 } as const;
 
 export const NEON_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const NEON_UPDATED = { iso: "2026-11-09", label: "November 2026" } as const;
+export const NEON_UPDATED = { iso: "2026-11-24", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
   "You want [Prisma Compute](/docs/compute) to host the TypeScript app as HTTP services next to [Prisma Postgres](/docs/postgres).",
   "You want a [preview branch](/docs/compute/branching) that can own its app services and database.",
-  "You prefer operation-based database pricing with spend limits on paid plans.",
+  "You deploy Next.js on Vercel and want the database from the [Vercel Marketplace](/docs/guides/postgres/vercel), connected to production, preview, and development by default, with usage billed through your Vercel account.",
+  "You want no cold starts: a query after an idle period does not wait for the database to wake up. Billing is per operation, so idle time costs nothing extra.",
+  "You prefer operation-based database pricing, and every paid plan includes a hard spend limit you set in the Console.",
 ];
 
 export const CHOOSE_NEON = [
   "You want Neon Functions, Managed Better Auth, Object Storage, and AI Gateway next to Postgres, declared in one `neon.ts`.",
-  "You want the UI on a host such as Vercel or Netlify, with Neon running the backend next to the database.",
+  "You want Neon Functions to run backend logic next to the database, with the UI on a separate frontend host.",
   "You want copy-on-write database branches that include parent data, and instant restore within the plan's history window.",
-  "You want database compute billed in CU-hours that go to $0 while scale-to-zero has suspended the compute.",
+  "You want database compute billed in CU-hours that go to $0 while scale-to-zero has suspended the compute, and users can wait for a wake-up when a query arrives after an idle period.",
 ];
 
 export type CompareRow = {
@@ -45,10 +47,30 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Database",
     neon: "Managed PostgreSQL (Lakebase Postgres) with autoscaling, connection pooling, and scale-to-zero. Works with any language, framework, or ORM that supports Postgres.",
     prisma:
-      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Prisma Postgres has no cold starts. Any Postgres client works with it, so Prisma ORM is optional.",
+      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Prisma Postgres has no cold starts. Any Postgres client works with it, so Prisma ORM is optional. For edge runtimes, the [serverless driver](/docs/postgres/database/serverless-driver) queries over HTTP instead of a TCP connection.",
     sources: {
       neon: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/blog/prisma-postgres-the-future-of-serverless-databases",
+    },
+  },
+  {
+    feature: "Cold starts",
+    neon: "Compute scales to zero after 5 minutes of inactivity by default and reactivates on the next query, generally within a few hundred milliseconds. Paid plans can turn scale to zero off; Free cannot.",
+    prisma:
+      "Prisma Postgres has no cold starts: a query after an idle period does not wait for the database to wake up. Billing is per operation, so idle time costs nothing extra.",
+    sources: {
+      neon: "https://neon.com/docs/introduction/scale-to-zero",
+      prisma: "https://www.prisma.io/docs/postgres",
+    },
+  },
+  {
+    feature: "Next.js on Vercel",
+    neon: "Neon's Vercel integrations can create a database branch for each preview deployment; in the Vercel-Managed integration, once Preview is selected. Preview branches start from the Neon project's default branch.",
+    prisma:
+      "Prisma Postgres is in the [Vercel Marketplace](/docs/guides/postgres/vercel). The integration sets pooled and direct connection strings on the environments you connect (production, preview, and development by default), and usage bills through your Vercel account. Next.js starters cover Prisma ORM, Drizzle, and Kysely. It does not create a database per preview deployment: connect a separate database to Preview to keep previews away from production data.",
+    sources: {
+      neon: "https://neon.com/docs/guides/vercel-overview",
+      prisma: "https://www.prisma.io/docs/guides/postgres/vercel",
     },
   },
   {
@@ -75,7 +97,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Branches and previews",
     neon: "A Neon branch is a copy-on-write clone of Postgres. Object Storage, Functions, Auth, and AI Gateway can branch with the data. The Neon-managed Vercel integration can create a database branch per preview deployment.",
     prisma:
-      "A Prisma [preview branch](/docs/compute/branching) can own its Compute services and databases. Production data is not copied into that database.",
+      "A Prisma [preview branch](/docs/compute/branching) can own its Compute services and databases. A `postgres()` database the Composer module declares is created new for the preview, and the deploy applies your committed migrations to it; production data is not copied, so you seed the data you test with. For a throwaway database in CI, `npx create-db` gives you a Prisma Postgres database in seconds with no sign-up; it is deleted after 24 hours unless you claim it, and claiming it (free) needs a Prisma account.",
     sources: {
       neon: "https://neon.com/docs/introduction/branching",
       prisma: "https://www.prisma.io/docs/compute/branching",
@@ -117,7 +139,7 @@ export const NEON_FITS = [
   "Backend primitives such as Functions, Object Storage, Managed Better Auth, and AI Gateway should sit next to Postgres.",
   "A preview should start from a copy-on-write clone that includes parent data.",
   "Instant restore within a history window should be available today.",
-  "The UI should stay on a frontend host such as Vercel, with Neon creating a database branch per preview deployment.",
+  "Each Vercel preview deployment should get its own database branch, which Neon's Vercel integration can create from the Neon project's default branch.",
 ];
 
 export const PRISMA_FITS = [
@@ -125,6 +147,8 @@ export const PRISMA_FITS = [
   "Prisma ORM should be available, and optional, on that database.",
   "The TypeScript app should deploy as HTTP services on Prisma Compute, in the same Prisma project as the database.",
   "Database usage should be billed by operations and storage, with a spend limit on paid plans.",
+  "The Next.js app should run on Vercel with the database from the Vercel Marketplace, or on Prisma Compute in the same Prisma project.",
+  "Users should never wait on a database wake-up: Prisma Postgres has no cold starts.",
 ];
 
 export const APART = [
@@ -169,7 +193,8 @@ export const PRICING: readonly {
   {
     label: "Paid plans",
     neon: "Launch and Scale are pay-as-you-go with no monthly minimum. Launch is $0.106 per CU-hour. Scale is $0.222 per CU-hour.",
-    prisma: "Starter is a $10 monthly base with Compute usage metered on top; Pro ($49) and Business ($129) work the same way. Database operations and storage past each plan's included amount are billed too.",
+    prisma:
+      "Starter is a $10 monthly base with Compute usage metered on top; Pro ($49) and Business ($129) work the same way. Database operations and storage past each plan's included amount are billed too.",
     sources: {
       neon: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -200,10 +225,20 @@ export const WRONG_CHOICE = [
   "You want Neon Functions, Managed Better Auth, Object Storage, or AI Gateway as first-party primitives next to Postgres. Prisma Postgres does not include those. See [How a Neon backend fits together](https://neon.com/docs/get-started/backend-overview).",
   "You want a preview that starts from a copy-on-write clone of production data. A Prisma preview branch gets its own database; production data is not copied. See [Compute branching](/docs/compute/branching).",
   "You need instant restore to a moment inside a history window today. On paid plans, Prisma Postgres restores daily backups, taken only on days the database has activity, in place or into a new database, and point-in-time recovery is coming in November 2026. Neon documents instant restore on paid plans at [Neon pricing](https://neon.com/pricing).",
-  "You want database compute that bills $0 while the instance is suspended, rather than operation-based pricing. Neon CU-hours stop while scale-to-zero has suspended compute; storage still bills.",
+  "You want compute-time billing (CU-hours) rather than operation-based billing, for example an always-on API that runs many queries per request. Prisma Postgres bills per operation, so idle time costs nothing extra but every query counts.",
 ];
 
 export const FAQ: readonly { question: string; answer: string }[] = [
+  {
+    question: "Prisma Postgres or Neon: which should I use for a Next.js app?",
+    answer:
+      "Both are managed PostgreSQL that work with Next.js on Vercel or elsewhere, and with Prisma ORM, Drizzle, or Kysely. Pick Prisma Postgres when users should not wait on a database wake-up (no cold starts), when you want the database from the [Vercel Marketplace](/docs/guides/postgres/vercel) or the whole app on Prisma Compute in one project, and when you want a hard spend limit you set in the Console. Pick Neon when each preview deployment needs a database branch that starts with the data of the Neon project's default branch, when you need instant restore within a history window today, or when you want Neon's Auth, Object Storage, and AI Gateway next to the database. Source: [Prisma Postgres](/docs/postgres), [Prisma Postgres on Vercel](/docs/guides/postgres/vercel) and [Neon and Vercel](https://neon.com/docs/guides/vercel-overview), November 2026.",
+  },
+  {
+    question: "Do I need Neon's managed auth for a Next.js app?",
+    answer:
+      "No. Better Auth runs inside the Next.js app and stores users in Postgres. Prisma's [Better Auth with Next.js guide](/docs/guides/authentication/better-auth/nextjs) uses Prisma Postgres. Source: [Better Auth with Next.js](/docs/guides/authentication/better-auth/nextjs), November 2026.",
+  },
   {
     question: "Does Prisma Postgres copy production data onto preview branches?",
     answer:
