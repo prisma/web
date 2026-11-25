@@ -128,8 +128,10 @@ export const BlogCTA = ({
 
           {/* Dark mode, after the docs' DeployCallout: no clouds, a very
               faint spectral wash along the bottom edge (a surface quality,
-              not a glow). The glass prism that sat in the top-right corner
-              is gone, so the panel reads clean (client, 2026-11-25). */}
+              not a glow), and one glass prism cropped into the top-right
+              corner. The buttons sit under the heading, so the corner is
+              clear of them (client, 2026-11-25: "I now cant see any prism
+              in this element"). */}
           <div
             className="absolute inset-0 hidden dark:block"
             style={{
@@ -139,6 +141,12 @@ export const BlogCTA = ({
                 "radial-gradient(45% 45% at 88% 100%, color-mix(in srgb, var(--color-prism-red-300) 6%, transparent), transparent 70%)",
               ].join(","),
             }}
+          />
+          <GlassPrismSpin
+            shape="hexagon"
+            period={40}
+            initialAngle={0.9}
+            className="-right-10 -top-14 hidden w-44 opacity-30 dark:block"
           />
 
           <div className="absolute inset-0 overflow-hidden opacity-[0.06] mix-blend-multiply dark:hidden">
