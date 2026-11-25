@@ -18,6 +18,7 @@ import { Button } from "@prisma/eclipse";
 import { useSearchContext } from "@fumadocs/base-ui/contexts/search";
 import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
 import { ThemeToggle } from "@prisma-docs/ui/components/theme-toggle";
+import { ThemeCycleToggle } from "./ThemeCycleToggle";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { Menu, Search } from "lucide-react";
 import { preloadSearch } from "@/components/search";
@@ -86,13 +87,14 @@ function SearchButton({ className }: { className?: string }) {
       onFocus={preloadSearch}
       onClick={() => setOpenSearch(true)}
       className={cn(
-        "text-foreground-neutral-weak hover:text-foreground-neutral hover:bg-background-neutral rounded-circle flex size-8 cursor-pointer items-center justify-center transition-colors duration-300 outline-none",
+        // 44px with an 18px icon, the site header's search trigger.
+        "quiet-hover rounded-circle flex size-11 cursor-pointer items-center justify-center outline-none",
         "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
         "motion-reduce:transition-none",
         className,
       )}
     >
-      <Search className="size-4" aria-hidden />
+      <Search className="size-[18px]" aria-hidden />
     </button>
   );
 }
@@ -176,19 +178,25 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
             </NavMenuList>
           </NavMenu>
 
-          <div className="hidden items-center gap-2 md:flex">
+          {/* Sized like the site header (apps/site/src/components/header.tsx,
+              client 2026-11-25): 36px pills with 16px padding and 14px
+              semibold labels, 12px apart; the theme control is the docs'
+              single cycling icon. */}
+          <div className="hidden items-center gap-3 md:flex">
             <SearchButton />
-            <ThemeToggle mode="light-dark" className="border-stroke-neutral" />
-            <Button
-              asChild
-              variant="default-weak"
-              className="spectrum-ink-text text-foreground-neutral px-3 hover:bg-transparent"
+            <ThemeCycleToggle />
+            <a
+              href={loginHref}
+              className="spectrum-ink-text text-foreground-neutral inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap no-underline"
             >
-              <a href={loginHref}>Log in</a>
-            </Button>
-            <Button asChild variant="ink" className="px-4">
-              <a href={signupHref}>Get started</a>
-            </Button>
+              Log in
+            </a>
+            <a
+              href={signupHref}
+              className="bg-background-neutral-reverse-strong text-foreground-neutral-reverse inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap no-underline transition-transform duration-150 ease-out hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
+            >
+              Get started
+            </a>
           </div>
 
           <div className="flex items-center gap-1 md:hidden">
