@@ -5,7 +5,8 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog, isDraft } from "@/lib/source";
-import { InlineTOC, Separator } from "@prisma/eclipse";
+import { Separator } from "@prisma/eclipse";
+import { PostToc, type PostTocItem } from "@/components/PostToc";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { BlogShare } from "@/components/BlogShare";
@@ -26,15 +27,7 @@ import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib
 import { findCanonicalSlug } from "@/lib/slug-fallback";
 import { containsLink, extractText, headingAnchorId } from "@/lib/heading-anchor";
 import Link from "next/link";
-import { Text } from "lucide-react";
 import type { Metadata } from "next";
-
-interface TOCItem {
-  title: string;
-  url: string;
-  depth: number;
-  items?: TOCItem[];
-}
 
 interface PageParams {
   slug: string;
@@ -205,11 +198,16 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   const relatedPosts = getRelatedPosts(page, 2);
 
   return (
-    <div className="z-1 mx-auto w-full max-w-257 gap-12 px-4 pt-10 pb-8 md:grid md:grid-cols-[1fr_180px] md:pt-20">
+    // "On this page" in a right-hand rail, styled like the site's guides
+    // (PostToc). minmax(0,1fr), not 1fr: a bare 1fr column won't shrink below
+    // its widest content, so a wide table used to stretch the reading column
+    // to ~1,000px, push the rail off-screen and scroll the whole page
+    // sideways. With the floor at 0 the table scrolls inside its own wrapper.
+    <div className="z-1 mx-auto w-full max-w-[66.5rem] gap-12 px-4 pt-10 pb-8 md:grid md:grid-cols-[minmax(0,1fr)_220px] md:pt-20">
       {blogPostingJsonLd ? (
         <JsonLd id="blog-posting-structured-data" data={blogPostingJsonLd} />
       ) : null}
-      <div className="post-contents w-full">
+      <div className="post-contents w-full min-w-0">
         {/* Title + meta — CF's post header: back link, display title, muted
             dek, then the byline row. */}
         <header className="w-full">
@@ -266,7 +264,7 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         </header>
 
         {/* Body */}
-        <article className="mt-12 flex w-full flex-col pb-8">
+        <article className="mt-12 flex w-full min-w-0 flex-col pb-8">
           <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
             <MDX
               components={getMDXComponents({
@@ -341,20 +339,15 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         {/* Google Preferred Sources — readers who finish a post are the most likely to opt in */}
         <GooglePreferredSourceCallout className="mt-12" />
       </div>
-      <div className="toc max-md:hidden">
-        {/* InlineTOC ships the docs shell's own treatment — cool-spectrum
-            gradient text on the active item plus the vertical spectrum thumb
-            on the rail, and the docs sidebar's spectrum hover on the rest —
-            via the shared classes in eclipse globals.css. No overrides, so
-            the blog TOC reads exactly like the docs TOC in both modes. */}
-        <div className="fd-scroll-container sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto">
-          <h3 className="mt-0 mb-3 inline-flex items-center gap-1.5 text-sm text-fd-muted-foreground">
-            <Text className="size-4" />
-            On this page
-          </h3>
-          <InlineTOC items={content.toc as TOCItem[]} />
-        </div>
-      </div>
+      <aside className="hidden md:block">
+        <nav
+          aria-label="On this page"
+          className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3"
+        >
+          <p className="mb-4 text-sm font-semibold text-foreground-neutral">On this page</p>
+          <PostToc items={content.toc as PostTocItem[]} />
+        </nav>
+      </aside>
     </div>
   );
 }
