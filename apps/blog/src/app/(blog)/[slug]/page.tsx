@@ -5,7 +5,6 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog, isDraft } from "@/lib/source";
-import { Separator } from "@prisma/eclipse";
 import { PostToc, type PostTocItem } from "@/components/PostToc";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
@@ -20,7 +19,6 @@ import { SeriesBanner } from "@/components/SeriesBanner";
 import { SeriesMarker } from "@/components/SeriesMarker";
 import { SeriesNavigation } from "@/components/SeriesNavigation";
 import { KeepReading } from "@/components/KeepReading";
-import { BackToBlogLink } from "@/components/BackToBlogLink";
 import { getSeriesContext } from "@/lib/series";
 import { getRelatedPosts } from "@/lib/related-posts";
 import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
@@ -196,163 +194,193 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   // current post's own series, so "Keep reading" points outside it and the
   // series' own neighbours stay the job of `SeriesNavigation` below.
   const relatedPosts = getRelatedPosts(page, 2);
+  // Reading time from the processed Markdown, at 230 words a minute.
+  const wordCount = (await content.getText("processed")).split(/\s+/).filter(Boolean).length;
+  const readMinutes = Math.max(1, Math.round(wordCount / 230));
+  const tags = page.data.tags ?? [];
+  // "Updated" only when it's a different day from the publish date.
+  const publishedDay = page.data.date ? new Date(page.data.date).toISOString().slice(0, 10) : "";
+  const updatedDay = page.data.updatedAt
+    ? new Date(page.data.updatedAt).toISOString().slice(0, 10)
+    : "";
+  const showUpdated = Boolean(updatedDay) && updatedDay !== publishedDay;
 
   return (
-    // "On this page" in a right-hand rail, styled like the site's guides
-    // (PostToc). minmax(0,1fr), not 1fr: a bare 1fr column won't shrink below
-    // its widest content, so a wide table used to stretch the reading column
-    // to ~1,000px, push the rail off-screen and scroll the whole page
-    // sideways. With the floor at 0 the table scrolls inside its own wrapper.
-    <div className="z-1 mx-auto w-full max-w-[66.5rem] gap-12 px-4 pt-10 pb-8 md:grid md:grid-cols-[minmax(0,1fr)_220px] md:pt-20">
+    <div className="z-1 mx-auto w-full max-w-[66.5rem] px-4 pt-10 pb-8 md:pt-16">
       {blogPostingJsonLd ? (
         <JsonLd id="blog-posting-structured-data" data={blogPostingJsonLd} />
       ) : null}
-      <div className="post-contents w-full min-w-0">
-        {/* Title + meta — CF's post header: back link, display title, muted
-            dek, then the byline row. */}
-        <header className="w-full">
-          <BackToBlogLink className="mb-8" />
-          {/* `md:type-title-4xl lg:type-title-5xl` never applied (type-title-*
-              aren't variant-aware utilities), so the title was 30px at every
-              width. The size is set directly, scaling 30px → 48px like the
-              site's guides; `!` because type-title-3xl's own font-size comes
-              later in the same layer. */}
-          <h1 className="type-title-3xl text-[clamp(1.875rem,1.1rem+2.6vw,3rem)]! leading-[1.15]! text-balance break-words hyphens-auto text-foreground-neutral-strong">
-            {page.data.title}
-          </h1>
-          {page.data.excerpt ? (
-            <p className="mt-5 max-w-[44rem] text-lg leading-relaxed text-foreground-neutral-weak">
-              {page.data.excerpt}
-            </p>
-          ) : null}
-          <div className="mt-8 mb-4 flex flex-wrap items-center gap-2 text-sm text-foreground-neutral">
-            <AuthorAvatarGroup authors={page.data.authors} />
-            {page.data.date ? (
+      {/* The post header, after Attio's article layout (client, 2026-11-25):
+          one quiet metadata line (breadcrumb on the left, dates and reading
+          time on the right), then the title across the full width with the
+          summary and byline under it, closed by a hairline. The breadcrumb
+          replaces the back link and the tag pills. The summary stays: it's
+          what AI answers quote. */}
+      <header className="border-b border-stroke-neutral pb-10 md:pb-12">
+        <div className="flex flex-col gap-1.5 text-sm text-foreground-neutral-weak sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-wrap items-center gap-x-1.5">
+            {/* next/link prepends the /blog basePath, so these stay
+                basePath-free. */}
+            <Link
+              href="/"
+              className="font-medium text-foreground-neutral no-underline transition-colors duration-200 hover:text-foreground-neutral-strong motion-reduce:transition-none"
+            >
+              Blog
+            </Link>
+            {tags.length > 0 ? (
               <>
-                <Separator orientation="vertical" className="h-4" />
-                <span className="text-foreground-neutral-weak">
-                  {formatDate(new Date(page.data.date).toISOString())}
+                <span aria-hidden className="text-foreground-neutral-weaker">
+                  /
                 </span>
-              </>
-            ) : null}
-            {page.data.updatedAt ? (
-              <>
-                <Separator orientation="vertical" className="h-4" />
-                <span className="text-foreground-neutral-weak">
-                  Updated {formatDate(new Date(page.data.updatedAt).toISOString())}
-                </span>
-              </>
-            ) : null}
-          </div>
-          {page.data.tags &&
-            page.data.tags.length > 0 && (
-              // Same ghost pill as the home page's category chips, so a tag reads
-              // identically wherever it appears. Hover is the docs shell's accent
-              // wash (`fd-accent` = cyan-100 light / cyan-950 dark) rather than a
-              // grey tint, so pointing at a pill answers in the brand hue.
-              <div className="filter-badge flex flex-wrap gap-2">
-                {page.data?.tags?.map((tag) => (
-                  <Link
-                    // next/link prepends the /blog basePath itself, so this
-                    // must stay basePath-free. The `?tag=` query it used to
-                    // point at is a redirect now.
-                    href={`/tag/${tag}`}
-                    key={tag}
-                    className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
-                  >
-                    {formatTag(tag)}
-                  </Link>
-                ))}
-              </div>
-            )}
-          {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
-        </header>
-
-        {/* Body */}
-        <article className="mt-12 flex w-full min-w-0 flex-col pb-8">
-          <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
-            <MDX
-              components={getMDXComponents({
-                a: createRelativeLink(blog, page),
-                h2: (props) => {
-                  const providedId =
-                    typeof (props as { id?: unknown }).id === "string"
-                      ? ((props as { id?: string }).id ?? "")
-                      : "";
-                  const final_id = providedId || headingAnchorId(props.children);
-                  // A heading whose MDX contains a link cannot also be wrapped
-                  // in the permalink anchor — that nests <a> inside <a>. There
-                  // the link icon becomes the permalink instead.
-                  const hasLink = containsLink(props.children);
-                  const icon = (
-                    <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
-                  );
-                  return (
-                    <h2
-                      className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&_i]:opacity-100"
-                      id={final_id}
+                {tags.map((tag, i) => (
+                  <span key={tag} className="inline-flex items-center">
+                    <Link
+                      href={`/tag/${tag}`}
+                      className="no-underline transition-colors duration-200 hover:text-foreground-neutral-strong motion-reduce:transition-none"
                     >
-                      {hasLink ? (
-                        props.children
-                      ) : (
-                        <a data-card href={`#${final_id}`}>
-                          {props.children}
-                        </a>
-                      )}
-                      {hasLink ? (
-                        <a
-                          data-card
-                          href={`#${final_id}`}
-                          aria-label={`Permalink to ${extractText(props.children)}`}
-                        >
-                          {icon}
-                        </a>
-                      ) : (
-                        icon
-                      )}
-                    </h2>
-                  );
-                },
-              })}
-            />
-          </div>
-        </article>
+                      {formatTag(tag)}
+                    </Link>
+                    {i < tags.length - 1 ? <span aria-hidden>,</span> : null}
+                  </span>
+                ))}
+              </>
+            ) : null}
+          </nav>
+          <p className="m-0 flex flex-wrap items-center gap-x-1.5 tabular-nums">
+            {page.data.date ? (
+              <time dateTime={new Date(page.data.date).toISOString()}>
+                {formatDate(new Date(page.data.date).toISOString())}
+              </time>
+            ) : null}
+            {showUpdated && page.data.updatedAt ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>
+                  Updated{" "}
+                  <time dateTime={new Date(page.data.updatedAt).toISOString()}>
+                    {formatDate(new Date(page.data.updatedAt).toISOString())}
+                  </time>
+                </span>
+              </>
+            ) : null}
+            <span aria-hidden>·</span>
+            <span>{readMinutes} min read</span>
+          </p>
+        </div>
 
-        {/* About the author(s) — placed at the end of the post so readers reach
-            the author credentials right after finishing the article. */}
-        <AuthorBio authors={page.data.authors} />
-
-        {seriesContext ? (
-          <>
-            <SeriesBanner series={seriesContext} />
-            <SeriesNavigation series={seriesContext} />
-          </>
+        {/* `md:type-title-4xl lg:type-title-5xl` never applied (type-title-*
+            aren't variant-aware utilities), so the title was 30px at every
+            width. The size is set directly, scaling 30px → 52px; `!` because
+            type-title-3xl's own font-size comes later in the same layer. */}
+        <h1 className="type-title-3xl mt-10 max-w-4xl text-[clamp(1.875rem,1rem+3vw,3.25rem)]! leading-[1.1]! tracking-[-0.01em] text-balance break-words text-foreground-neutral-strong md:mt-14">
+          {page.data.title}
+        </h1>
+        {page.data.excerpt ? (
+          <p className="mt-5 mb-0 max-w-[44rem] text-pretty text-lg leading-relaxed text-foreground-neutral-weak">
+            {page.data.excerpt}
+          </p>
         ) : null}
-        {/* `SeriesNavigation` closes with `my-12` and `KeepReading` opens with
+        <div className="mt-8 flex flex-wrap items-center gap-2 text-sm text-foreground-neutral">
+          <AuthorAvatarGroup authors={page.data.authors} />
+        </div>
+        {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
+      </header>
+
+      {/* "On this page" in a right-hand rail, styled like the site's guides
+          (PostToc), starting level with the article rather than the title.
+          minmax(0,1fr), not 1fr: a bare 1fr column won't shrink below its
+          widest content, so a wide table used to stretch the reading column
+          to ~1,000px, push the rail off-screen and scroll the whole page
+          sideways. With the floor at 0 the table scrolls inside its own
+          wrapper. */}
+      <div className="mt-10 gap-12 md:mt-12 md:grid md:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="post-contents w-full min-w-0">
+          {/* Body */}
+          <article className="flex w-full min-w-0 flex-col pb-8">
+            <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
+              <MDX
+                components={getMDXComponents({
+                  a: createRelativeLink(blog, page),
+                  h2: (props) => {
+                    const providedId =
+                      typeof (props as { id?: unknown }).id === "string"
+                        ? ((props as { id?: string }).id ?? "")
+                        : "";
+                    const final_id = providedId || headingAnchorId(props.children);
+                    // A heading whose MDX contains a link cannot also be wrapped
+                    // in the permalink anchor — that nests <a> inside <a>. There
+                    // the link icon becomes the permalink instead.
+                    const hasLink = containsLink(props.children);
+                    const icon = (
+                      <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
+                    );
+                    return (
+                      <h2
+                        className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&_i]:opacity-100"
+                        id={final_id}
+                      >
+                        {hasLink ? (
+                          props.children
+                        ) : (
+                          <a data-card href={`#${final_id}`}>
+                            {props.children}
+                          </a>
+                        )}
+                        {hasLink ? (
+                          <a
+                            data-card
+                            href={`#${final_id}`}
+                            aria-label={`Permalink to ${extractText(props.children)}`}
+                          >
+                            {icon}
+                          </a>
+                        ) : (
+                          icon
+                        )}
+                      </h2>
+                    );
+                  },
+                })}
+              />
+            </div>
+          </article>
+
+          {/* About the author(s) — placed at the end of the post so readers reach
+            the author credentials right after finishing the article. */}
+          <AuthorBio authors={page.data.authors} />
+
+          {seriesContext ? (
+            <>
+              <SeriesBanner series={seriesContext} />
+              <SeriesNavigation series={seriesContext} />
+            </>
+          ) : null}
+          {/* `SeriesNavigation` closes with `my-12` and `KeepReading` opens with
             `my-16`; adjacent margins collapse, so the two blocks stack with the
             larger gap and neither needed a style change. */}
-        <KeepReading posts={relatedPosts} />
+          <KeepReading posts={relatedPosts} />
 
-        {/* Conversion CTA. A post can relabel it and point it at a tracked
+          {/* Conversion CTA. A post can relabel it and point it at a tracked
             Console URL through the `cta` frontmatter field instead of adding
             a second button inside the article. */}
-        <BlogCTA {...(page.data.cta ?? {})} />
+          <BlogCTA {...(page.data.cta ?? {})} />
 
-        {/* Share Container */}
-        <BlogShare desc={page.data.metaDescription as string} />
+          {/* Share Container */}
+          <BlogShare desc={page.data.metaDescription as string} />
 
-        {/* Google Preferred Sources — readers who finish a post are the most likely to opt in */}
-        <GooglePreferredSourceCallout className="mt-12" />
+          {/* Google Preferred Sources — readers who finish a post are the most likely to opt in */}
+          <GooglePreferredSourceCallout className="mt-12" />
+        </div>
+        <aside className="hidden md:block">
+          <nav
+            aria-label="On this page"
+            className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3"
+          >
+            <p className="mb-4 text-sm font-semibold text-foreground-neutral">On this page</p>
+            <PostToc items={content.toc as PostTocItem[]} />
+          </nav>
+        </aside>
       </div>
-      <aside className="hidden md:block">
-        <nav
-          aria-label="On this page"
-          className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3"
-        >
-          <p className="mb-4 text-sm font-semibold text-foreground-neutral">On this page</p>
-          <PostToc items={content.toc as PostTocItem[]} />
-        </nav>
-      </aside>
     </div>
   );
 }
