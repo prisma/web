@@ -397,7 +397,7 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         <aside className="hidden md:block">
           <nav
             aria-label="On this page"
-            className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3 [scrollbar-color:var(--color-stroke-neutral)_transparent] [scrollbar-width:thin]"
+            className="sticky top-28 -ml-2 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3 pl-2 [scrollbar-color:var(--color-stroke-neutral)_transparent] [scrollbar-width:thin]"
           >
             {/* As in the docs' right column (client, 2026-11-25: "same as we
                 have in docs", with the theme switch first, then the share

@@ -89,7 +89,7 @@ function SearchButton({ className }: { className?: string }) {
       className={cn(
         // 44px with an 18px icon, the site header's search trigger.
         "quiet-hover rounded-circle flex size-11 cursor-pointer items-center justify-center outline-none",
-        "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
+        " focus-visible:bg-fd-foreground/[0.06]",
         "motion-reduce:transition-none",
         className,
       )}
@@ -229,7 +229,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger
                 aria-label="Open menu"
-                className="text-foreground-neutral-weak hover:text-foreground-neutral hover:bg-background-neutral rounded-circle flex size-8 cursor-pointer items-center justify-center transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-foreground-neutral/25 motion-reduce:transition-none"
+                className="text-foreground-neutral-weak hover:text-foreground-neutral hover:bg-background-neutral rounded-circle flex size-8 cursor-pointer items-center justify-center transition-colors duration-300 outline-none focus-visible:bg-fd-foreground/[0.06] motion-reduce:transition-none"
               >
                 <Menu className="size-5" aria-hidden />
               </SheetTrigger>

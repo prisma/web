@@ -8,7 +8,7 @@ import { Check, Link2 } from "lucide-react";
 
 const defaultCopyText = "Copy article link";
 const SHARE_BUTTON =
-  "quiet-hover inline-flex size-9 items-center justify-center rounded-full text-[17px] no-underline outline-none focus-visible:ring-2 focus-visible:ring-foreground-neutral/40";
+  "quiet-hover inline-flex size-9 items-center justify-center rounded-full text-[17px] no-underline outline-none focus-visible:bg-fd-foreground/[0.06]";
 
 /**
  * The share links as a quiet vertical list for the post's right column, in
@@ -18,7 +18,7 @@ const SHARE_BUTTON =
  * icon, full ink on hover.
  */
 export const RAIL_ROW =
-  "inline-flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md text-sm text-fd-muted-foreground no-underline transition-colors duration-[120ms] ease-out outline-none hover:text-fd-foreground hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none [&_svg]:size-3.5 [&_svg]:shrink-0";
+  "inline-flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md text-sm text-fd-muted-foreground no-underline transition-colors duration-[120ms] ease-out outline-none hover:text-fd-foreground hover:duration-0 focus-visible:bg-fd-foreground/[0.06] motion-reduce:transition-none [&_svg]:size-3.5 [&_svg]:shrink-0";
 
 // One 16px box per icon, so the brand glyphs (wider than lucide's) and the
 // link icon start every label on the same line.

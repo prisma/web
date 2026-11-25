@@ -39,7 +39,7 @@ export function NavMenuTrigger({ className, children, ...props }: Primitive.Trig
     <Primitive.Trigger
       className={cn(
         "group/trigger text-foreground-neutral-weak hover:text-foreground-neutral data-popup-open:text-foreground-neutral rounded-circle flex h-8 w-max cursor-pointer items-center gap-1 bg-transparent px-2.5 text-sm font-medium transition-colors outline-none",
-        "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
+        " focus-visible:bg-fd-foreground/[0.06]",
         "motion-reduce:transition-none",
         className,
       )}
@@ -116,7 +116,7 @@ export function NavMenuTopLink({
     <Primitive.Link
       className={cn(
         "text-foreground-neutral-weak hover:text-foreground-neutral rounded-circle flex h-8 items-center px-2.5 text-sm font-medium no-underline transition-colors outline-none",
-        "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
+        " focus-visible:bg-fd-foreground/[0.06]",
         "motion-reduce:transition-none",
         className,
       )}
@@ -132,7 +132,7 @@ export function NavMenuLink({ className, ...props }: ComponentProps<typeof Primi
     <Primitive.Link
       className={cn(
         "hover:bg-background-neutral-weak rounded-square flex items-start gap-3 p-2.5 no-underline transition-colors duration-300 outline-none",
-        "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
+        " focus-visible:bg-fd-foreground/[0.06]",
         "motion-reduce:transition-none",
         className,
       )}
