@@ -22,7 +22,7 @@ const tree: DecisionTreeData = {
       id: "free-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "200k operations, 2 GB and 50 databases per month free, with no card. npx create-db@latest gives you one in seconds, without an account.",
+      why: "200k operations, 2 GB and 50 databases per month free, with no card. npx create-db@latest gives you one in seconds, without an account; claim it to keep it.",
       caveat: "Grows into $10/month for 1M operations. Prisma publishes this guide.",
     },
     {
