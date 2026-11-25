@@ -4,10 +4,60 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 import { shareSocials } from "@prisma-docs/ui/data/footer";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Check, Link2 } from "lucide-react";
 
 const defaultCopyText = "Copy article link";
 const SHARE_BUTTON =
   "quiet-hover inline-flex size-9 items-center justify-center rounded-full text-[17px] no-underline outline-none focus-visible:ring-2 focus-visible:ring-foreground-neutral/40";
+
+/**
+ * The share links as a quiet vertical list for the post's right column, in
+ * the docs' rail style (apps/docs/src/components/page-actions.tsx,
+ * PageActionsList; client, 2026-11-25: "same as we have in docs", with the
+ * share buttons and the theme switch there): 14px muted rows with a small
+ * icon, full ink on hover.
+ */
+export const RAIL_ROW =
+  "inline-flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md text-sm text-fd-muted-foreground no-underline transition-colors duration-[120ms] ease-out outline-none hover:text-fd-foreground hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none [&_svg]:size-3.5 [&_svg]:shrink-0";
+
+export const BlogShareList = ({ desc }: { desc: string }) => {
+  const [copied, setCopied] = useState(false);
+  const pathname = usePathname();
+  const pageUrl = `https://www.prisma.io/blog${pathname}`;
+
+  return (
+    <div className="flex flex-col">
+      {shareSocials.map((socialLink: any) =>
+        socialLink.url ? (
+          <a
+            key={socialLink.label}
+            href={socialLink.url({ current_page: pageUrl, text_data: desc })}
+            target="_blank"
+            rel="noopener"
+            className={RAIL_ROW}
+          >
+            <i aria-hidden className={cn(socialLink.icon, "w-3.5 text-center text-[14px]")} />
+            Share on {socialLink.label}
+          </a>
+        ) : socialLink.copy ? (
+          <button
+            key={socialLink.label}
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(pageUrl);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            className={RAIL_ROW}
+          >
+            {copied ? <Check aria-hidden /> : <Link2 aria-hidden />}
+            {copied ? "Link copied" : "Copy link"}
+          </button>
+        ) : null,
+      )}
+    </div>
+  );
+};
 
 export const BlogShare = ({ desc }: { desc: string }) => {
   const [tooltip, setTooltip] = useState<string>(defaultCopyText);
@@ -41,7 +91,7 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                     // quiet utility, not an accent.
                     className={cn(SHARE_BUTTON)}
                   >
-                    <i aria-hidden className={`fa-brands fa-${socialLink.icon}`} />
+                    <i aria-hidden className={socialLink.icon} />
                   </a>
                 </TooltipTrigger>
                 <TooltipContent>{socialLink.label}</TooltipContent>
@@ -55,16 +105,16 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                       no role, no place in the tab order and no accessible name,
                       and Enter/Space did nothing. */}
                   <button
-                      type="button"
-                      aria-label={defaultCopyText}
-                      onClick={() => {
-                        setTooltip("Link copied!");
-                        setTimeout(() => {
-                          setTooltip(defaultCopyText);
-                        }, 500);
-                        navigator.clipboard.writeText(`https://www.prisma.io/blog${pathname}`);
-                      }}
-                      className={cn(SHARE_BUTTON, "cursor-pointer")}
+                    type="button"
+                    aria-label={defaultCopyText}
+                    onClick={() => {
+                      setTooltip("Link copied!");
+                      setTimeout(() => {
+                        setTooltip(defaultCopyText);
+                      }, 500);
+                      navigator.clipboard.writeText(`https://www.prisma.io/blog${pathname}`);
+                    }}
+                    className={cn(SHARE_BUTTON, "cursor-pointer")}
                   >
                     <i aria-hidden className={socialLink.icon} />
                   </button>

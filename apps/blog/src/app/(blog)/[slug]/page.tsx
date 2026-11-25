@@ -5,10 +5,11 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog, isDraft } from "@/lib/source";
+import { RailThemeToggle } from "@/components/RailThemeToggle";
 import { PostToc, type PostTocItem } from "@/components/PostToc";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
-import { BlogShare } from "@/components/BlogShare";
+import { BlogShare, BlogShareList } from "@/components/BlogShare";
 import { BlogCTA } from "@/components/BlogCTA";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
 import { AuthorBio } from "@/components/AuthorBio";
@@ -24,7 +25,7 @@ import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib
 import { findCanonicalSlug } from "@/lib/slug-fallback";
 import { containsLink, extractText, headingAnchorId } from "@/lib/heading-anchor";
 import Link from "next/link";
-import { CalendarDays, Clock } from "lucide-react";
+import { CalendarDays, Clock, Text as TextIcon } from "lucide-react";
 import type { Metadata } from "next";
 
 interface PageParams {
@@ -372,7 +373,9 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
               2026-11-25: "light, simple, and elegant"): share right where the
               article ends, then the author, the series, related posts and
               the CTA last. */}
-          <div className="mt-2">
+          {/* From md the share links sit in the right column; on phones,
+              where that column is hidden, they stay under the article. */}
+          <div className="mt-2 md:hidden">
             <BlogShare desc={page.data.metaDescription as string} />
           </div>
 
@@ -394,9 +397,20 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         <aside className="hidden md:block">
           <nav
             aria-label="On this page"
-            className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3"
+            className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3 [scrollbar-color:var(--color-stroke-neutral)_transparent] [scrollbar-width:thin]"
           >
-            <p className="mb-4 text-sm font-semibold text-foreground-neutral">On this page</p>
+            {/* As in the docs' right column (client, 2026-11-25: "same as we
+                have in docs", with the share links and the theme switch): a
+                quiet list of rows, a hairline, then "On this page" with its
+                icon over the outline. */}
+            <div className="mb-5 border-b border-stroke-neutral pb-4">
+              <BlogShareList desc={page.data.metaDescription as string} />
+              <RailThemeToggle />
+            </div>
+            <p className="m-0 mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-fd-muted-foreground">
+              <TextIcon aria-hidden className="size-4" />
+              On this page
+            </p>
             <PostToc items={content.toc as PostTocItem[]} />
           </nav>
         </aside>

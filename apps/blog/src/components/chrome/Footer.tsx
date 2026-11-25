@@ -8,12 +8,17 @@
 // Differences from the site's, kept on purpose:
 // - colours are eclipse tokens, so dark mode works (the site is light-only);
 // - social icons are FontAwesome brands (the site's forma icons live in
-//   apps/site), at the same 16px.
+//   apps/site), at the same 16px;
+// - the light/dark/system switch sits under the copyright. It left the
+//   header so the header matches the homepage's exactly (client,
+//   2026-11-25: "move the dark/light mode somewhere else, maybe off the
+//   navbar entirely").
 //
 // The blog's earlier extras (description, newsletter form, compliance
 // badges, platform status, legal bar) are dropped to match; the Legal &
 // Trust column carries the legal links and the status page.
 import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-preferred-source";
+import { ThemeToggle } from "@prisma-docs/ui/components/theme-toggle";
 import {
   SITE_CONTACT_EMAIL,
   SITE_FOOTER_COLUMNS,
@@ -60,6 +65,11 @@ export function Footer() {
             <p className="text-foreground-neutral-weak mt-3 mb-0 text-sm leading-5">
               &copy; {new Date().getFullYear()} Prisma. All rights reserved.
             </p>
+            <ThemeToggle
+              mode="light-dark-system"
+              aria-label="Colour theme"
+              className="border-stroke-neutral mt-6"
+            />
           </div>
 
           <div className="grid grid-cols-2 items-start gap-x-8 gap-y-8 sm:grid-cols-4 xl:grid-cols-5">

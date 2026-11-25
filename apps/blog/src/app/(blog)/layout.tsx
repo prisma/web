@@ -2,102 +2,41 @@ import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { Footer } from "@/components/chrome/Footer";
 import { NavigationWrapper } from "@/components/navigation-wrapper";
 import { UtmPersistence } from "@/components/utm-persistence";
+import type { NavLink } from "@/components/chrome/Header";
+import { SITE_NAV, SITE_PLATFORM, SITE_STACK_LINK } from "@prisma-docs/ui/data/site-nav";
+
+const toSiteUrl = (href: string) => `https://www.prisma.io${href}`;
+
+// FontAwesome glyphs for the Platform menu (the site draws its own product
+// icons, which live in apps/site).
+const PLATFORM_ICON: Record<(typeof SITE_PLATFORM)[number]["href"], string> = {
+  "/postgres": "fa-regular fa-chart-pyramid",
+  "/compute": "fa-regular fa-microchip",
+  "/orm": "fa-regular fa-database",
+};
+
 export function baseOptions() {
   return {
     nav: {
       title: "My App",
     },
+    // The homepage's navbar items, in its order, from the data the site
+    // header uses (client, 2026-11-25: the nav items should "align
+    // perfectly with the home page"). Absolute, because the blog runs under
+    // /blog and these pages live on the site.
     links: [
       {
-        text: "Products",
-        sub: [
-          {
-            text: "Compute",
-            url: "https://www.prisma.io/compute",
-            desc: "Deploy TypeScript to production",
-            icon: "fa-regular fa-microchip",
-          },
-          {
-            text: "Postgres",
-            url: "https://www.prisma.io/postgres",
-            desc: "Managed Postgres for global workloads",
-            icon: "fa-regular fa-chart-pyramid",
-          },
-          {
-            text: "ORM",
-            url: "https://www.prisma.io/orm",
-            desc: "Type-safe ORM for TypeScript and Node.js",
-            icon: "fa-regular fa-database",
-          },
-          {
-            text: "Studio",
-            icon: "fa-regular fa-table",
-            url: "https://www.prisma.io/studio",
-            desc: "Explore and manipulate your data",
-          },
-        ],
+        text: "Platform",
+        sub: SITE_PLATFORM.map(({ label, href, description }) => ({
+          text: label,
+          url: toSiteUrl(href),
+          desc: description,
+          icon: PLATFORM_ICON[href],
+        })),
+        footer: { text: SITE_STACK_LINK.label, url: toSiteUrl(SITE_STACK_LINK.href) },
       },
-      {
-        url: "https://www.prisma.io/pricing",
-        text: "Pricing",
-      },
-      {
-        text: "Resources",
-        col: 2,
-        sub: [
-          {
-            text: "MCP",
-            url: "https://www.prisma.io/mcp",
-            icon: "fa-regular fa-message-code",
-          },
-          {
-            text: "Prisma Partners",
-            url: "https://www.prisma.io/programs/partners",
-            icon: "fa-regular fa-lightbulb",
-          },
-          {
-            text: "Tutorials",
-            url: "https://www.prisma.io/docs/guides",
-            icon: "fa-regular fa-clapperboard-play",
-          },
-          {
-            text: "Examples",
-            url: "https://github.com/prisma/prisma-examples",
-            icon: "fa-regular fa-grid-2",
-            external: true,
-          },
-          {
-            text: "Stack",
-            url: "https://www.prisma.io/stack",
-            icon: "fa-regular fa-layer-group",
-          },
-          {
-            text: "Ecosystem",
-            url: "https://www.prisma.io/ecosystem",
-            icon: "fa-regular fa-globe",
-          },
-          {
-            text: "Customer stories",
-            url: "https://www.prisma.io/customers",
-            icon: "fa-regular fa-users",
-          },
-          {
-            text: "Data guide",
-            url: "https://www.prisma.io/dataguide",
-            icon: "fa-regular fa-file-binary",
-            external: true,
-          },
-        ],
-      },
-      {
-        url: "https://www.prisma.io/docs",
-        text: "Docs",
-      },
-      {
-        url: "https://www.prisma.io/blog",
-        text: "Blog",
-      },
-    ],
+      ...SITE_NAV.map(({ label, href }) => ({ text: label, url: toSiteUrl(href) })),
+    ] satisfies NavLink[],
   };
 }
 

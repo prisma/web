@@ -92,7 +92,7 @@ export function PostToc({ items }: { items: readonly PostTocItem[] }) {
   }, [items]);
 
   return (
-    <ul className="border-l border-stroke-neutral text-sm leading-snug">
+    <ul className="m-0 list-none border-l border-fd-foreground/10 p-0 text-sm leading-5">
       {items.map((item) => {
         const isActive = item.url === active;
         return (
@@ -102,12 +102,14 @@ export function PostToc({ items }: { items: readonly PostTocItem[] }) {
               onClick={() => pin(item.url)}
               aria-current={isActive ? "location" : undefined}
               className={cn(
-                "-ml-px block border-l py-1.5 no-underline transition-colors duration-200 motion-reduce:transition-none",
-                // Subsections sit one step in, so the outline reads at a glance.
-                item.depth > 2 ? "pl-7" : "pl-4",
+                // The docs' outline (client, 2026-11-25): 14px muted rows on a
+                // faint rule, the current section in full ink with the rule
+                // darkened beside it. Subsections sit one step in.
+                "-ml-px block border-l py-1.5 no-underline transition-colors duration-[120ms] ease-out hover:duration-0 motion-reduce:transition-none",
+                item.depth > 2 ? "pl-6" : "pl-3",
                 isActive
-                  ? "border-foreground-neutral font-medium text-foreground-neutral"
-                  : "border-transparent text-foreground-neutral-weak hover:text-foreground-neutral",
+                  ? "border-fd-foreground text-fd-foreground"
+                  : "border-transparent text-fd-muted-foreground hover:text-fd-foreground",
               )}
             >
               {item.title}

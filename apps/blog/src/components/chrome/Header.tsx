@@ -17,10 +17,8 @@
 import { Button } from "@prisma/eclipse";
 import { useSearchContext } from "@fumadocs/base-ui/contexts/search";
 import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
-import { ThemeToggle } from "@prisma-docs/ui/components/theme-toggle";
-import { ThemeCycleToggle } from "./ThemeCycleToggle";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { Menu, Search } from "lucide-react";
+import { ArrowRight, Menu, Search } from "lucide-react";
 import { preloadSearch } from "@/components/search";
 import { useEffect, useState } from "react";
 import { Logo } from "./logo";
@@ -51,6 +49,8 @@ export interface NavLink {
   desc?: string;
   col?: number;
   sub?: NavSubLink[];
+  /** A last row under the menu's items, after a hairline (the site's "Explore the stack"). */
+  footer?: { text: string; url: string };
 }
 
 interface HeaderProps {
@@ -134,12 +134,15 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
             <Logo href={logoHref} />
           </PrismaLogoMenu>
 
+          {/* Spaced like the site header's nav (client, 2026-11-25: the items
+              should "align perfectly with the home page"): unpadded 14px
+              labels 24px apart, so each word lands where it does there. */}
           <NavMenu className="hidden md:flex">
-            <NavMenuList className="gap-0.5 lg:gap-1">
+            <NavMenuList className="gap-6">
               {links.map((link) =>
                 link.sub?.length ? (
                   <NavMenuItem key={link.text}>
-                    <NavMenuTrigger>{link.text}</NavMenuTrigger>
+                    <NavMenuTrigger className="h-auto px-0">{link.text}</NavMenuTrigger>
                     <NavMenuContent>
                       <ul
                         className={cn(
@@ -168,12 +171,30 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                             </NavMenuLink>
                           </li>
                         ))}
+                        {link.footer ? (
+                          <li className="border-stroke-neutral mt-1 border-t pt-1">
+                            <NavMenuLink
+                              href={link.footer.url}
+                              className="group/footer items-center gap-1.5 text-sm font-medium text-foreground-neutral"
+                            >
+                              {link.footer.text}
+                              <ArrowRight
+                                aria-hidden
+                                className="size-3.5 transition-transform group-hover/footer:translate-x-0.5 motion-reduce:transition-none"
+                              />
+                            </NavMenuLink>
+                          </li>
+                        ) : null}
                       </ul>
                     </NavMenuContent>
                   </NavMenuItem>
                 ) : (
                   <NavMenuItem key={link.text}>
-                    <NavMenuTopLink href={link.url} {...externalProps(link.external)}>
+                    <NavMenuTopLink
+                      href={link.url}
+                      className="h-auto px-0"
+                      {...externalProps(link.external)}
+                    >
                       {link.text}
                     </NavMenuTopLink>
                   </NavMenuItem>
@@ -184,11 +205,11 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
 
           {/* Sized like the site header (apps/site/src/components/header.tsx,
               client 2026-11-25): 36px pills with 16px padding and 14px
-              semibold labels, 12px apart; the theme control is the docs'
-              single cycling icon. */}
+              semibold labels, 12px apart. No theme control here, so search
+              sits exactly where it does on the homepage (client,
+              2026-11-25); the theme switch lives in the footer. */}
           <div className="hidden items-center gap-3 md:flex">
             <SearchButton />
-            <ThemeCycleToggle />
             <a
               href={loginHref}
               className="spectrum-ink-text text-foreground-neutral inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap no-underline"
@@ -232,6 +253,15 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                             {item.text}
                           </a>
                         ))}
+                        {link.footer ? (
+                          <a
+                            href={link.footer.url}
+                            onClick={() => setOpen(false)}
+                            className="text-foreground-neutral text-base font-medium no-underline"
+                          >
+                            {link.footer.text}
+                          </a>
+                        ) : null}
                       </div>
                     ) : null,
                   )}
@@ -259,11 +289,6 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                     <Button asChild variant="ink">
                       <a href={signupHref}>Get Started</a>
                     </Button>
-                  </div>
-
-                  <div className="border-stroke-neutral flex items-center justify-between border-t pt-6">
-                    <span className="text-foreground-neutral-weak text-sm">Theme</span>
-                    <ThemeToggle mode="light-dark-system" className="border-stroke-neutral" />
                   </div>
                 </nav>
               </SheetContent>

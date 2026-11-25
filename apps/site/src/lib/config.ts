@@ -1,4 +1,5 @@
 import { SITE_FOOTER_LINKS, SITE_SOCIAL_LINKS } from "@prisma-docs/ui/data/site-footer";
+import { SITE_NAV, SITE_PLATFORM, SITE_STACK_LINK } from "@prisma-docs/ui/data/site-nav";
 
 export const siteConfig = {
   name: "Prisma",
@@ -13,31 +14,12 @@ export const siteConfig = {
     { stat: "500,000+", label: "developers" },
     { stat: "46,500+", label: "GitHub stars" },
   ],
-  // Routes per design-ref/sitemap.md (Phase 1)
-  platform: [
-    {
-      label: "Postgres",
-      href: "/postgres",
-      description: "Managed Postgres, provisioned in seconds",
-    },
-    {
-      label: "Compute",
-      href: "/compute",
-      description: "Run and scale your app next to your data",
-    },
-    {
-      label: "ORM",
-      href: "/orm",
-      description: "The type-safe ORM for TypeScript",
-    },
-  ],
-  stack: { label: "Explore the stack", href: "/stack" },
-  nav: [
-    { label: "Pricing", href: "/pricing" },
-    { label: "Customers", href: "/customers" },
-    { label: "Docs", href: "/docs" },
-    { label: "Blog", href: "/blog" },
-  ],
+  // Routes per design-ref/sitemap.md (Phase 1). The header's links live in
+  // the shared UI package so the blog's navbar uses the same ones
+  // (@prisma-docs/ui/data/site-nav).
+  platform: SITE_PLATFORM,
+  stack: SITE_STACK_LINK,
+  nav: SITE_NAV,
   // The footer's links live in the shared UI package so the blog's footer
   // uses the same ones (@prisma-docs/ui/data/site-footer).
   footer: SITE_FOOTER_LINKS,
