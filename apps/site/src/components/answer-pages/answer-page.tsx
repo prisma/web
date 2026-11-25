@@ -18,6 +18,7 @@ import { ConnectionPoolingDiagram } from "./connection-pooling-diagram";
 import { EnvironmentDiagram } from "./environment-diagram";
 import { CommandPill } from "./command-pill";
 import { GuideToc } from "./guide-toc";
+import { HeaderBeams } from "./header-beams";
 import { HeaderRipple } from "./header-ripple";
 import { getAnswerProduct } from "@/lib/answer-products";
 
@@ -79,6 +80,7 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
       <header className="mx-auto max-w-site px-6 sm:px-8">
         <div className="relative overflow-hidden rounded-2xl bg-muted/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
           {data.headerArt === "ripple" ? <HeaderRipple /> : null}
+          {data.headerArt === "beams" ? <HeaderBeams /> : null}
           <div className="relative">
             <nav
               aria-label="Breadcrumb"

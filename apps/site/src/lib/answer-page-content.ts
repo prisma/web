@@ -32,7 +32,7 @@ export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
       )
       .replace(
         /<ConnectionPoolingDiagram\s*\/>/g,
-        "Without a pooler: five function instances each open their own connection to Postgres, so the database holds five connections. With Prisma Postgres pooling: the same five instances connect to PgBouncer at `pooled.db.prisma.io` (transaction mode), which shares two database connections between them. The numbers are an illustration; your plan sets how many pooled connections you get.",
+        "Five functions, two connections. Five function instances connect to PgBouncer at `pooled.db.prisma.io` (transaction mode), which shares two database connections to PostgreSQL between them: it lends each transaction a free database connection, then takes it back. Without a pooler, each instance would open its own database connection. The numbers are an illustration; your plan sets the pooled connection limit.",
       ),
     "## Frequently asked questions",
     ...data.faq.map(({ question, answer }) => `### ${question}\n\n${answer}`),
