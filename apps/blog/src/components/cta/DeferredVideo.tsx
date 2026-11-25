@@ -11,9 +11,13 @@ export function DeferredVideo({ src, className }: { src: string; className?: str
   const ref = useRef<HTMLVideoElement>(null);
   const visibleRef = useRef(false);
   // Follows the reader's motion preference live, not only at mount: turning
-  // on reduced motion mid-play pauses the video, and the source loads only
-  // while motion is allowed.
+  // on reduced motion mid-play pauses the video and detaches the source, and
+  // the source is attached (and loaded) only while motion is allowed. The ref
+  // serves the observer callbacks; the state gates rendering, so a change that
+  // lands between "near the viewport" and React's commit can't slip a source
+  // through.
   const motionOkRef = useRef(false);
+  const [motionOk, setMotionOk] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -21,6 +25,7 @@ export function DeferredVideo({ src, className }: { src: string; className?: str
     if (!video) return;
     const motion = window.matchMedia("(prefers-reduced-motion: no-preference)");
     motionOkRef.current = motion.matches;
+    setMotionOk(motion.matches);
     let nearViewport = false;
 
     const sync = () => {
@@ -50,6 +55,7 @@ export function DeferredVideo({ src, className }: { src: string; className?: str
     });
     const onMotionChange = () => {
       motionOkRef.current = motion.matches;
+      setMotionOk(motion.matches);
       sync();
     };
 
@@ -64,19 +70,21 @@ export function DeferredVideo({ src, className }: { src: string; className?: str
   }, []);
 
   // The source arrives after the first visibility callback, so start playback
-  // once it's attached if the panel is still on screen and motion is allowed.
+  // once it's attached if the panel is still on screen. Nothing loads while
+  // reduced motion is on.
+  const active = loaded && motionOk;
   useEffect(() => {
     const video = ref.current;
-    if (!loaded || !video) return;
+    if (!active || !video) return;
     video.load();
     if (visibleRef.current && motionOkRef.current) void video.play().catch(() => {});
-  }, [loaded]);
+  }, [active]);
 
   return (
     <video
       ref={ref}
       aria-hidden
-      src={loaded ? src : undefined}
+      src={active ? src : undefined}
       muted
       loop
       playsInline

@@ -139,7 +139,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
             is transitioned so the change is smooth in both directions. Both
             states use the site header's exact spacing (apps/site/src/
             components/header.tsx: 28px down, 96rem wide, 64px gutters docked;
-            a 4xl pill with 20px padding floating), so the bar sits in the same
+            a 5xl pill with 20px padding floating), so the bar sits in the same
             place when you move between the site and the blog. */}
         <div
           className={cn(
