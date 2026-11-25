@@ -268,30 +268,37 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             the post changed after it was published, otherwise the publish
             date. The publish date stays in the tooltip and in the JSON-LD
             (datePublished), so search and AI answers still get it. */}
-        <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-foreground-neutral">
-          <AuthorAvatarGroup authors={page.data.authors} />
-          <span className="flex flex-wrap items-center gap-x-1.5 text-foreground-neutral-weak tabular-nums">
-            {showUpdated && page.data.updatedAt ? (
-              <span
-                title={
-                  page.data.date
-                    ? `Published ${formatDate(new Date(page.data.date).toISOString())}`
-                    : undefined
-                }
-              >
-                Updated{" "}
-                <time dateTime={new Date(page.data.updatedAt).toISOString()}>
-                  {formatDate(new Date(page.data.updatedAt).toISOString())}
-                </time>
-              </span>
-            ) : page.data.date ? (
-              <time dateTime={new Date(page.data.date).toISOString()}>
-                {formatDate(new Date(page.data.date).toISOString())}
-              </time>
-            ) : null}
-            <span aria-hidden>·</span>
-            <span>{readMinutes} min read</span>
-          </span>
+        <div className="mt-8">
+          <AuthorAvatarGroup
+            authors={page.data.authors}
+            variant="byline"
+            meta={
+              <>
+                {showUpdated && page.data.updatedAt ? (
+                  <span
+                    title={
+                      page.data.date
+                        ? `Published ${formatDate(new Date(page.data.date).toISOString())}`
+                        : undefined
+                    }
+                  >
+                    Updated{" "}
+                    <time dateTime={new Date(page.data.updatedAt).toISOString()}>
+                      {formatDate(new Date(page.data.updatedAt).toISOString())}
+                    </time>
+                  </span>
+                ) : page.data.date ? (
+                  <time dateTime={new Date(page.data.date).toISOString()}>
+                    {formatDate(new Date(page.data.date).toISOString())}
+                  </time>
+                ) : null}
+                <span aria-hidden className="mx-1.5 text-foreground-neutral-weaker">
+                  ·
+                </span>
+                {readMinutes} min read
+              </>
+            }
+          />
         </div>
         {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
       </header>
