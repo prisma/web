@@ -1,4 +1,3 @@
-import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { createPageMetadata } from "@/lib/page-metadata";
@@ -41,10 +40,7 @@ export default async function AppsPage() {
               the premise in two lines and gets out of the way. */}
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-10 pt-24 text-center md:pb-12 md:pt-28">
-              <RoleKicker color="bg-prism-red-500" className="justify-center">
-                Apps
-              </RoleKicker>
-              <h1 className="isolate mt-3 max-w-[20ch] text-balance text-[clamp(2rem,3.2vw,2.75rem)] leading-[1.08]">
+              <h1 className="isolate max-w-[20ch] text-balance text-[clamp(2rem,3.2vw,2.75rem)] leading-[1.08]">
                 Start from an app
               </h1>
               <p className="mt-4 max-w-[62ch] text-pretty leading-relaxed text-muted-foreground md:text-lg">

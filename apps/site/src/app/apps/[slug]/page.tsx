@@ -248,6 +248,7 @@ function Hero({
 
               <div className="flex flex-wrap items-center gap-3">
                 <RoleKicker color="bg-prism-red-500">Prisma Compute app</RoleKicker>
+                {template.featured && <Marker color="bg-prism-yellow-400">Featured</Marker>}
                 {template.isNew && <Marker color="bg-prism-red-500">New</Marker>}
               </div>
 

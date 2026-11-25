@@ -18,7 +18,7 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "spectrum-border border border-[#646567] bg-background duration-500 hover:border-transparent dark:bg-input/30 dark:border-input",
+          "spectrum-border border border-[#646567] bg-background duration-150 ease-out hover:border-transparent dark:bg-input/30 dark:border-input",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "spectrum-ink",
         link: "text-primary",

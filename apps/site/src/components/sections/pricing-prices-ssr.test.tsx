@@ -75,7 +75,7 @@ test("home pricing scenarios ship real prices in the HTML", () => {
 
 test("/pricing comparison cards ship real prices in the HTML", () => {
   const text = priceText(renderToStaticMarkup(<PricingComparison />));
-  for (const price of ["$110\u2013270", "$95\u2013145", "$72\u201390"]) {
+  for (const price of ["$130\u2013240", "$95\u2013145", "$70\u2013125", "$72\u201390"]) {
     assert.ok(text.includes(price), `missing ${price}`);
   }
   assert.doesNotMatch(text, ZERO_RANGE);

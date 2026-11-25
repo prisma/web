@@ -237,7 +237,7 @@ export function renderHomeMarkdown(): string {
     paragraphs("Typical stack (Neon + Vercel): $20-35 per month"),
     bulletList([
       "Database and hosting from two vendors",
-      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10/GB",
+      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10 per GB",
       "Paid Vercel plan for commercial use",
     ]),
     paragraphs("Prisma: $0-22 per month"),
@@ -250,7 +250,7 @@ export function renderHomeMarkdown(): string {
     paragraphs("Typical stack (Neon + Vercel): $110-270 per month"),
     bulletList([
       "Database and hosting from two vendors",
-      "Database data transfer: 500 GB per project included, then $0.10/GB",
+      "Database data transfer: 500 GB per project included, then $0.10 per GB",
       "Spend controls: Neon notifications, Vercel budget with optional pause",
     ]),
     paragraphs("Prisma: $72-90 per month"),

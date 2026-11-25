@@ -9,6 +9,10 @@ export const answerPageSchema = z.object({
   date: z.iso.date(),
   updatedAt: z.iso.date(),
   readingTime: z.string().min(1),
+  /** Short "On this page" labels, keyed by heading anchor (and `faq`). */
+  tocLabels: z.record(z.string(), z.string().min(1)).optional(),
+  /** Optional decorative background for the header. */
+  headerArt: z.enum(["ripple", "beams"]).optional(),
   faq: z
     .array(z.object({ question: z.string().min(1), answer: z.string().min(1) }))
     .min(3)
@@ -19,5 +23,7 @@ export const answerPageSchema = z.object({
     description: z.string().min(1),
     label: z.string().min(1),
     href: z.string().min(1),
+    /** Optional one-line shell command shown as a copyable pill next to the button. */
+    command: z.string().min(1).optional(),
   }),
 });

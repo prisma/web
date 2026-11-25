@@ -25,7 +25,7 @@ function template(overrides: Partial<GalleryTemplate>): GalleryTemplate {
     stack: [],
     publishedAt: null,
     isNew: false,
-    featuredRank: 1,
+    featured: false,
     popularRank: null,
     preview: null,
     manifestIndex: 0,
@@ -84,4 +84,16 @@ test("the preview and the name open the template's page, the button deploys", ()
     html,
     /href="https:\/\/console\.prisma\.io\/apps\/room-booking[^"]*"[^>]*>(?:<span[^>]*>)?Use this app/,
   );
+});
+
+test("a featured card says Featured instead of New", () => {
+  const featured = renderToStaticMarkup(
+    <TemplateCard template={template({ featured: true, isNew: true })} />,
+  );
+  assert.match(featured, />Featured</);
+  assert.doesNotMatch(featured, />New</);
+
+  const fresh = renderToStaticMarkup(<TemplateCard template={template({ isNew: true })} />);
+  assert.match(fresh, />New</);
+  assert.doesNotMatch(fresh, />Featured</);
 });

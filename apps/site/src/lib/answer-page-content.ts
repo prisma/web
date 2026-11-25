@@ -29,10 +29,18 @@ export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
       .replace(
         /<EnvironmentDiagram\s*\/>/g,
         "Test: feature branch → own app and API → separate database with synthetic records.\n\nProduction: protected main → own app and API → customer database.\n\nEach app uses its own database credentials. The assistant gets access to the test environment.",
+      )
+      .replace(
+        /<ServerlessPathsDiagram\s*\/>/g,
+        "How apps reach Prisma Postgres: serverless functions and Prisma Compute apps → `pooled.db.prisma.io` (PgBouncer, transaction mode, TCP port 5432). Edge runtimes → serverless driver over HTTP and WebSockets. Migrations, Prisma Studio and `pg_dump` → `db.prisma.io` (direct connection, session state kept). All three reach one PostgreSQL database in the region you chose.",
+      )
+      .replace(
+        /<ConnectionPoolingDiagram\s*\/>/g,
+        "Five functions, two connections. Five function instances connect to PgBouncer at `pooled.db.prisma.io` (transaction mode), which shares two database connections to PostgreSQL between them: it lends each transaction a free database connection, then takes it back. Without a pooler, each instance would open its own database connection. The numbers are an illustration; your plan sets the pooled connection limit.",
       ),
     "## Frequently asked questions",
     ...data.faq.map(({ question, answer }) => `### ${question}\n\n${answer}`),
-    `## ${data.cta.title}\n\n${data.cta.description}\n\n[${data.cta.label}](${data.cta.href})`,
+    `## ${data.cta.title}\n\n${data.cta.description}\n\n${data.cta.command ? `\`${data.cta.command}\`\n\n` : ""}[${data.cta.label}](${data.cta.href})`,
     "## Related guides",
     ...data.related.map(({ title, href }) => `- [${title}](${href})`),
   ].join("\n\n");

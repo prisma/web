@@ -1,12 +1,12 @@
+import { StaticReveals } from "@/components/motion/reveal";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { CompareLinks } from "@/components/sections/compare-links";
 import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
 import { CtaBurst } from "@/components/sections/cta-burst";
-import { PricingCalculator } from "@/components/sections/pricing-calculator";
+import { PricingCostControls } from "@/components/sections/pricing-cost-controls";
 import { PricingComparison } from "@/components/sections/pricing-comparison";
 import { PricingFaq } from "@/components/sections/pricing-faq";
 import { PricingHero } from "@/components/sections/pricing-hero";
-import { PricingHowItWorks } from "@/components/sections/pricing-how-it-works";
 import { PricingPlans } from "@/components/sections/pricing-plans";
 import { PricingSpecTable } from "@/components/sections/pricing-spec-table";
 import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
@@ -25,26 +25,29 @@ export const metadata = createPageMetadata({
 // allowances as a group in the spec table — NOT as a separate section, hero
 // subhead, or strip (all three were tried and removed on Shane's feedback:
 // "we already have a table for these things").
-// "Every plan includes" is the right-hand column of PricingHowItWorks; the
-// calculator's three entry points double as its preset selector.
+// What's never billed is the list in PricingCostControls' third card ("Free
+// on every plan"); the calculator has its own page, /pricing/calculator.
 //
-// Plan cards sit directly under the hero panel, ahead of the how-it-works
-// copy, per the client (2026-07-30) — Shane asked for the table to be
-// reachable without scrolling. The hero subhead still defines an operation
-// before the cards quote operation counts, so the definition precedes the
-// number even though the full explanation now follows the cards.
+// Order: the plans table inside the hero panel (the client, 2026-07-30:
+// reachable without scrolling), then PricingCostControls, PricingComparison,
+// PricingSpecTable ("Compare plans") and the FAQ.
 // Still to come: the full limits table Ankur asked for — blocked on the
 // unanswered rows (Free-tier backups, compliance on Free/Starter, support).
 export default function PricingPage() {
   return (
-    <>
-      {/* The headline and the plan cards share the hero's wrapped panel, per the
-          client (2026-07-30) — the page resumes outside it from how-it-works on. */}
+    // No scroll-in animation on this page: everything is in place when you
+    // get to it (client, 2026-11-22). See StaticReveals in motion/reveal.tsx.
+    <StaticReveals>
+      {/* The headline and the plans table share the hero's wrapped panel, per
+          the client (2026-07-30); the page resumes outside it from the cost
+          controls on. */}
       <PricingHero>
         <PricingPlans />
       </PricingHero>
-      <PricingHowItWorks />
-      <PricingCalculator />
+      {/* Right under the plan cards, where Vercel puts its "No idle, no waste" /
+          "Control your spending" pair (client, 2026-11-22): the worry about a
+          runaway bill is answered next to the prices that raise it. */}
+      <PricingCostControls />
       <PricingComparison />
       <PricingSpecTable />
       <TestimonialsReveal />
@@ -81,6 +84,6 @@ export default function PricingPage() {
           options. The list is shared with /postgres, the sentence above it
           is this page's own; see sections/compare-links.tsx. */}
       <CompareLinks intro={PRICING_COMPARE_INTRO} />
-    </>
+    </StaticReveals>
   );
 }

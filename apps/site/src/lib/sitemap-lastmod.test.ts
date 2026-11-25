@@ -237,6 +237,10 @@ test("home, pricing, postgres and compute are dated by their content files", () 
     "lib/markdown/pricing.ts",
     "components/sections/pricing-faq.tsx",
   ]);
+  assert.deepEqual(ROUTE_CONTENT_FILES["/pricing/calculator"], [
+    "components/sections/pricing-calculator.tsx",
+    "components/sections/calculator-options/calc.ts",
+  ]);
   assert.deepEqual(ROUTE_CONTENT_FILES["/postgres"], ["components/product/content/postgres.ts"]);
   assert.deepEqual(ROUTE_CONTENT_FILES["/compute"], ["components/product/content/compute.ts"]);
 });

@@ -11,7 +11,7 @@ import { TESTIMONIALS, type Testimonial } from "./testimonials-data";
 // quotes (Cal.com, Gamma, Stellate, Trunk, Memberstack, Instatus) and the
 // former homepage's testimonials (Fluidwave); see testimonials-data.ts.
 // Client logos are the real brand marks (/logos/customers/*.png) where a
-// square mark exists; the rest use letter chips.
+// square mark exists; a company without one gets a letter chip.
 
 // Six unique quotes per row, interleaving case-study and showcase voices; a
 // half-track is ~2,200px, so a quote only recurs a full loop apart — never
@@ -65,9 +65,11 @@ function CompanyMark({ t }: { t: Testimonial }) {
   );
 }
 
+// No hover ring on the cards (client, 2026-11-24: "remove the chrome on
+// hover"); hovering the strip still pauses the drift.
 function QuoteCard({ t }: { t: Testimonial }) {
   return (
-    <figure className="spectrum-border flex w-[19rem] shrink-0 flex-col rounded-2xl border border-black/[0.06] bg-white p-6 transition-[border-color] duration-500 hover:border-transparent sm:w-[22rem]">
+    <figure className="flex w-[19rem] shrink-0 flex-col rounded-2xl border border-black/[0.06] bg-white p-6 sm:w-[22rem]">
       <blockquote className="text-pretty text-[15px] font-medium leading-normal text-foreground">
         &ldquo;{t.quote}&rdquo;
       </blockquote>

@@ -171,9 +171,19 @@ export const postgresContent: ProductPageContent = {
         "Yes. Prisma Postgres is a fully managed cloud PostgreSQL database: there are no servers to run, databases are provisioned instantly, connection pooling is built in, and the Free plan includes 2 GB of storage. It works with any Postgres client and is built to pair with Prisma ORM for type-safe queries and Prisma Compute for deploying your app next to your database, so you get one cloud platform for the database, the ORM and app hosting.",
     },
     {
+      question: "My Next.js app is already on Vercel. Can I use Prisma Postgres?",
+      answer:
+        "Yes. Add it from the [Vercel Marketplace](/docs/guides/postgres/vercel): it sets the direct connection string as `DATABASE_URL` and the pooled one as `DATABASE_URL_POOLED`, and the database bills through your Vercel account. It has no cold starts and no instance to size or upgrade, PgBouncer pooling is built in, and any Postgres client works, including Drizzle and Kysely; Prisma ORM is optional. The integration does not create a database per preview deployment: connect a separate database to your Preview environment only, take Preview off the production database's connection, and redeploy, so new previews don't use production data.",
+    },
+    {
       question: "Is Prisma Postgres managed PostgreSQL hosting (Postgres as a service)?",
       answer:
         "Yes. Prisma Postgres is fully managed PostgreSQL hosting: it runs, scales and secures the database, with daily [automatic backups](/docs/postgres/database/backups) on paid plans, so you never manage servers or connection pooling. It's built to work with the rest of your stack. Prisma ORM gives you type-safe queries and migrations out of the box, and Prisma Compute lets you deploy your app right next to your database, so your data, your queries and your app all live on one platform. You can start on the free plan, or create a temporary database in seconds with [`npx create-db`](/docs/postgres/npx-create-db), no account needed.",
+    },
+    {
+      question: "Can I use PostgreSQL online without installing anything?",
+      answer:
+        "Yes. Prisma Postgres runs PostgreSQL in the cloud, so there is no database server to install or run on your machine: create a database in the Prisma Console or with `npx create-db`, then connect with its connection string from any Postgres client, or browse and edit rows in Prisma Studio in your browser. Add Prisma ORM when you want type-safe queries and migrations, and Prisma Compute when you want your app hosted in the same project as its database.",
     },
     {
       question: "What happens when I reach the Free plan limit?",

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import GithubSlugger from "github-slugger";
 import { getAnswerEntries, renderAnswerMarkdown } from "./answer-page-content";
 import { buildLlmsFullContent, buildLlmsIndexContent } from "../app/llms-content";
 import { answerProductIds, answerProducts, getAnswerProduct } from "./answer-products";
@@ -63,7 +64,36 @@ test("answer Markdown preserves the decision and custom diagram's meaning", () =
       assert.ok(markdown.includes("synthetic records"));
       assert.ok(markdown.includes("customer database"));
     }
+    if (entry.content.includes("<ConnectionPoolingDiagram")) {
+      assert.ok(markdown.includes("Five functions, two connections"));
+      assert.ok(markdown.includes("Without a pooler"));
+    }
+    if (entry.content.includes("<ServerlessPathsDiagram")) {
+      assert.ok(markdown.includes("How apps reach Prisma Postgres"));
+      assert.ok(markdown.includes("Edge runtimes → serverless driver"));
+    }
     for (const { title, href } of entry.data.related)
       assert.ok(markdown.includes(`[${title}](${href})`));
+    if (entry.data.cta.command) assert.ok(markdown.includes(`\`${entry.data.cta.command}\``));
+  }
+});
+
+test("every tocLabels key names a real H2 anchor or the FAQ", () => {
+  for (const entry of getAnswerEntries()) {
+    const labels = entry.data.tocLabels;
+    if (!labels) continue;
+    // Same slugger, and same duplicate suffixing, as the heading ids fumadocs
+    // generates for the rendered page (fumadocs-core uses github-slugger).
+    // Every heading goes through the slugger so duplicate suffixes line up with
+    // the page, but only H2 anchors count: tocLabels only labels H2 entries.
+    const slugger = new GithubSlugger();
+    const anchors = new Set<string>(["faq"]);
+    for (const [, hashes, text] of entry.content.matchAll(/^(#{1,6}) (.+)$/gm)) {
+      const slug = slugger.slug(text.replace(/`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1"));
+      if (hashes.length === 2) anchors.add(slug);
+    }
+    for (const key of Object.keys(labels)) {
+      assert.ok(anchors.has(key), `${entry.url}: tocLabels key "${key}" matches no heading`);
+    }
   }
 });

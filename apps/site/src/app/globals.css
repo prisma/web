@@ -37,6 +37,98 @@
   text-decoration: none;
 }
 
+/*
+ * Guide code blocks match apps/docs. The eclipse CodeBlock emits the same
+ * markup here, but this app does not build the eclipse tokens it uses
+ * (rounded-square, border-stroke-neutral, bg-fd-card, type-code-sm,
+ * text-fd-muted-foreground), so their docs values are set here, scoped to
+ * guides. --font-code is Mona Sans Mono, loaded by the guide template.
+ */
+.answer-prose figure.shiki {
+  margin-block: 1.5rem;
+  border: 1px solid #e5e5e4;
+  border-radius: 12px;
+  background: #fff;
+  font-family:
+    var(--font-code), ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 20px;
+}
+.answer-prose figure.shiki > div:first-child {
+  height: 2.375rem;
+  border-color: #e5e5e4;
+  color: #646567;
+  font-size: 13px;
+}
+.answer-prose figure.shiki :is(pre, code) {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: inherit;
+}
+.answer-prose figure.shiki .line {
+  padding-inline: 1.25rem;
+  line-height: 1.5rem;
+}
+.answer-prose figure.shiki button {
+  color: #646567;
+}
+
+/*
+ * Guide header ripple (components/answer-pages/header-ripple.tsx). The mockup
+ * ran a 7.5 s cycle; this one runs 45 s, staggered 15 s, so it barely moves.
+ */
+@keyframes guide-ripple {
+  0% {
+    transform: scale(0.04);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+.guide-ripple-wave {
+  opacity: 0;
+  animation: guide-ripple 45s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-ripple-wave {
+    animation: none;
+  }
+}
+
+/* A quiet note, such as a guide's disclosure line (`:::note` in MDX). */
+.answer-prose [role="alert"] {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  margin-block: 1.25rem;
+  border: 1px solid #ececeb;
+  border-radius: 10px;
+  background: #fafafa;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #646567;
+}
+.answer-prose [role="alert"] > i {
+  flex: none;
+  font-size: 0.8125rem;
+  color: #9a9b9e;
+}
+.answer-prose [role="alert"] p {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
 @theme inline {
   /* ---- Layout ----------------------------------------------------------
      The site's one content width. Before this existed every section picked
@@ -763,7 +855,10 @@ h6 {
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
   opacity: 0;
-  transition: opacity 0.5s ease;
+  /* Leaves over 0.25s, arrives in 0.15s (the :hover rule below), on a
+     fast-out curve: quick feedback that settles rather than snaps (client,
+     2026-11-22: "feel more premium"). */
+  transition: opacity 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 
@@ -773,64 +868,24 @@ h6 {
 .spectrum-border:hover::before,
 .spectrum-border:focus-visible::before {
   opacity: 1;
-  animation: spectrum-slide 2.5s linear infinite;
+  transition-duration: 0.15s;
+  /* A slow drift (was 2.5s): at 2.5s the colour raced round the border and
+     read as busy. */
+  animation: spectrum-slide 9s linear infinite;
 }
 
-/* Always-on variant — the ring stays lit without needing hover.
-   Prefer <SpectrumRing /> (brand/spectrum-ring.tsx) for new work: this one
+/* Always-on variant — the ring stays lit without needing hover. It
    repaints every frame for the life of the page, for the reason above. */
 .spectrum-border-on::before {
   opacity: 1;
   animation: spectrum-slide 2.5s linear infinite;
 }
 
-/* Composited always-on ring, see brand/spectrum-ring.tsx. The outer span is
-   masked to the 1px ring exactly like .spectrum-border::before; the inner span
-   is four host-widths of gradient at two host-widths per cycle (the same
-   period as background-size: 200%), and translating it by half its own width
-   is one full cycle, so the loop is seamless and runs on the compositor. */
-@keyframes spectrum-ring-slide {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.spectrum-ring {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: inherit;
-  padding: 1px;
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-.spectrum-ring > span {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 400%;
-  background-image: linear-gradient(85deg, #01d7e4, #f3c306, #f37a03, #f43531, #f00e5c, #01d7e4);
-  background-size: 50% 100%;
-  animation: spectrum-ring-slide 2.5s linear infinite;
-  will-change: transform;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .spectrum-border::before,
   .spectrum-border:hover::before,
   .spectrum-border:focus-visible::before,
-  .spectrum-border-on::before,
-  .spectrum-ring > span {
+  .spectrum-border-on::before {
     animation: none;
   }
 }
@@ -1167,4 +1222,34 @@ h6 {
   padding: 1rem 1.25rem;
   font-size: 0.875rem;
   line-height: 1.6;
+}
+
+/* Connection pooling diagram: a slow halo on the PgBouncer card. */
+@keyframes pool-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(1, 215, 228, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(1, 215, 228, 0.14);
+  }
+}
+
+/* Connection pooling diagram: a connection crossing to PostgreSQL. */
+@keyframes pool-db {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  85% {
+    left: calc(100% - 13px);
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 13px);
+    opacity: 0;
+  }
 }
