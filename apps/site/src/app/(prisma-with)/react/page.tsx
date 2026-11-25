@@ -143,7 +143,7 @@ export default function Users() {
 export const metadata = createPageMetadata({
   title: "Access your Database from React Apps with Ease",
   description:
-    "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
+    "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and Prisma Postgres, managed PostgreSQL with built-in connection pooling and no cold starts.",
   path: "/react",
   ogKicker: "Prisma ORM",
 });

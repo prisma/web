@@ -143,12 +143,17 @@ function buildNeonPage(minutes: number) {
         <Link href="/docs/compute" className={INLINE}>
           Prisma Compute
         </Link>{" "}
-        hosting the TypeScript app as HTTP services in the same Prisma project. Pick{" "}
+        hosting the TypeScript app as HTTP services in the same Prisma project. Prisma Postgres has
+        no cold starts, and a Next.js app on Vercel can add it from the{" "}
+        <Link href="/docs/guides/postgres/vercel" className={INLINE}>
+          Vercel Marketplace
+        </Link>
+        . Pick{" "}
         <a href="https://neon.com/docs/get-started/backend-overview" className={INLINE}>
           Neon
         </a>{" "}
         when you want Postgres plus Functions, Managed Better Auth, Object Storage, and AI Gateway,
-        with the UI on a host such as Vercel or Netlify.
+        or previews that start from a copy-on-write clone that includes parent data.
       </p>
       {comparisonHeroCtas("postgres")}
       {comparisonByline({ author: NEON_AUTHOR, updated: NEON_UPDATED, minutes })}
