@@ -154,21 +154,19 @@ export async function data(_pageContext: PageContextServer) {
 
 On PostgreSQL, you reach a model through the database schema it is in, so the `Todo` model in the `public` schema is `db.orm.public.Todo`. The rows are typed by the contract, and the page component needs no change because each row still has a `text` field.
 
-Next, save new items. In the handler, import the client and replace the `console.log` call with a `create()`, which returns the inserted row. Only the marked lines change, and the scaffold's two comments are left out here for brevity:
+Next, save new items. The handler changes in three places: it imports the client, it calls `create()` where the scaffold logged the item with `console.log`, and it adds the inserted row to the response. The scaffold's two comments are left out here for brevity:
 
 ```ts title="server/create-todo-handler.ts"
 import { enhance, type UniversalHandler } from "@universal-middleware/core";
-import { db } from "../src/prisma/db"; // [!code ++]
+import { db } from "../src/prisma/db";
 
 export const createTodoHandler: UniversalHandler<Universal.Context & object> = enhance(
   async (request, _context, _runtime) => {
     const newTodo = (await request.json()) as { text: string };
 
-    console.log("Received new todo", newTodo); // [!code --]
-    const todo = await db.orm.public.Todo.create({ text: newTodo.text }); // [!code ++]
+    const todo = await db.orm.public.Todo.create({ text: newTodo.text });
 
-    return new Response(JSON.stringify({ status: "OK" }), { // [!code --]
-    return new Response(JSON.stringify({ status: "OK", todo }), { // [!code ++]
+    return new Response(JSON.stringify({ status: "OK", todo }), {
       status: 200,
       headers: {
         "content-type": "application/json",
@@ -178,6 +176,8 @@ export const createTodoHandler: UniversalHandler<Universal.Context & object> = e
   { name: "my-app:todo-handler", path: `/api/todo/create`, method: ["GET", "POST"], immutable: false },
 );
 ```
+
+`create()` returns the inserted row, database defaults included, so the response needs no second query.
 
 Start the dev server:
 
