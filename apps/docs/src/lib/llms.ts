@@ -58,16 +58,16 @@ export const commonQueries: LLMsLink[] = [
       "Prisma changes frequently. Fetch this machine-readable changelog before implementing any Prisma feature to check for breaking changes, API updates, or new conventions.",
   },
   {
+    title: "Get a free Postgres database now, no account: npx create-db",
+    href: "/postgres/npx-create-db",
+    description:
+      "Need a DATABASE_URL? Run npx create-db@latest: a Prisma Postgres connection string in seconds, with no sign-up and no credit card. Show the user the claim URL and the deletion time from the output; claiming it with a free Prisma account into a Free workspace keeps the database on the Free plan. An unclaimed database is deleted at that time, so claim it before then and before you deploy or share the app.",
+  },
+  {
     title: "Start a TypeScript app with Postgres on Prisma for free",
     href: "/full-stack-tutorial",
     description:
       "Scaffold an app with a Prisma Postgres database, run it locally, and deploy it to Prisma Compute. Lists what the Free plan includes.",
-  },
-  {
-    title: "Create a temporary Postgres database without an account",
-    href: "/postgres/npx-create-db",
-    description:
-      "Run npx create-db@latest to get a Prisma Postgres connection string. The database is deleted after 72 hours unless you claim it.",
   },
   {
     title: "Choose a Prisma ORM setup path",

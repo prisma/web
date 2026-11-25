@@ -38,8 +38,20 @@ export function GuideToc({ items }: { items: readonly GuideTocItem[] }) {
       pinned.current = null;
     };
     const followHash = () => {
-      const hash = decodeURIComponent(window.location.hash);
-      if (items.some((item) => item.url === hash)) pin(hash);
+      let hash: string;
+      try {
+        hash = decodeURIComponent(window.location.hash);
+      } catch {
+        // A malformed fragment, such as a bare "%", names no TOC item.
+        hash = "";
+      }
+      if (items.some((item) => item.url === hash)) {
+        pin(hash);
+      } else {
+        // A fragment outside the TOC ends any pin, so scroll position decides again.
+        release();
+        onScroll();
+      }
     };
 
     let frame = 0;

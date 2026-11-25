@@ -1,0 +1,183 @@
+---
+title: n8n
+description: Create a Prisma Postgres database from an n8n workflow and query it with n8n's Postgres node in the same run.
+url: /guides/postgres/n8n
+metaTitle: How to use Prisma Postgres with n8n
+metaDescription: Install the Prisma Postgres community node for n8n, connect it with a service token, and build a workflow that creates a database and runs a query against it.
+---
+
+## Introduction
+
+[n8n](https://n8n.io) is a workflow automation tool. The [Prisma Postgres node](https://github.com/prisma/n8n-nodes-prisma) is a community node built by Prisma and verified by n8n. It creates and manages [Prisma Postgres](/postgres) projects, databases, and connections from a workflow.
+
+In this guide, you build a workflow with four nodes. One run of it creates a project with a database, creates connection details for that database, and inserts a row through n8n's Postgres node.
+
+The Prisma Postgres node does not run SQL. It manages the database, and n8n's own **Postgres** node reads and writes the data.
+
+## Prerequisites
+
+- An n8n instance where you are an owner or admin, on n8n Cloud or self-hosted. This guide was tested with a self-hosted n8n 2.49.5 and version 0.1.3 of the node.
+- A [Prisma account](https://console.prisma.io). The Free plan is enough for this guide.
+
+You build the workflow in steps 1 to 5 and run it once in step 6. Do not run the nodes one by one before that, because every run of the first node creates another project.
+
+## 1. Install the node
+
+Install the node from the nodes panel, so that it is available in every workflow on your instance.
+
+1. Create a workflow and add the **Trigger manually** node.
+2. Select **+** on the trigger node and search for **Prisma Postgres**. The node appears in the results with a verified badge.
+3. Select the node, then select **Install node**.
+4. Choose the **Create project** action to add the node to the workflow.
+
+On a self-hosted instance, you can also go to **Settings > Community nodes**, select **Install**, enter `@prisma/n8n-nodes-prisma` as the package name, and accept the risk notice.
+
+## 2. Connect your Prisma account
+
+The node signs in to the [REST API](/rest-api) with a [service token](/rest-api/authentication#service-tokens).
+
+:::warning
+A service token can manage every project in its workspace, so treat it like a password. The default expiry is 90 days, and the workflow stops working when the token expires.
+:::
+
+1. In [Prisma Console](https://console.prisma.io), select the workspace you want to use and open **Settings > Service Tokens**.
+2. Select **New Service Token**, choose an expiry, and copy the token.
+3. In the Prisma Postgres node in n8n, select **Connect to Prisma**.
+4. Paste the token into **Service Token** and save.
+
+n8n tests the credential with a read-only request when you save it, and it reports whether the connection worked.
+
+## 3. Create a project and a database
+
+The node you added has the **Project** resource and the **Create** operation selected. Creating a project also creates its first database.
+
+1. Enter a name in **Name**, for example `n8n-quickstart`.
+2. Choose the region closest to you in **Region Name or ID**. See the [available regions](/postgres/faq#what-regions-is-prisma-postgres-available-in).
+
+When the workflow runs in step 6, this node waits until the database accepts connections, which takes at least five seconds. Its output contains the ID of the new database:
+
+```json no-copy title="Output of Project: Create"
+{
+  "id": "proj_...",
+  "name": "n8n-quickstart",
+  "database": {
+    "id": "db_...",
+    "name": "n8n-quickstart",
+    "status": "ready"
+  }
+}
+```
+
+The output is shortened here. The next node reads `database.id` from it.
+
+## 4. Create a connection
+
+A connection is a host, user, and password for one database. Add a second node that creates one for the database from the previous step.
+
+1. Add another **Prisma Postgres** node after the first one.
+2. Select the **Connection** resource and the **Create** operation.
+3. In **Database**, switch from **From List** to **By ID** and enter the expression `{{ $json.database.id }}`. n8n cannot preview the expression yet, because the previous node has not run.
+
+:::warning
+The output of this node contains the database password, and n8n keeps node output in the execution history. Before you run the workflow, open the workflow settings, set **Save manual executions** to **Do not save**, and make sure that **Save execution progress** is not set to **Save**.
+:::
+
+When the workflow runs, the output of this node contains the fields that a Postgres credential asks for:
+
+```json no-copy title="Output of Connection: Create"
+{
+  "endpointType": "pooled",
+  "host": "pooled.db.prisma.io",
+  "port": 5432,
+  "database": "postgres",
+  "user": "...",
+  "password": "...",
+  "ssl": "require"
+}
+```
+
+The output is shortened here. It also contains full connection strings for the pooled and the direct endpoint.
+
+The connection uses the pooled endpoint by default, which suits workflows that run often or in parallel. The query in this guide runs on the pooled endpoint. For migration tools and long transactions, set **Endpoint Type** to **Direct**. See [Connection pooling](/postgres/database/connection-pooling) for the difference.
+
+## 5. Connect the Postgres node
+
+The Postgres node needs a credential. In this guide, the credential reads its values from the output of the connection node, so the Postgres node connects to the database that the same run created. These are the values:
+
+| Field    | Value                  |
+| -------- | ---------------------- |
+| Host     | `{{ $json.host }}`     |
+| Database | `{{ $json.database }}` |
+| User     | `{{ $json.user }}`     |
+| Password | `{{ $json.password }}` |
+
+1. Add a **Postgres** node directly after the connection node and choose the **Execute Query** operation.
+2. Select **Connect to Postgres** to create a credential. If you already have a Postgres credential, open the credential dropdown and select **Create new credential** instead.
+3. Hover over each field from the table, select **Expression**, and enter its value.
+4. Leave **Port** at `5432`, set **SSL** to **Require**, and save.
+
+The expressions have no data until the workflow runs, so n8n may not confirm the connection when you save. The run in step 6 is the test. The expressions read from the item that the Postgres node receives, which is why the Postgres node must come directly after the connection node.
+
+## 6. Run a query
+
+Enter a query in the **Query** field of the Postgres node. This one creates a table and inserts a row:
+
+```sql title="Query"
+CREATE TABLE IF NOT EXISTS notes (
+  id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  body       text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO notes (body)
+VALUES ('Created from an n8n workflow')
+RETURNING id, body, created_at;
+```
+
+Select **Execute workflow**. All four nodes show a green check mark, and the Postgres node returns one item with the `id`, `body`, and `created_at` of the inserted row.
+
+In our test, the whole run took about seven seconds. You can also open the project in [Prisma Console](https://console.prisma.io) and see the `notes` table in Studio.
+
+## 7. Clean up
+
+Each run of this workflow creates a new project named `n8n-quickstart`. Remove what you do not need.
+
+1. Delete the test projects in Prisma Console. Deleting a project is permanent and deletes its databases, so check the project name before you confirm.
+2. If n8n saved the execution, delete it in the **Executions** tab of the workflow, because it contains the database password.
+3. If you do not plan to use the node again, delete the service token under **Settings > Service Tokens** in Prisma Console.
+
+You can also delete a project from n8n with the **Project** resource and the **Delete** operation. The service token can delete any project in the workspace, so select the project by name in **From List** and check it before you run the node.
+
+A workflow that runs on a trigger has two more settings for saved executions: **Save successful production executions** and **Save failed production executions**.
+
+## Keep a database for later runs
+
+The credential from step 5 only works in a run that also creates a connection. For a database that you keep using, save its connection details once in a regular Postgres credential.
+
+1. Run the workflow once and open the output of the connection node.
+2. Create a Postgres credential, and enter the host, database, user, and password from that output as fixed values.
+3. Set **SSL** to **Require** and save.
+4. Delete the execution if n8n saved it.
+5. Use this credential in every workflow that reads from or writes to the database.
+
+The same credential works with the **Postgres PGVector Store** node. Prisma Postgres supports the [pgvector extension](/postgres/database/postgres-extensions), and you enable it once per database with `CREATE EXTENSION IF NOT EXISTS vector;` in a Postgres node.
+
+To add a database to an existing project, use the **Database** resource with the **Create** operation. Its output has the database ID at the top level, so the connection node reads it with `{{ $json.id }}`.
+
+## Common gotchas
+
+**Connect to Postgres is missing.** n8n shows this button only when you have no Postgres credential yet. Open the credential dropdown and select **Create new credential**.
+
+**The connection node cannot find the database.** After **Project: Create**, the database ID is at `{{ $json.database.id }}`. After **Database: Create**, it is at `{{ $json.id }}`.
+
+**The Postgres node cannot connect.** Check that **SSL** is set to **Require** in the Postgres credential, and that the Postgres node comes directly after the connection node.
+
+**Prisma did not accept the service token.** The node shows this message when the token is incomplete or has been revoked. Create a new token under **Settings > Service Tokens** in Prisma Console and update the credential in n8n.
+
+**Your workspace fills up with projects.** Every run of **Project: Create** adds a project, and each database counts toward the limit of your [plan](https://www.prisma.io/pricing). Delete test projects, or switch to **Database: Create** inside one project.
+
+## Next steps
+
+- Import the [example workflows](https://github.com/prisma/n8n-nodes-prisma/tree/main/examples) from the node's repository, which include an AI agent with a searchable knowledge base.
+- Read [Connection pooling](/postgres/database/connection-pooling) to choose between the pooled and the direct endpoint.
+- Report a problem or request an operation in the [GitHub issues](https://github.com/prisma/n8n-nodes-prisma/issues) of the node.

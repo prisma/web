@@ -33,6 +33,10 @@ export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
       .replace(
         /<ServerlessPathsDiagram\s*\/>/g,
         "How apps reach Prisma Postgres: serverless functions and Prisma Compute apps → `pooled.db.prisma.io` (PgBouncer, transaction mode, TCP port 5432). Edge runtimes → serverless driver over HTTP and WebSockets. Migrations, Prisma Studio and `pg_dump` → `db.prisma.io` (direct connection, session state kept). All three reach one PostgreSQL database in the region you chose.",
+      )
+      .replace(
+        /<ConnectionPoolingDiagram\s*\/>/g,
+        "Five functions, two connections. Five function instances connect to PgBouncer at `pooled.db.prisma.io` (transaction mode), which shares two database connections to PostgreSQL between them: it lends each transaction a free database connection, then takes it back. Without a pooler, each instance would open its own database connection. The numbers are an illustration; your plan sets the pooled connection limit.",
       ),
     "## Frequently asked questions",
     ...data.faq.map(({ question, answer }) => `### ${question}\n\n${answer}`),

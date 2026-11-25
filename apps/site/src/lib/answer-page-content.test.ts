@@ -64,12 +64,17 @@ test("answer Markdown preserves the decision and custom diagram's meaning", () =
       assert.ok(markdown.includes("synthetic records"));
       assert.ok(markdown.includes("customer database"));
     }
+    if (entry.content.includes("<ConnectionPoolingDiagram")) {
+      assert.ok(markdown.includes("Five functions, two connections"));
+      assert.ok(markdown.includes("Without a pooler"));
+    }
     if (entry.content.includes("<ServerlessPathsDiagram")) {
       assert.ok(markdown.includes("How apps reach Prisma Postgres"));
       assert.ok(markdown.includes("Edge runtimes → serverless driver"));
     }
     for (const { title, href } of entry.data.related)
       assert.ok(markdown.includes(`[${title}](${href})`));
+    if (entry.data.cta.command) assert.ok(markdown.includes(`\`${entry.data.cta.command}\``));
   }
 });
 
