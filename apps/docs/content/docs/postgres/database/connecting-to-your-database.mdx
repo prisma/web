@@ -130,6 +130,20 @@ if (process.env.NODE_ENV !== "production") {
   </CalloutDescription>
 </CalloutContainer>
 
+### node-postgres (`pg`)
+
+Prisma ORM is not required. An app that already uses `pg` keeps its `Pool` and SQL queries: set `DATABASE_URL` to the **pooled** string and pass it to the pool the app already creates. Keep `sslmode=require` in the URL.
+
+```ts title="src/db.ts"
+import pg from "pg";
+
+export const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+
+const { rows } = await pool.query("SELECT 1::integer AS value");
+```
+
+Use the **direct** string for migrations and admin tooling. Behind the pooler, avoid named prepared statements (queries that set a `name`); see [fixing "prepared statement already exists" behind a pooler](https://www.prisma.io/postgres/prepared-statement-already-exists). For a full walkthrough of moving an existing `pg` app, see [where to host Postgres without replacing your `pg` code](https://www.prisma.io/postgres/node-postgres-hosting).
+
 ### PostgreSQL tools and other ORMs
 
 Use the **direct** connection string with `psql`, `pg_dump`, `pg_restore`, and GUI tools (TablePlus, DataGrip, DBeaver, Postico):
@@ -140,7 +154,7 @@ psql "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 
 The same direct string is where `pg_restore` loads an existing database; see [Migrate a local Postgres database to Prisma Postgres](/postgres/import-from-existing-database) for the three steps.
 
-For non-Prisma ORMs, see the getting-started guides for [Drizzle](/prisma-postgres/quickstart/drizzle-orm), [Kysely](/prisma-postgres/quickstart/kysely), or [TypeORM](/prisma-postgres/quickstart/typeorm).
+For node-postgres (`pg`), see [above](#node-postgres-pg). For non-Prisma ORMs, see the getting-started guides for [Drizzle](/prisma-postgres/quickstart/drizzle-orm), [Kysely](/prisma-postgres/quickstart/kysely), or [TypeORM](/prisma-postgres/quickstart/typeorm).
 
 ## Rotate or delete a credential
 
