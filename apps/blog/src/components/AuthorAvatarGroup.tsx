@@ -11,12 +11,13 @@ type AuthorAvatarGroupProps = {
   linkAuthors?: boolean;
   /**
    * "byline" is the post header's quiet version (client, 2026-11-25: "more
-   * elegant and simple"): round 36px portraits with a ring where they
-   * overlap, names in medium weight over a muted second line (`meta`).
-   * Cards keep the default.
+   * elegant and simple", then "this looked better next to each other"):
+   * round 28px portraits with a ring where they overlap, names in medium
+   * weight, and `meta` (date, read time) on the same line. Cards keep the
+   * default.
    */
   variant?: "default" | "byline";
-  /** byline only: a quiet second line under the names (date, read time). */
+  /** byline only: quiet details after the names (date, read time). */
   meta?: ReactNode;
 };
 export function AuthorAvatarGroup({
@@ -38,7 +39,7 @@ export function AuthorAvatarGroup({
       className={
         className ??
         (byline
-          ? "flex items-center gap-3"
+          ? "flex items-center gap-2.5 text-sm"
           : "mt-auto flex items-center gap-2 font-semibold text-sm")
       }
     >
@@ -50,12 +51,12 @@ export function AuthorAvatarGroup({
               key={profile.name}
               src={versionPublicImage(withBlogBasePathForImageSrc(profile.imageSrc))}
               alt={profile.name}
-              width={36}
-              height={36}
+              width={28}
+              height={28}
               loading="lazy"
               className={
-                "size-9 rounded-full object-cover ring-2 ring-background-default" +
-                (index > 0 ? " -ml-2.5" : "")
+                "size-7 rounded-full object-cover ring-2 ring-background-default" +
+                (index > 0 ? " -ml-2" : "")
               }
             />
           ) : profile.imageSrc ? (
@@ -71,7 +72,7 @@ export function AuthorAvatarGroup({
           ) : null,
         )}
       </span>
-      <span className={byline ? "flex min-w-0 flex-col gap-1 text-sm leading-tight" : undefined}>
+      <span className={byline ? "flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1" : undefined}>
         <span className={byline ? "font-medium text-foreground-neutral-strong" : undefined}>
           {profiles.map((profile, i) => {
             const slug = toAuthorSlug(profile.name);
@@ -98,7 +99,9 @@ export function AuthorAvatarGroup({
           })}
         </span>
         {byline && meta ? (
-          <span className="text-[13px] text-foreground-neutral-weak tabular-nums">{meta}</span>
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-foreground-neutral-weak tabular-nums">
+            {meta}
+          </span>
         ) : null}
       </span>
     </span>

@@ -24,6 +24,7 @@ import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib
 import { findCanonicalSlug } from "@/lib/slug-fallback";
 import { containsLink, extractText, headingAnchorId } from "@/lib/heading-anchor";
 import Link from "next/link";
+import { CalendarDays, Clock } from "lucide-react";
 import type { Metadata } from "next";
 
 interface PageParams {
@@ -274,28 +275,33 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             variant="byline"
             meta={
               <>
-                {showUpdated && page.data.updatedAt ? (
-                  <span
-                    title={
-                      page.data.date
-                        ? `Published ${formatDate(new Date(page.data.date).toISOString())}`
-                        : undefined
-                    }
-                  >
-                    Updated{" "}
-                    <time dateTime={new Date(page.data.updatedAt).toISOString()}>
-                      {formatDate(new Date(page.data.updatedAt).toISOString())}
+                {/* A small calendar before the date and a clock before the
+                    reading time (client, 2026-11-25). */}
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays aria-hidden className="size-3.5 text-foreground-neutral-weaker" />
+                  {showUpdated && page.data.updatedAt ? (
+                    <span
+                      title={
+                        page.data.date
+                          ? `Published ${formatDate(new Date(page.data.date).toISOString())}`
+                          : undefined
+                      }
+                    >
+                      Updated{" "}
+                      <time dateTime={new Date(page.data.updatedAt).toISOString()}>
+                        {formatDate(new Date(page.data.updatedAt).toISOString())}
+                      </time>
+                    </span>
+                  ) : page.data.date ? (
+                    <time dateTime={new Date(page.data.date).toISOString()}>
+                      {formatDate(new Date(page.data.date).toISOString())}
                     </time>
-                  </span>
-                ) : page.data.date ? (
-                  <time dateTime={new Date(page.data.date).toISOString()}>
-                    {formatDate(new Date(page.data.date).toISOString())}
-                  </time>
-                ) : null}
-                <span aria-hidden className="mx-1.5 text-foreground-neutral-weaker">
-                  ·
+                  ) : null}
                 </span>
-                {readMinutes} min read
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock aria-hidden className="size-3.5 text-foreground-neutral-weaker" />
+                  {readMinutes} min read
+                </span>
               </>
             }
           />
