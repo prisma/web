@@ -6,6 +6,29 @@ metaTitle: Service input | Prisma Composer
 metaDescription: Declare Prisma Composer service configuration and secrets as one Standard Schema, bind literals, envParam, envSecret, and resolve() values at provision time, and supply them from the shell or .env files.
 ---
 
+:::warning[This page describes Composer 0.39 and earlier]
+
+Composer 0.40.0 removed `envParam()` and `envSecret()` from `@prisma/composer-prisma-cloud`, so the examples on this page that import them no longer compile with the current packages.
+
+In Composer 0.40 you declare a platform variable in the app root with `variable()` for a plain value or `variable.secret()` for a credential. Pass the value that `provision()` returns into the service's `input`:
+
+```typescript title="module.ts"
+import { appRoot } from '@prisma/composer';
+import { variable } from '@prisma/composer-prisma-cloud';
+import webService from './service.ts';
+
+export default appRoot('my-app', ({ provision }) => {
+  const sessionSecret = provision(variable.secret({ name: 'SESSION_SECRET' }));
+  provision(webService, { input: { sessionSecret } });
+});
+```
+
+The service still declares the field with `secretString()` and reads it with `service.input().sessionSecret.expose()`. Only `appRoot()` can provision a platform variable, and a deploy does not copy values from your shell or `.env` files to the platform. Set each value with `npx prisma project env add`.
+
+Until this page is updated, the reference for the current API ships with the package: `node_modules/@prisma/composer/skills/prisma-composer-core-concepts/SKILL.md`.
+
+:::
+
 Everything a running service receives arrives through one of two channels, and choosing the channel is most of the decision:
 
 | The value is... | Declare it as | Provide it | Read it |
