@@ -216,13 +216,13 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
           1440 for tables, code and figures while running text keeps its
           44rem measure (global.css). */}
       {/* The post header, after Attio's article layout (client, 2026-11-25):
-          one quiet metadata line (breadcrumb on the left, dates and reading
-          time on the right), then the title across the full width with the
-          summary and byline under it, closed by a hairline. The breadcrumb
+          the breadcrumb on its own line, then the title across the full
+          width, the summary, and the byline with one date and the reading
+          time, closed by a hairline. The breadcrumb
           replaces the back link and the tag pills. The summary stays: it's
           what AI answers quote. */}
       <header className="border-b border-stroke-neutral pb-10 md:pb-12">
-        <div className="flex flex-col gap-1.5 text-sm text-foreground-neutral-weak sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="text-sm text-foreground-neutral-weak">
           <nav aria-label="Breadcrumb" className="flex min-w-0 flex-wrap items-center gap-x-1.5">
             {/* next/link prepends the /blog basePath, so these stay
                 basePath-free. */}
@@ -251,26 +251,6 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
               </>
             ) : null}
           </nav>
-          <p className="m-0 flex flex-wrap items-center gap-x-1.5 tabular-nums">
-            {page.data.date ? (
-              <time dateTime={new Date(page.data.date).toISOString()}>
-                {formatDate(new Date(page.data.date).toISOString())}
-              </time>
-            ) : null}
-            {showUpdated && page.data.updatedAt ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>
-                  Updated{" "}
-                  <time dateTime={new Date(page.data.updatedAt).toISOString()}>
-                    {formatDate(new Date(page.data.updatedAt).toISOString())}
-                  </time>
-                </span>
-              </>
-            ) : null}
-            <span aria-hidden>·</span>
-            <span>{readMinutes} min read</span>
-          </p>
         </div>
 
         {/* `md:type-title-4xl lg:type-title-5xl` never applied (type-title-*
@@ -285,8 +265,34 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             {page.data.excerpt}
           </p>
         ) : null}
-        <div className="mt-8 flex flex-wrap items-center gap-2 text-sm text-foreground-neutral">
+        {/* One date beside the author (client, 2026-11-25): "Updated" when
+            the post changed after it was published, otherwise the publish
+            date. The publish date stays in the tooltip and in the JSON-LD
+            (datePublished), so search and AI answers still get it. */}
+        <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-foreground-neutral">
           <AuthorAvatarGroup authors={page.data.authors} />
+          <span className="flex flex-wrap items-center gap-x-1.5 text-foreground-neutral-weak tabular-nums">
+            {showUpdated && page.data.updatedAt ? (
+              <span
+                title={
+                  page.data.date
+                    ? `Published ${formatDate(new Date(page.data.date).toISOString())}`
+                    : undefined
+                }
+              >
+                Updated{" "}
+                <time dateTime={new Date(page.data.updatedAt).toISOString()}>
+                  {formatDate(new Date(page.data.updatedAt).toISOString())}
+                </time>
+              </span>
+            ) : page.data.date ? (
+              <time dateTime={new Date(page.data.date).toISOString()}>
+                {formatDate(new Date(page.data.date).toISOString())}
+              </time>
+            ) : null}
+            <span aria-hidden>·</span>
+            <span>{readMinutes} min read</span>
+          </span>
         </div>
         {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
       </header>
