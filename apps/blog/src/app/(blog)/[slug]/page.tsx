@@ -9,7 +9,6 @@ import { PostToc, type PostTocItem } from "@/components/PostToc";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { BlogShare } from "@/components/BlogShare";
-import { GooglePreferredSourceCallout } from "@prisma-docs/ui/components/google-preferred-source";
 import { BlogCTA } from "@/components/BlogCTA";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
 import { AuthorBio } from "@/components/AuthorBio";
@@ -378,9 +377,6 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
 
           {/* Share Container */}
           <BlogShare desc={page.data.metaDescription as string} />
-
-          {/* Google Preferred Sources — readers who finish a post are the most likely to opt in */}
-          <GooglePreferredSourceCallout className="mt-12" />
         </div>
         <aside className="hidden md:block">
           <nav
