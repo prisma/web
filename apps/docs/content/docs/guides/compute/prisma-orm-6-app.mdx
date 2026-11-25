@@ -1,0 +1,284 @@
+---
+title: Deploy an app on Prisma ORM 6 to Prisma Compute
+sidebarTitle: "Deploy a Prisma ORM 6 app"
+description: 'Use when an app that still uses Prisma ORM 6 should run on Prisma Compute before it upgrades: run the Prisma 8 CLI next to the Prisma 6 one, give it its own config file, and deploy from GitHub Actions'
+url: /guides/compute/prisma-orm-6-app
+metaTitle: How to deploy a Prisma ORM 6 app to Prisma Compute without upgrading first
+metaDescription: 'Step-by-step guide to deploying a Next.js app on Prisma ORM 6 to Prisma Compute: keep Prisma Client 6, run the Prisma 8 CLI for deploys, use a separate config file, fix the effect and query engine errors, and set up the GitHub Actions workflow.'
+---
+
+{/* lint-versions-ignore-file: this page pins the Prisma 8 CLI, Composer and effect versions that were tested together with Prisma ORM 6.19.1. They must match each other, not npm latest; update them together. */}
+
+This guide deploys a Next.js app that uses Prisma ORM 6 to [Prisma Compute](/compute) without upgrading the ORM. The app keeps its `schema.prisma`, its migrations, Prisma Client 6 and its `DATABASE_URL`. What you add is a description of the app for [Prisma Composer](/composer), the Prisma 8 CLI that deploys it, and a GitHub Actions workflow.
+
+Deploying needs the Prisma 8 CLI, because `prisma deploy` does not exist in Prisma ORM 6. The two CLIs share the package name `prisma`, the command name and the file name `prisma.config.ts`, so most of this guide is about keeping them apart. Every step was run with Next.js 16.4.6, Prisma ORM 6.19.1, `prisma@8.0.0-rc.35` and Composer 0.40.0, from a laptop and from GitHub Actions.
+
+:::note[What you get, and what waits for Prisma 8]
+
+The app runs on Compute and reads its database from `DATABASE_URL`, as it does today. You keep running `prisma migrate deploy` yourself, and every preview uses the database its `DATABASE_URL` points at. A database that the deploy creates and migrates for each branch needs Prisma 8. To move the app there, start at [Upgrade to Prisma 8](/guides/upgrade-prisma-orm), then follow [Deploy an existing app](/guides/compute/deploy-existing-app).
+
+:::
+
+## Prerequisites
+
+- **A Next.js app on Prisma ORM 6** that builds with `npm run build`, with a committed `package-lock.json`. The steps were tested with Prisma ORM 6.19.1.
+- **Node.js 24 and [Bun](https://bun.sh) 1.3.10 or newer.** The Prisma 8 CLI runs the deploy under Bun, on your machine and in the workflow.
+- **A PostgreSQL database the app can reach from the internet**, such as [Prisma Postgres](/postgres), with your migrations applied.
+- **A [Prisma Console](https://console.prisma.io) account**, and the app in a GitHub repository.
+
+## 1. Add the Composer packages
+
+Install Composer as a dependency, and three packages the deploy needs as devDependencies:
+
+```bash
+npm install --save-exact @prisma/composer@0.40.0 @prisma/composer-prisma-cloud@0.40.0
+npm install --save-dev --save-exact @prisma/cli-engine@0.10.4 effect@4.1.4 @effect/platform-bun@4.1.4
+```
+
+Leave `prisma` and `@prisma/client` at version 6. The versions above belong to `prisma@8.0.0-rc.35`: the CLI and the Composer packages must be on the same Composer version, and `npm view prisma@8.0.0-rc.35 dependencies` prints the `@prisma/composer-cli` and `@prisma/cli-engine` versions that release uses.
+
+`effect` and `@effect/platform-bun` are listed because Prisma ORM 6 depends on `effect` 3 and Composer depends on `effect` 4. When npm places version 3 at the top of `node_modules`, the deploy stops with `Alchemy could not load the required peer dependency "@effect/platform-bun"`. Declaring both packages yourself puts version 4 at the top, and Prisma ORM 6 keeps its own copy. Use the versions that `npm view @prisma/composer-prisma-cloud@0.40.0 dependencies` prints.
+
+## 2. Describe the app for Composer
+
+Set the standalone output, which is what Compute runs:
+
+```typescript title="next.config.ts"
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+};
+
+export default nextConfig;
+```
+
+Declare the app as a service, and a module that provisions it. Both files go in the project root:
+
+```typescript title="service.ts"
+import nextjs from "@prisma/composer/nextjs";
+import { compute } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "web",
+  deps: {},
+  build: nextjs({ module: import.meta.url, appDir: "." }),
+});
+```
+
+```typescript title="module.ts"
+import { module } from "@prisma/composer";
+import web from "./service.ts";
+
+export default module("storefront", ({ provision }) => {
+  provision(web, {});
+});
+```
+
+The module's name, here `storefront`, becomes the name of the project on Prisma Cloud. `deps: {}` declares that the service takes nothing from Composer, because the app keeps reading its database from `DATABASE_URL`.
+
+`next build` type-checks every TypeScript file in the project, and `module.ts` imports a file by its `.ts` extension, so allow that in `tsconfig.json`:
+
+```json title="tsconfig.json (excerpt)"
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  }
+}
+```
+
+Composer writes local state to three folders. Add them to `.gitignore`:
+
+```text title=".gitignore"
+.prisma/
+.prisma-composer/
+.alchemy/
+```
+
+## 3. Give the Prisma 8 CLI its own config file
+
+No single `prisma.config.ts` works for both CLIs. Prisma ORM 6 reads the file on every command and rejects one that carries a `composer` section, and the Prisma 8 CLI rejects one that was not written with its own helper:
+
+| `prisma.config.ts` contains | Prisma ORM 6, `prisma generate` | Prisma 8 CLI, `prisma deploy` |
+| --- | --- | --- |
+| `definePrismaConfig` from `prisma/config` | `definePrismaConfig is not a function` | `CLI.CONFIG_UNREADABLE`, for the same reason |
+| `definePrismaConfig` from `@prisma/cli-engine` | `Failed to parse syntax of config file` | Works |
+| A plain object with a `composer` section | `Failed to parse syntax of config file` | `CLI.CONFIG_MISSING_MARKER` |
+
+Leave `prisma.config.ts` as Prisma ORM 6 expects it, or absent if the app has none, and put the Composer settings in a second file that only the Prisma 8 CLI reads:
+
+```typescript title="prisma.compute.config.ts"
+import { definePrismaConfig } from "@prisma/cli-engine";
+import { defineConfig as composer } from "@prisma/composer/config";
+import { nextjsBuild } from "@prisma/composer/nextjs/control";
+import { nodeBuild } from "@prisma/composer/node/control";
+import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
+
+export default definePrismaConfig({
+  composer: composer({
+    entry: "./module.ts",
+    extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild(), nextjsBuild()],
+    state: prismaState(),
+  }),
+});
+```
+
+`definePrismaConfig` comes from `@prisma/cli-engine` here. In this project `prisma/config` resolves to the Prisma ORM 6 package, which has no `definePrismaConfig`. The region cannot change after the first deploy creates the project, and [Limitations](/compute/limitations#runtime) lists the ones you can choose.
+
+You point the Prisma 8 CLI at this file with `--config`. It then reads the named file and ignores a `prisma.config.ts` next to it.
+
+## 4. Generate Prisma Client for Compute
+
+Compute runs your app on Linux. Prisma Client 6 ships a query engine for the system that ran `prisma generate`, so a deploy from macOS or Windows starts and then fails every query:
+
+```text no-copy
+Prisma Client could not locate the Query Engine for runtime "debian-openssl-3.0.x".
+This happened because Prisma Client was generated for "darwin-arm64", but the actual deployment required "debian-openssl-3.0.x".
+```
+
+Add Compute's target to the generator, and make the build generate the client:
+
+```prisma title="prisma/schema.prisma (excerpt)"
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+```
+
+```json title="package.json (excerpt)"
+{
+  "scripts": {
+    "build": "prisma generate && next build"
+  }
+}
+```
+
+A build on GitHub's `ubuntu-latest` runner already produces that engine. The extra target is what makes a deploy from your own machine work.
+
+## 5. Deploy from your machine
+
+Sign in once, build, and deploy to a preview environment. Run the Prisma 8 CLI through `bunx`, with the version and the config file:
+
+```bash
+bunx --bun -p prisma@8.0.0-rc.35 prisma auth login
+npm run build
+bunx --bun -p prisma@8.0.0-rc.35 prisma deploy --config prisma.compute.config.ts --environment staging
+```
+
+**Expected result:** the deploy creates the project and prints the service's URL.
+
+```text no-copy
+storefront.web: https://<id>.ewr.prisma.build
+✔ Deployed storefront to staging in 24.4s.
+```
+
+:::warning[Do not use npx for the Prisma 8 CLI in this project]
+
+`npx prisma@8.0.0-rc.35 deploy` runs the Prisma ORM 6 CLI that is installed in the project, whatever version you name, because npm puts the project's own `prisma` first. The command then fails with `Not Found - GET https://registry.npmjs.org/@prisma%2fcli-deploy`. `bunx -p prisma@8.0.0-rc.35 prisma` runs the version you name. `npx prisma` remains the right command for Prisma ORM 6 itself, such as `npx prisma migrate deploy`.
+
+:::
+
+If the build stops because a secret or the database is missing, the app needs runtime values at build time. [Build a Next.js app without its runtime secrets](/guides/compute/nextjs-build-time-secrets) shows the changes.
+
+## 6. Set the database URL and other variables
+
+The app reads `DATABASE_URL` from the project's environment variables. A deploy from your machine can appear to work without them, because Next.js copies a local `.env` file into the standalone output, but a deploy from GitHub Actions has no such file. Link the directory to the project the deploy created, then set each variable the app reads, for previews and for production. `read -rs` asks for the value without showing it, and given only the variable's name, `project env add` reads the value from your environment:
+
+```bash
+bunx --bun -p prisma@8.0.0-rc.35 prisma project link storefront
+read -rs DATABASE_URL && export DATABASE_URL # paste the preview database URL, then press Enter
+bunx --bun -p prisma@8.0.0-rc.35 prisma project env add DATABASE_URL --role preview
+read -rs DATABASE_URL && export DATABASE_URL # paste the production database URL, then press Enter
+bunx --bun -p prisma@8.0.0-rc.35 prisma project env add DATABASE_URL --role production
+unset DATABASE_URL
+```
+
+Give previews a database of their own. The deploy runs no migrations against a database the app reaches through `DATABASE_URL`, so apply them with the Prisma ORM 6 CLI as you do today, with `npx prisma migrate deploy` against each database.
+
+Variables are read at deploy time, so deploy again and check the app:
+
+```bash
+bunx --bun -p prisma@8.0.0-rc.35 prisma deploy --config prisma.compute.config.ts --environment staging
+bunx --bun -p prisma@8.0.0-rc.35 prisma service list --branch staging
+```
+
+**Expected result:** a request that queries the database succeeds against the URL `service list` prints. If it fails, `bunx --bun -p prisma@8.0.0-rc.35 prisma service logs storefront.web --branch staging` shows the app's output. [Environment variables](/compute/environment-variables) covers scopes and branch overrides.
+
+## 7. Deploy on every push
+
+Connect the repository to the project, so that workflow runs can authenticate without a secret:
+
+```bash
+bunx --bun -p prisma@8.0.0-rc.35 prisma git connect https://github.com/you/storefront
+```
+
+Then commit a workflow that runs [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action). Two inputs are specific to an app on Prisma ORM 6:
+
+```yaml title=".github/workflows/prisma-deploy.yml"
+name: prisma-deploy
+
+on:
+  push:
+
+concurrency:
+  group: prisma-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+      - uses: prisma/cloud-deploy-action@v1
+        with:
+          build-command: npm run build
+          prisma-version: 8.0.0-rc.35
+          config: prisma.compute.config.ts
+```
+
+`prisma-version` names the Prisma 8 CLI that deploys. The action finds the Prisma ORM 6 CLI in `node_modules`, logs that it has no `deploy` command, and runs the named version instead. `config` passes your second config file to it as `--config`. Both inputs need a release of the action newer than v1.11.0. On v1.11.0 and older, the action runs the installed Prisma ORM 6 CLI and the deploy step fails.
+
+Push the default branch to deploy production, and any other branch to deploy a preview named after it:
+
+```bash
+git add -A
+git commit -m "Deploy on Prisma Compute"
+git push
+```
+
+**Expected result:** the `prisma-deploy` run in the repository's **Actions** tab shows the switch and ends with the deployed URL.
+
+```text no-copy
+credential: short-lived workspace token via GitHub OIDC
+the prisma CLI in node_modules is 6.19.1, which has no deploy command; running prisma@8.0.0-rc.35 from the prisma-version input instead
+$ bunx --bun -p prisma@8.0.0-rc.35 prisma deploy --entry module.ts --environment staging --config prisma.compute.config.ts
+✔ Deployed storefront to staging in 27.6s.
+```
+
+[Deploy on push](/compute/deploy-on-push) explains previews, production and branch cleanup once the workflow is in place.
+
+## Troubleshooting
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| `Not Found - GET https://registry.npmjs.org/@prisma%2fcli-deploy` | The Prisma ORM 6 CLI ran `deploy`, from `npx` or from an action release up to v1.11.0. | Use `bunx -p prisma@8.0.0-rc.35 prisma` locally, and `prisma-version` in the workflow. |
+| `CLI.CONFIG_MISSING_MARKER` or `CLI.CONFIG_UNREADABLE` | The Prisma 8 CLI read the `prisma.config.ts` that belongs to Prisma ORM 6. | Pass `--config prisma.compute.config.ts`, or the `config` input. |
+| `Failed to parse syntax of config file` from `prisma generate` | `prisma.config.ts` contains the Composer settings. | Move them to `prisma.compute.config.ts`. |
+| `Alchemy could not load the required peer dependency "@effect/platform-bun"` | npm placed `effect` 3 at the top of `node_modules`. | Add `effect` and `@effect/platform-bun` as devDependencies, as in step 1. |
+| `could not locate the Query Engine for runtime "debian-openssl-3.0.x"` | Prisma Client was generated on another operating system. | Add the binary target from step 4 and build again. |
+| The workflow run is green and its log says `skipped-no-credential` | The repository is not connected to the project. | Run `git connect` from step 7. |
+
+## Next steps
+
+- [Build a Next.js app without its runtime secrets](/guides/compute/nextjs-build-time-secrets): what exists at build time and at runtime.
+- [Upgrade to Prisma 8](/guides/upgrade-prisma-orm): move the app to Prisma 8, and get a database for each branch that the deploy creates and migrates.
+- [Environments](/compute/branching): how previews relate to Git branches.
