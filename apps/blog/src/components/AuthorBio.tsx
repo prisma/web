@@ -106,17 +106,13 @@ export function AuthorBio({ authors = [] }: { authors?: string[] }) {
   if (profiles.length === 0) return null;
 
   // The end-of-post author block (client, 2026-11-25: "make this element
-  // much nicer", then "get this off a card"). No card and no all-caps
-  // eyebrow: a hairline closes the article, then each author is a round
-  // portrait beside their name, a bio at reading width, and one line with
-  // their profiles and a link to the rest of their posts. The section
-  // heading stays for screen readers only, so the outline reads "About the
-  // author" → name.
+  // much nicer", "get this off a card", then "light, simple, and elegant").
+  // A hairline closes the article; each author is a round portrait beside
+  // their name, then the bio and one line of profiles and "More from" on
+  // the same left edge as everything else in the post's ending. The section
+  // heading stays for screen readers only.
   return (
-    <section
-      aria-labelledby="about-the-author"
-      className="mt-14 border-t border-stroke-neutral pt-10"
-    >
+    <section aria-labelledby="about-the-author" className="mt-14 border-t border-stroke-neutral pt-10">
       <h2 id="about-the-author" className="sr-only">
         {profiles.length === 1 ? "About the author" : "About the authors"}
       </h2>
@@ -125,62 +121,38 @@ export function AuthorBio({ authors = [] }: { authors?: string[] }) {
           const imageSrc = getAuthorImageSrc(name);
           const firstName = name.split(/\s+/)[0];
           return (
-            // Portrait beside the name; the bio and links run under the name
-            // from sm up and full width on phones, where a portrait column
-            // would squeeze them into a strip.
-            <div
-              key={slug}
-              className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 sm:gap-x-5"
-            >
-              {imageSrc ? (
-                <Link
-                  href={`/author/${slug}`}
-                  tabIndex={-1}
-                  aria-hidden
-                  className="shrink-0 sm:row-span-3 sm:self-start"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={withBlogBasePathForImageSrc(imageSrc)}
-                    alt=""
-                    width={56}
-                    height={56}
-                    loading="lazy"
-                    className="size-12 rounded-full object-cover ring-1 ring-stroke-neutral ring-offset-2 ring-offset-background-default sm:size-14"
-                  />
-                </Link>
-              ) : null}
-              <h3
-                className={cn(
-                  "m-0 text-[17px] font-semibold leading-snug text-foreground-neutral-strong",
-                  !imageSrc && "col-span-2",
-                )}
-              >
-                <Link
-                  href={`/author/${slug}`}
-                  className="no-underline decoration-prism-cyan-400/60 underline-offset-4 hover:underline"
-                >
-                  {name}
-                </Link>
-              </h3>
-              <p
-                className={cn(
-                  "col-span-2 mt-3 mb-0 max-w-[62ch] text-[15px] leading-[1.65] text-foreground-neutral-weak sm:mt-2",
-                  imageSrc && "sm:col-span-1 sm:col-start-2",
-                )}
-              >
+            <div key={slug}>
+              <div className="flex items-center gap-3">
+                {imageSrc ? (
+                  <Link href={`/author/${slug}`} tabIndex={-1} aria-hidden className="shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={withBlogBasePathForImageSrc(imageSrc)}
+                      alt=""
+                      width={40}
+                      height={40}
+                      loading="lazy"
+                      className="size-10 rounded-full object-cover ring-1 ring-stroke-neutral"
+                    />
+                  </Link>
+                ) : null}
+                <h3 className="m-0 text-base font-semibold leading-snug text-foreground-neutral-strong">
+                  <Link
+                    href={`/author/${slug}`}
+                    className="no-underline decoration-prism-cyan-400/60 underline-offset-4 hover:underline"
+                  >
+                    {name}
+                  </Link>
+                </h3>
+              </div>
+              <p className="mt-4 mb-0 max-w-[44rem] text-[15px] leading-[1.7] text-foreground-neutral-weak">
                 {bio?.bio}
               </p>
-              <div
-                className={cn(
-                  "col-span-2 mt-4 flex flex-wrap items-center gap-x-6 gap-y-3",
-                  imageSrc && "sm:col-span-1 sm:col-start-2",
-                )}
-              >
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
                 <AuthorSocialLinks socials={bio?.socials ?? []} name={name} plain />
                 <Link
                   href={`/author/${slug}`}
-                  className="group inline-flex items-center gap-1.5 py-1.5 text-sm font-medium text-foreground-neutral no-underline hover:text-foreground-neutral-strong"
+                  className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground-neutral no-underline hover:text-foreground-neutral-strong"
                 >
                   More from {firstName}
                   <span

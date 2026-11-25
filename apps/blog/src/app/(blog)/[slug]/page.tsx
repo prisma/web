@@ -368,8 +368,14 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             </div>
           </article>
 
-          {/* About the author(s) — placed at the end of the post so readers reach
-            the author credentials right after finishing the article. */}
+          {/* The post's ending, on one left edge and one 56px rhythm (client,
+              2026-11-25: "light, simple, and elegant"): share right where the
+              article ends, then the author, the series, related posts and
+              the CTA last. */}
+          <div className="mt-2">
+            <BlogShare desc={page.data.metaDescription as string} />
+          </div>
+
           <AuthorBio authors={page.data.authors} />
 
           {seriesContext ? (
@@ -378,18 +384,12 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
               <SeriesNavigation series={seriesContext} />
             </>
           ) : null}
-          {/* `SeriesNavigation` closes with `my-12` and `KeepReading` opens with
-            `my-16`; adjacent margins collapse, so the two blocks stack with the
-            larger gap and neither needed a style change. */}
           <KeepReading posts={relatedPosts} />
 
           {/* Conversion CTA. A post can relabel it and point it at a tracked
             Console URL through the `cta` frontmatter field instead of adding
             a second button inside the article. */}
           <BlogCTA {...(page.data.cta ?? {})} />
-
-          {/* Share Container */}
-          <BlogShare desc={page.data.metaDescription as string} />
         </div>
         <aside className="hidden md:block">
           <nav

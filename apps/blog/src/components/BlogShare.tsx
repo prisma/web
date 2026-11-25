@@ -1,22 +1,26 @@
 "use client";
-import { Action, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { shareSocials } from "@prisma-docs/ui/data/footer";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const defaultCopyText = "Copy article link";
+const SHARE_BUTTON =
+  "quiet-hover inline-flex size-9 items-center justify-center rounded-full text-[17px] no-underline outline-none focus-visible:ring-2 focus-visible:ring-foreground-neutral/40";
 
 export const BlogShare = ({ desc }: { desc: string }) => {
   const [tooltip, setTooltip] = useState<string>(defaultCopyText);
   const pathname = usePathname();
 
   return (
-    <div className="mx-auto w-fit pb-4">
-      <h5 className="type-heading-2xs mb-4 text-center text-foreground-neutral-weak">
-        Share this article
-      </h5>
-      <div className="flex justify-start gap-2 md:max-w-[190px]">
+    // One quiet row right under the article, on its left edge (client,
+    // 2026-11-25: the post ending "should be light, simple, and elegant"):
+    // a small label and plain icons with the docs' quiet hover, instead of a
+    // centred uppercase heading over boxed icons after the CTA.
+    <div className="flex items-center gap-3">
+      <span className="text-sm text-foreground-neutral-weak">Share</span>
+      <div className="flex items-center gap-1">
         {shareSocials.map((socialLink: any) =>
           socialLink.url ? (
             <TooltipProvider key={socialLink.label}>
@@ -35,15 +39,9 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                     aria-label={socialLink.title ?? `Share on ${socialLink.label}`}
                     // Muted at rest, full ink on hover — the share row is a
                     // quiet utility, not an accent.
-                    className={cn(
-                      "text-[1.375rem] transition-colors hover:[&>div]:bg-background-neutral hover:[&_i]:text-foreground-neutral",
-                    )}
+                    className={cn(SHARE_BUTTON)}
                   >
-                    <Action color="neutral" size="2xl">
-                      <i
-                        className={`fa-brands fa-${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
-                      />
-                    </Action>
+                    <i aria-hidden className={`fa-brands fa-${socialLink.icon}`} />
                   </a>
                 </TooltipTrigger>
                 <TooltipContent>{socialLink.label}</TooltipContent>
@@ -56,8 +54,7 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                   {/* A real button: as a <div> with an onClick this control had
                       no role, no place in the tab order and no accessible name,
                       and Enter/Space did nothing. */}
-                  <Action asChild color="neutral" size="2xl">
-                    <button
+                  <button
                       type="button"
                       aria-label={defaultCopyText}
                       onClick={() => {
@@ -67,13 +64,10 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                         }, 500);
                         navigator.clipboard.writeText(`https://www.prisma.io/blog${pathname}`);
                       }}
-                      className="cursor-pointer text-[1.375rem] transition-colors hover:bg-background-neutral hover:[&_i]:text-foreground-neutral"
-                    >
-                      <i
-                        className={`${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
-                      />
-                    </button>
-                  </Action>
+                      className={cn(SHARE_BUTTON, "cursor-pointer")}
+                  >
+                    <i aria-hidden className={socialLink.icon} />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>{tooltip}</TooltipContent>
               </Tooltip>

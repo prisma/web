@@ -199,7 +199,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
               href={signupHref}
               className="bg-background-neutral-reverse-strong text-foreground-neutral-reverse inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap no-underline transition-transform duration-150 ease-out hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
             >
-              Get started
+              Get Started
             </a>
           </div>
 
@@ -257,7 +257,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                       <a href={loginHref}>Log in</a>
                     </Button>
                     <Button asChild variant="ink">
-                      <a href={signupHref}>Get started</a>
+                      <a href={signupHref}>Get Started</a>
                     </Button>
                   </div>
 

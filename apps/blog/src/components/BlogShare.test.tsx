@@ -20,13 +20,18 @@ test("the copy-link control is a button with an accessible name", () => {
   assert.match(copyButtons[0], /aria-label="Copy article link"/);
 });
 
-test("the copy-link control keeps the Action styling it had as a div", () => {
-  const button = /<button\b([^>]*)>/.exec(render())?.[1] ?? "";
+test("the copy-link control looks like the share links beside it", () => {
+  const html = render();
+  const button = /<button\b([^>]*)>/.exec(html)?.[1] ?? "";
+  const anchor = /<a\b([^>]*)>/.exec(html)?.[1] ?? "";
 
-  // `Action` renders these through `actionVariants`; `asChild` must hand them to
-  // the button rather than to a wrapper element.
-  assert.match(button, /class="[^"]*items-center[^"]*"/);
-  assert.match(button, /class="[^"]*rounded-square[^"]*"/);
+  // The row is plain icons with the docs' quiet hover (client, 2026-11-25),
+  // so the copy button must carry the same round 36px target as the links.
+  for (const attributes of [button, anchor]) {
+    assert.match(attributes, /class="[^"]*\bquiet-hover\b[^"]*"/);
+    assert.match(attributes, /class="[^"]*\bsize-9\b[^"]*"/);
+    assert.match(attributes, /class="[^"]*\brounded-full\b[^"]*"/);
+  }
 });
 
 test("every share anchor still has an accessible name", () => {

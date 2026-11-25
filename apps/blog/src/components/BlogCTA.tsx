@@ -79,7 +79,7 @@ export const BlogCTA = ({
   return (
     <section
       aria-labelledby="blog-cta-title"
-      className="brand-agent-loop relative mb-12 overflow-hidden rounded-[1.25rem] border border-stroke-neutral bg-cover bg-center p-2 sm:p-3 dark:rounded-xl dark:border-0 dark:p-0 dark:[background-image:none]!"
+      className="brand-agent-loop relative mt-14 overflow-hidden rounded-[1.25rem] border border-stroke-neutral bg-cover bg-center p-2 sm:p-3 dark:rounded-xl dark:border-0 dark:p-0 dark:[background-image:none]!"
     >
       <DeferredVideo
         src={`${BLOG_PREFIX}/brand/cta-clouds-loop.mp4`}
@@ -157,7 +157,7 @@ export const BlogCTA = ({
             heading and one line of copy on the left, the two buttons on the
             right from lg up (narrower columns squeeze the heading); stacked below. The site panel's row of
             checks is left out here. */}
-        <div className="relative flex flex-col gap-6 px-6 py-7 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+        <div className="relative z-10 flex flex-col gap-6 px-6 py-7 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
           <div className="min-w-0">
             <h2
               id="blog-cta-title"
