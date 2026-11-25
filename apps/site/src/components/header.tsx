@@ -70,13 +70,13 @@ export function Header() {
         className={cn(
           "mx-auto flex items-center justify-between rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           floating
-            ? "mt-3 h-14 max-w-[calc(100%-1.5rem)] border-black/[0.06] bg-white/85 px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-4xl"
-            : "mt-5 h-16 max-w-[96rem] border-transparent bg-white/0 px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16",
+            ? "mt-3 h-14 max-w-[calc(100%-1.5rem)] border-black/[0.06] bg-white/85 px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-5xl"
+            : "mt-5 h-16 max-w-[96rem] border-transparent bg-white/0 px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16 lg:px-12 xl:px-16",
         )}
       >
         <Logo />
 
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden lg:flex items-center gap-6">
           <NavigationMenu viewport={false}>
             <NavigationMenuList>
               <NavigationMenuItem>
@@ -166,7 +166,7 @@ export function Header() {
           )}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           <UnifiedSearchTrigger />
           <Button variant="ghost" asChild className="spectrum-ink-text">
             <a
@@ -200,10 +200,10 @@ export function Header() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
           <UnifiedSearchTrigger />
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild className="md:hidden">
+            <SheetTrigger asChild className="lg:hidden">
               {/* Icon-only, so it needs a name for screen readers. The before:
                   inset grows the tap target from 36px to 44px without moving
                   anything in the header. ::before, not ::after — the ghost
@@ -217,7 +217,11 @@ export function Header() {
                 <Menu className="h-5 w-5" aria-hidden />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px]" aria-describedby={undefined}>
+            <SheetContent
+              side="right"
+              className="w-[300px] overflow-y-auto"
+              aria-describedby={undefined}
+            >
               <SheetTitle className="sr-only">Menu</SheetTitle>
               <nav className="mt-8 flex flex-col gap-4 px-5 pb-6 text-left">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -145,8 +145,8 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
           className={cn(
             "mx-auto flex items-center justify-between gap-3 rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
             floating
-              ? "border-stroke-neutral bg-background-default-075 mt-3 h-14 max-w-[calc(100%-1.5rem)] px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-4xl dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_24px_-8px_rgba(0,0,0,0.8)]"
-              : "bg-background-default/0 mt-5 h-16 max-w-[96rem] border-transparent px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
+              ? "border-stroke-neutral bg-background-default-075 mt-3 h-14 max-w-[calc(100%-1.5rem)] px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-5xl dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_24px_-8px_rgba(0,0,0,0.8)]"
+              : "bg-background-default/0 mt-5 h-16 max-w-[96rem] border-transparent px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16 lg:px-12 xl:px-16 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
           )}
         >
           {/* Right-clicking the logo opens the shared brand menu (the same one
@@ -158,7 +158,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
           {/* Spaced like the site header's nav (client, 2026-11-25: the items
               should "align perfectly with the home page"): unpadded 14px
               labels 24px apart, so each word lands where it does there. */}
-          <NavMenu className="hidden md:flex">
+          <NavMenu className="hidden lg:flex">
             <NavMenuList className="gap-6">
               {links.map((link) =>
                 link.sub?.length ? (
@@ -229,7 +229,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
               semibold labels, 12px apart. No theme control here, so search
               sits exactly where it does on the homepage (client,
               2026-11-25); the theme switch lives in the footer. */}
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden items-center gap-3 lg:flex">
             <SearchButton />
             <a
               href={loginHref}
@@ -245,7 +245,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
             </a>
           </div>
 
-          <div className="flex items-center gap-1 md:hidden">
+          <div className="flex items-center gap-1 lg:hidden">
             <SearchButton />
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger

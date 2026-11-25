@@ -42,6 +42,11 @@ const contactLinkClass =
 
 const isExternal = (href: string) => /^https?:\/\//.test(href);
 
+// The shared links are root-relative site routes ("/pricing"). The blog can be
+// reached on more than one host, so they are made absolute on www.prisma.io,
+// as the header's are; full URLs pass through unchanged.
+const toSiteUrl = (href: string) => (href.startsWith("/") ? `https://www.prisma.io${href}` : href);
+
 export function Footer() {
   return (
     <footer className="bg-background-default relative z-1 mt-24 w-full overflow-hidden pt-16">
@@ -82,7 +87,7 @@ export function Footer() {
                   {items.map((item) => (
                     <li key={item.href}>
                       <a
-                        href={item.href}
+                        href={toSiteUrl(item.href)}
                         className={linkClass}
                         {...(isExternal(item.href)
                           ? { target: "_blank", rel: "noopener noreferrer" }

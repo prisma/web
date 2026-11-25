@@ -31,7 +31,13 @@ export function AuthorAvatarGroup({
   const profiles = getAuthorProfiles(authors);
 
   if (profiles.length === 0) {
-    return null;
+    // A post with no authors still shows its date and reading time in the
+    // byline; only the portraits and names drop out.
+    return byline && meta ? (
+      <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-foreground-neutral-weak tabular-nums">
+        {meta}
+      </span>
+    ) : null;
   }
 
   return (
