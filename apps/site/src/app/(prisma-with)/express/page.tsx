@@ -96,7 +96,7 @@ model User {
 export const metadata = createPageMetadata({
   title: "Easy database access in Express servers",
   description:
-    "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
+    "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and Prisma Postgres, managed PostgreSQL with built-in connection pooling and no cold starts.",
   path: "/express",
   ogKicker: "Prisma ORM",
 });

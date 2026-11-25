@@ -168,7 +168,7 @@ model User {
 export const metadata = createPageMetadata({
   title: "Enterprise-ready database for NestJS apps",
   description:
-    "Build high-performance and type-safe NestJS apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
+    "Build high-performance and type-safe NestJS apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and Prisma Postgres, managed PostgreSQL with built-in connection pooling and no cold starts.",
   path: "/nestjs",
   ogKicker: "Prisma ORM",
 });
