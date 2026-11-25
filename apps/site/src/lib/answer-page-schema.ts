@@ -12,7 +12,7 @@ export const answerPageSchema = z.object({
   /** Short "On this page" labels, keyed by heading anchor (and `faq`). */
   tocLabels: z.record(z.string(), z.string().min(1)).optional(),
   /** Optional decorative background for the header. */
-  headerArt: z.enum(["ripple"]).optional(),
+  headerArt: z.enum(["ripple", "beams"]).optional(),
   faq: z
     .array(z.object({ question: z.string().min(1), answer: z.string().min(1) }))
     .min(3)

@@ -14,9 +14,11 @@ import { createFaqStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import { formatAnswerDate, type AnswerPage as AnswerPageContent } from "@/lib/answer-pages";
 import { getMDXComponents } from "@/mdx-components";
+import { ConnectionPoolingDiagram } from "./connection-pooling-diagram";
 import { EnvironmentDiagram } from "./environment-diagram";
 import { CommandPill } from "./command-pill";
 import { GuideToc } from "./guide-toc";
+import { HeaderBeams } from "./header-beams";
 import { HeaderRipple } from "./header-ripple";
 import { ServerlessPathsDiagram } from "./serverless-paths-diagram";
 import { getAnswerProduct } from "@/lib/answer-products";
@@ -79,6 +81,7 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
       <header className="mx-auto max-w-site px-6 sm:px-8">
         <div className="relative overflow-hidden rounded-2xl bg-muted/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
           {data.headerArt === "ripple" ? <HeaderRipple /> : null}
+          {data.headerArt === "beams" ? <HeaderBeams /> : null}
           <div className="relative">
             <nav
               aria-label="Breadcrumb"
@@ -133,7 +136,13 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
 
         <div className="min-w-0 max-w-3xl">
           <div className="answer-prose prose max-w-none text-foreground prose-headings:scroll-mt-28 prose-headings:font-heading prose-headings:font-medium prose-headings:text-balance prose-h2:mt-14 prose-h2:text-2xl prose-h3:mt-8 prose-h3:text-xl prose-p:text-pretty prose-p:leading-[1.8] prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 prose-a:hover:text-prism-cyan-700 prose-strong:font-semibold prose-li:leading-[1.8] prose-code:break-words prose-th:text-left">
-            <Body components={getMDXComponents({ EnvironmentDiagram, ServerlessPathsDiagram })} />
+            <Body
+              components={getMDXComponents({
+                ConnectionPoolingDiagram,
+                EnvironmentDiagram,
+                ServerlessPathsDiagram,
+              })}
+            />
           </div>
 
           <section id="faq" aria-labelledby="faq-heading" className="mt-16 scroll-mt-28">
