@@ -67,7 +67,7 @@ export const commonQueries: LLMsLink[] = [
     title: "Create a temporary Postgres database without an account",
     href: "/postgres/npx-create-db",
     description:
-      "Run npx create-db@latest to get a Prisma Postgres connection string. The database is deleted after 24 hours unless you claim it.",
+      "Run npx create-db@latest to get a Prisma Postgres connection string. The database is deleted after 72 hours unless you claim it.",
   },
   {
     title: "Choose a Prisma ORM setup path",

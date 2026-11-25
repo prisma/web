@@ -34,7 +34,7 @@ export const FREE_POSTGRES_MARKDOWN_SUBHEADLINE =
 
 /** Check lines under the buttons. Cyan, then yellow. */
 export const FREE_POSTGRES_HERO_CHECKS = [
-  "Without an account: instant databases are deleted after 24 hours unless claimed.",
+  "Without an account: instant databases are deleted after 72 hours unless claimed.",
   "With a free account: no time limit, for claimed databases and databases created in the Prisma Console.",
 ] as const;
 
@@ -67,8 +67,7 @@ export type FreeFaqItem = {
 export const FREE_POSTGRES_FAQ: FreeFaqItem[] = [
   {
     question: "How do I create a free PostgreSQL database?",
-    answer:
-      `There are two ways, and neither needs a credit card. [Sign up](${CONSOLE_SIGN_UP_URL}) for the Free plan and create a database in the Console: it has no time limit. Or run [\`npx create-db\`](/docs/postgres/npx-create-db), or create one in the browser, to get a database and its connection string in seconds with no account: it is deleted after 24 hours unless you claim it into a Free workspace. A Free workspace includes 200,000 operations a month, 2 GB of storage and up to 50 databases.`,
+    answer: `There are two ways, and neither needs a credit card. [Sign up](${CONSOLE_SIGN_UP_URL}) for the Free plan and create a database in the Console: it has no time limit. Or run [\`npx create-db\`](/docs/postgres/npx-create-db), or create one in the browser, to get a database and its connection string in seconds with no account: it is deleted after 72 hours unless you claim it into a Free workspace. A Free workspace includes 200,000 operations a month, 2 GB of storage and up to 50 databases.`,
   },
   {
     question: "Is Prisma Postgres really free?",
@@ -98,7 +97,7 @@ export const FREE_POSTGRES_FAQ: FreeFaqItem[] = [
   {
     question: "Can I get a free Postgres database without signing up?",
     answer:
-      "Yes. Run [`npx create-db`](/docs/postgres/npx-create-db) and you get a Postgres database and its connection string in seconds, with no account and no credit card. Add `--json` when a coding agent needs machine-readable output. The database is deleted after 24 hours unless you claim it: open the claim link from the output and sign in, and it moves into your workspace under that plan's limits.",
+      "Yes. Run [`npx create-db`](/docs/postgres/npx-create-db) and you get a Postgres database and its connection string in seconds, with no account and no credit card. Add `--json` when a coding agent needs machine-readable output. The database is deleted after 72 hours unless you claim it: open the claim link from the output and sign in, and it moves into your workspace under that plan's limits.",
   },
   {
     question: "Can I use the Free plan in production?",
@@ -121,7 +120,8 @@ export const FREE_POSTGRES_FAQ: FreeFaqItem[] = [
       "Free tiers differ in storage, how many databases you get and what happens when you go idle or reach a limit. Largest free storage for one database first, as checked on 2026-11-02: Prisma Postgres has 2 GB per workspace, shared by up to 50 databases, with no time limit. Neon has 1 GB per project and 20 GB across projects, with no time limit. Render has 1 GB, and the database expires 30 days after it is created. Supabase has a 500 MB database size per project (a billing quota; the Free disk is 2 GB), and a project pauses after a week without activity. The Prisma Free plan also includes app hosting on [Prisma Compute](/compute). For a side by side look at more providers, see our [comparison of free Postgres hosting](/blog/serverless-postgres).",
   },
   {
-    question: "Where can I host a Postgres database for free, then upgrade when I have paying customers?",
+    question:
+      "Where can I host a Postgres database for free, then upgrade when I have paying customers?",
     answer:
       "On Prisma Postgres, start on the Free plan with no credit card and no time limit, and change plans at any time. Free has no backups, so move to [Starter](/pricing) at $10 a month before customers depend on the data: it adds daily backups kept for 7 days and 1 million operations.",
   },
@@ -219,7 +219,7 @@ export const UPGRADE_POINTS = [
 
 // The filled hero button is the action the window types. Get started stays
 // the account path, as the outline button. The closer uses the same instant
-// action: its checks already say npx create-db, no account, claim in 24 hours.
+// action: its checks already say npx create-db, no account, claim in 72 hours.
 export const FREE_POSTGRES_HERO_PRIMARY_CTA = {
   label: "Create an instant database",
   href: CREATE_DB_WEB_URL,
@@ -256,7 +256,7 @@ export const FREE_POSTGRES_STEP_CONNECTION = "Connection string";
 export const FREE_POSTGRES_STEP_CLAIM = "Claim";
 export const FREE_POSTGRES_CONNECTION_EXAMPLE = "Example. Not a live database.";
 export const FREE_POSTGRES_TERMINAL_CLAIM =
-  "The database is deleted after 24 hours unless you claim it.";
+  "The database is deleted after 72 hours unless you claim it.";
 export const FREE_POSTGRES_CLI_CONNECTION =
   "postgres://demo:sample@db.prisma.io:5432/postgres?sslmode=require";
 export const FREE_POSTGRES_CLI_CLAIM_URL =
@@ -519,5 +519,5 @@ export const FREE_POSTGRES_CLOSER_BODY =
 export const FREE_POSTGRES_CLOSER_BENEFITS = [
   "npx create-db, no account needed",
   "Works with any Postgres client",
-  "Claim it within 24 hours",
+  "Claim it within 72 hours",
 ] as const;
