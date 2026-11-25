@@ -9,7 +9,7 @@ import { transformerShikiTokenClasses } from "@prisma-docs/ui/mdx/shiki-token-cl
  * clip-path and the two zero-area sliver paths are dropped, so the inline SVG
  * carries no ids that could collide when a page repeats it.
  */
-const prismaMark =
+export const prismaMark =
   '<svg viewBox="0 0 263 264" fill="none" aria-hidden="true">' +
   '<path d="M57.3357 92.5003L0 149.939V53.5L53.2105 0.10425V0H149.524L57.3357 92.5003Z" fill="#04D5E7"/>' +
   '<path d="M263 91.7452L91.0537 264H0V172.229L171.92 0H263V91.7452Z" fill="#FE4352"/>' +

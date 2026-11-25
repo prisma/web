@@ -10,6 +10,13 @@
  * quotes (Cal.com, Gamma, Stellate, Trunk, Memberstack, Instatus) and the
  * former homepage's testimonials (Fluidwave, src/data/homepage.json).
  *
+ * Square marks (2026-11-24): Bucket, Stellate, Trunk, Memberstack and Instatus
+ * are the symbol cropped from each company's own wordmark already in the repo
+ * (public/logos/customers/bucket.png, public/icons/companies/*), centred on a
+ * square. Cal.com and Gamma use their official site icons (cal.com/icon.png,
+ * gamma.app/favicon.ico; Gamma publishes only 32 px). Fluidwave's icon was
+ * supplied by the client (2048 px), saved at 144 px: 4x the 36 px tile.
+ *
  * Solin's quote about Accelerate caching was retired 2026-09-30: Prisma
  * Postgres has no query cache and Accelerate retires on December 1, 2026, so
  * the page must not sell caching. Fluidwave's Prisma Postgres quote took its
@@ -31,6 +38,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Ron Cohen",
     role: "Co-founder & CTO",
     company: "Bucket",
+    logo: "/logos/customers/bucket-mark.png",
   },
   {
     quote:
@@ -38,6 +46,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Martin Adams",
     role: "Founder",
     company: "Fluidwave",
+    logo: "/logos/customers/fluidwave.png",
   },
   {
     quote:
@@ -77,6 +86,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Omar López",
     role: "Sr. Software Engineer",
     company: "Cal.com",
+    logo: "/logos/customers/cal.png",
   },
   {
     quote:
@@ -84,6 +94,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "James Fox",
     role: "Co-Founder",
     company: "Gamma",
+    logo: "/logos/customers/gamma.png",
   },
   {
     quote:
@@ -91,6 +102,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Max Stoiber",
     role: "Founder",
     company: "Stellate",
+    logo: "/logos/customers/stellate.svg",
   },
   {
     quote:
@@ -98,6 +110,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Matt Matheson",
     role: "Co-Founder",
     company: "Trunk",
+    logo: "/logos/customers/trunk.svg",
   },
   {
     quote:
@@ -105,6 +118,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Tyler Bell",
     role: "Co-founder",
     company: "Memberstack",
+    logo: "/logos/customers/memberstack.svg",
   },
   {
     quote:
@@ -112,5 +126,6 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Ali Salah",
     role: "Founder",
     company: "Instatus",
+    logo: "/logos/customers/instatus.png",
   },
 ];

@@ -55,7 +55,12 @@ function Track({ hidden = false }: { hidden?: boolean }) {
             alt={hidden || copy === 1 ? "" : company.name}
             className="w-auto shrink-0"
             style={{ height: company.height }}
-            loading="lazy"
+            // Eager, not lazy: in a moving strip the browser only fetches a
+            // lazy image once it's nearly on screen, so logos slid in as
+            // blank gaps (client, 2026-11-22: "missing logos"). They're 17
+            // small SVGs, cached after the first copy.
+            loading="eager"
+            decoding="async"
             draggable={false}
           />
         )),

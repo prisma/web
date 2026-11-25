@@ -5,6 +5,7 @@ import test from "node:test";
 import { providersLanding, starterDatabasesLanding } from "@/components/landing/content";
 import {
   ALTERNATIVES,
+  PRICING_ALTERNATIVES,
   PRISMA,
   SAVINGS_MULTIPLE,
   WIDEST,
@@ -34,7 +35,9 @@ const RETIRED = [
   /Auto-scaling/,
 ];
 
-test("the /pricing comparison uses the recomputed Neon + Vercel figure", () => {
+// ALTERNATIVES (Neon + Vercel, Supabase) is what the home page and
+// /lp/providers show; /pricing shows PRICING_ALTERNATIVES (2026-11-24).
+test("home and /lp/providers use the recomputed Neon + Vercel figure", () => {
   const neonVercel = ALTERNATIVES.find((alt) => alt.id === "neon-vercel");
   assert.ok(neonVercel);
   assert.equal(neonVercel.cost, "$110–270");
@@ -49,11 +52,37 @@ test("the /pricing comparison uses the recomputed Neon + Vercel figure", () => {
 
 test("the /pricing Markdown matches the comparison data", () => {
   const markdown = renderPricingMarkdown();
-  assert.ok(markdown.includes(`Up to ${SAVINGS_MULTIPLE}x less vs ${WIDEST.shortName}`));
-  assert.ok(markdown.includes("can cost less than half as much as a typical"));
-  for (const alt of ALTERNATIVES) assert.ok(markdown.includes(alt.cost), alt.cost);
+  // The /pricing card no longer carries the "Up to 2x less" badge (client,
+  // 2026-11-22: subtler self-promotion); the intro sentence makes the claim.
+  // The home scenario card still uses SAVINGS_MULTIPLE, pinned above.
+  assert.ok(!markdown.includes(`Up to ${SAVINGS_MULTIPLE}x less vs ${WIDEST.shortName}`));
+  // The intro paragraph itself, not the FAQ, must name the column it compares.
+  assert.ok(
+    markdown.includes(
+      "can cost less than half as much as Netlify Pro, with database data transfer",
+    ),
+  );
+  for (const alt of PRICING_ALTERNATIVES) assert.ok(markdown.includes(alt.cost), alt.cost);
   assert.ok(markdown.includes(PRISMA.cost));
   for (const pattern of RETIRED) assert.doesNotMatch(markdown, pattern);
+});
+
+test("/pricing compares Netlify, Supabase and Railway at the checked figures", () => {
+  assert.deepEqual(
+    PRICING_ALTERNATIVES.map((alt) => [alt.id, alt.cost]),
+    [
+      ["netlify", "$130–240"],
+      ["supabase", "$95–145"],
+      ["railway", "$70–125"],
+    ],
+  );
+  // "Less than half as much as Netlify Pro": Prisma's midpoint must stay
+  // under half of Netlify's.
+  const mid = (cost: string) => {
+    const [lo, hi] = cost.match(/\d+/g)!.map(Number);
+    return (lo + hi) / 2;
+  };
+  assert.ok(mid(PRISMA.cost) < mid(PRICING_ALTERNATIVES[0].cost) / 2);
 });
 
 test("the home scenario cards and their Markdown agree, with Prisma Pro at /pricing's figure", () => {
@@ -137,7 +166,8 @@ test("Prisma's spend limit is one you set, never described as on by default", ()
     "src/components/product/content/postgres.ts",
     "src/components/sections/pricing-calculator.tsx",
     "src/components/sections/pricing-comparison.tsx",
-    "src/components/sections/pricing-how-it-works.tsx",
+    "src/components/sections/pricing-cost-controls.tsx",
+    "src/components/sections/pricing-ledger.ts",
   ].map((path) => readFileSync(join(siteRoot, path), "utf8"));
   for (const text of [
     renderPricingMarkdown(),

@@ -79,6 +79,11 @@ function buildStructuredData() {
       "@id": `${base}/postgres#product`,
       name: "Prisma Postgres",
       category: "Managed PostgreSQL database",
+      // Google's Product rich result needs an image and an Offer-level price
+      // (Search Console, 16 to 22 Nov 2026). The listing image is the one the
+      // /postgres product listing uses; the price mirrors the visible Business
+      // plan price via BUSINESS_PRICE_USD.
+      image: `${base}/listings/postgres.png`,
       brand: { "@id": `${base}/#organization` },
       description:
         "Managed Postgres with HIPAA support and a signed Business Associate Agreement on the Business plan, covering databases and apps hosted on Prisma Compute.",
@@ -86,6 +91,7 @@ function buildStructuredData() {
         "@type": "Offer",
         name: "Business plan",
         url: `${base}/pricing`,
+        price: BUSINESS_PRICE_USD,
         priceCurrency: "USD",
         priceSpecification: {
           "@type": "UnitPriceSpecification",

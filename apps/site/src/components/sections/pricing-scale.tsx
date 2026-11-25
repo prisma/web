@@ -93,7 +93,7 @@ const SCENARIOS: Scenario[] = [
     prismaCost: "$0-22",
     typical: [
       "Database and hosting from two vendors",
-      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10/GB",
+      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10 per GB",
       "Paid Vercel plan for commercial use",
     ],
     prisma: [
@@ -109,7 +109,7 @@ const SCENARIOS: Scenario[] = [
     prismaCost: "$72-90",
     typical: [
       "Database and hosting from two vendors",
-      "Database data transfer: 500 GB per project included, then $0.10/GB",
+      "Database data transfer: 500 GB per project included, then $0.10 per GB",
       "Spend controls: Neon notifications, Vercel budget with optional pause",
     ],
     prisma: [

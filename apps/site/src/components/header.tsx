@@ -156,8 +156,17 @@ export function Header() {
           <UnifiedSearchTrigger />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
+              {/* Icon-only, so it needs a name for screen readers. The before:
+                  inset grows the tap target from 36px to 44px without moving
+                  anything in the header. ::before, not ::after — the ghost
+                  variant's spectrum-ink hover sweep owns ::after. */}
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={open ? "Close menu" : "Open menu"}
+                className="before:absolute before:-inset-1 before:content-['']"
+              >
+                <Menu className="h-5 w-5" aria-hidden />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px]" aria-describedby={undefined}>

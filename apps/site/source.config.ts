@@ -1,5 +1,11 @@
 import remarkDirective from "remark-directive";
-import { remarkDirectiveAdmonition, remarkImage, remarkMdxFiles } from "fumadocs-core/mdx-plugins";
+import {
+  rehypeCodeDefaultOptions,
+  remarkDirectiveAdmonition,
+  remarkImage,
+  remarkMdxFiles,
+} from "fumadocs-core/mdx-plugins";
+import { prismaMark } from "@prisma-docs/ui/mdx/rehype-code-options";
 import { defineCollections, defineConfig, frontmatterSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
@@ -38,6 +44,10 @@ export const releaseNotes = defineCollections({
 export default defineConfig({
   plugins: [lastModified()],
   mdxOptions: {
+    // The fumadocs defaults (Shiki's inline token colours, which this app's CSS
+    // relies on), with the current Prisma mark for `prisma` code blocks, as in
+    // apps/docs. fumadocs still ships the retired triangle icon.
+    rehypeCodeOptions: { ...rehypeCodeDefaultOptions, icon: { extend: { prisma: prismaMark } } },
     remarkPlugins: [
       remarkDirective,
       remarkDirectiveAdmonition,

@@ -41,10 +41,17 @@ export function TemplateCard({ template }: { template: GalleryTemplate }) {
               <span>{template.useCase}</span>
             </>
           )}
-          {template.isNew && (
-            <Marker color="bg-prism-red-500" className="ml-auto">
-              New
+          {/* One marker per card so the byline row never wraps: Featured wins over New. */}
+          {template.featured ? (
+            <Marker color="bg-prism-yellow-400" className="ml-auto">
+              Featured
             </Marker>
+          ) : (
+            template.isNew && (
+              <Marker color="bg-prism-red-500" className="ml-auto">
+                New
+              </Marker>
+            )
           )}
         </div>
 
