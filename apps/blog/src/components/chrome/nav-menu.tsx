@@ -38,8 +38,8 @@ export function NavMenuTrigger({ className, children, ...props }: Primitive.Trig
   return (
     <Primitive.Trigger
       className={cn(
-        "group/trigger text-foreground-neutral-weak hover:text-foreground-neutral data-popup-open:text-foreground-neutral rounded-circle flex h-8 w-max cursor-pointer items-center gap-1 bg-transparent px-2.5 text-sm font-medium transition-colors duration-300 outline-none",
-        "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
+        "group/trigger text-foreground-neutral-weak hover:text-foreground-neutral data-popup-open:text-foreground-neutral rounded-circle flex h-8 w-max cursor-pointer items-center gap-1 bg-transparent px-2.5 text-sm font-medium transition-colors outline-none",
+        " focus-visible:bg-fd-foreground/[0.06]",
         "motion-reduce:transition-none",
         className,
       )}
@@ -103,9 +103,10 @@ function NavMenuPositioner({ className, ...props }: Primitive.Positioner.Props) 
 }
 
 // Top-level (non-dropdown) destination. The label sits in its own <span> so
-// eclipse's `.spectrum-underline` — which fires on `:hover > .spectrum-underline`
-// — is triggered by the anchor around it, giving the nav CF's spectrum sweep
-// instead of a plain text-colour change.
+// Hover is a plain text-colour change, as on the homepage's nav
+// (apps/site/src/components/header.tsx; client, 2026-11-25: "highlights in
+// the nav bar should be the same as the homepage"), not the spectrum
+// underline sweep the blog used to have.
 export function NavMenuTopLink({
   className,
   children,
@@ -114,14 +115,14 @@ export function NavMenuTopLink({
   return (
     <Primitive.Link
       className={cn(
-        "text-foreground-neutral-weak hover:text-foreground-neutral rounded-circle flex h-8 items-center px-2.5 text-sm font-medium no-underline transition-colors duration-300 outline-none",
-        "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
+        "text-foreground-neutral-weak hover:text-foreground-neutral rounded-circle flex h-8 items-center px-2.5 text-sm font-medium no-underline transition-colors outline-none",
+        " focus-visible:bg-fd-foreground/[0.06]",
         "motion-reduce:transition-none",
         className,
       )}
       {...props}
     >
-      <span className="spectrum-underline">{children}</span>
+      {children}
     </Primitive.Link>
   );
 }
@@ -131,7 +132,7 @@ export function NavMenuLink({ className, ...props }: ComponentProps<typeof Primi
     <Primitive.Link
       className={cn(
         "hover:bg-background-neutral-weak rounded-square flex items-start gap-3 p-2.5 no-underline transition-colors duration-300 outline-none",
-        "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
+        " focus-visible:bg-fd-foreground/[0.06]",
         "motion-reduce:transition-none",
         className,
       )}

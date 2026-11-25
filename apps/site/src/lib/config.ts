@@ -1,3 +1,6 @@
+import { SITE_FOOTER_LINKS, SITE_SOCIAL_LINKS } from "@prisma-docs/ui/data/site-footer";
+import { SITE_NAV, SITE_PLATFORM, SITE_STACK_LINK } from "@prisma-docs/ui/data/site-nav";
+
 export const siteConfig = {
   name: "Prisma",
   description:
@@ -11,73 +14,14 @@ export const siteConfig = {
     { stat: "500,000+", label: "developers" },
     { stat: "46,500+", label: "GitHub stars" },
   ],
-  // Routes per design-ref/sitemap.md (Phase 1)
-  platform: [
-    {
-      label: "Postgres",
-      href: "/postgres",
-      description: "Managed Postgres, provisioned in seconds",
-    },
-    {
-      label: "Compute",
-      href: "/compute",
-      description: "Run and scale your app next to your data",
-    },
-    {
-      label: "ORM",
-      href: "/orm",
-      description: "The type-safe ORM for TypeScript",
-    },
-  ],
-  stack: { label: "Explore the stack", href: "/stack" },
-  nav: [
-    { label: "Pricing", href: "/pricing" },
-    { label: "Customers", href: "/customers" },
-    { label: "Docs", href: "/docs" },
-    { label: "Blog", href: "/blog" },
-  ],
-  footer: {
-    product: [
-      { label: "Postgres", href: "/postgres" },
-      { label: "Compute", href: "/compute" },
-      { label: "ORM", href: "/orm" },
-      { label: "Stack", href: "/stack" },
-      { label: "Pricing", href: "/pricing" },
-      { label: "Changelog", href: "/changelog" },
-    ],
-    company: [
-      { label: "About", href: "/company" },
-      { label: "Careers", href: "/company/careers" },
-      { label: "Blog", href: "/blog" },
-      { label: "Customers", href: "/customers" },
-      { label: "Programs", href: "/programs" },
-    ],
-    resources: [
-      { label: "Docs", href: "/docs" },
-      { label: "Postgres guides", href: "/postgres/guides" },
-      { label: "Compute guides", href: "/compute/guides" },
-      { label: "Apps", href: "/apps" },
-      { label: "Compare", href: "/compare" },
-      { label: "Extensions", href: "/extensions" },
-      { label: "Data Guide", href: "https://www.prisma.io/dataguide" },
-      { label: "Support", href: "/support" },
-      { label: "Community", href: "/community" },
-    ],
-    legalTrust: [
-      { label: "All Legal Documents", href: "/legal" },
-      { label: "DPA", href: "/legal/dpa" },
-      { label: "Security & Compliance", href: "/legal/security-and-compliance" },
-      { label: "SLA", href: "/legal/sla" },
-      { label: "Status", href: "https://www.prisma-status.com" },
-      { label: "Terms of Service", href: "/legal/terms" },
-      { label: "Trust Center", href: "https://trust.prisma.io/" },
-    ],
-  },
-  social: {
-    twitter: "https://twitter.com/prisma",
-    linkedin: "https://linkedin.com/company/prisma-io",
-    github: "https://github.com/prisma",
-    youtube: "https://www.youtube.com/prismadata",
-    bluesky: "https://bsky.app/profile/prisma.io",
-  },
+  // Routes per design-ref/sitemap.md (Phase 1). The header's links live in
+  // the shared UI package so the blog's navbar uses the same ones
+  // (@prisma-docs/ui/data/site-nav).
+  platform: SITE_PLATFORM,
+  stack: SITE_STACK_LINK,
+  nav: SITE_NAV,
+  // The footer's links live in the shared UI package so the blog's footer
+  // uses the same ones (@prisma-docs/ui/data/site-footer).
+  footer: SITE_FOOTER_LINKS,
+  social: SITE_SOCIAL_LINKS,
 };

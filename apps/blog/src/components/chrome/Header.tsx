@@ -17,11 +17,15 @@
 import { Button } from "@prisma/eclipse";
 import { useSearchContext } from "@fumadocs/base-ui/contexts/search";
 import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
-import { ThemeToggle } from "@prisma-docs/ui/components/theme-toggle";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { Menu, Search } from "lucide-react";
+import { ArrowRight, Menu, Search } from "lucide-react";
 import { preloadSearch } from "@/components/search";
 import { useEffect, useState } from "react";
+import {
+  PLATFORM_GLYPHS,
+  RESOURCE_GLYPHS,
+  type NavGlyph,
+} from "@prisma-docs/ui/components/site-nav-glyphs";
 import { Logo } from "./logo";
 import {
   NavMenu,
@@ -38,7 +42,14 @@ export interface NavSubLink {
   text: string;
   url: string;
   external?: boolean;
+  /** A FontAwesome class list. */
   icon?: string;
+  /**
+   * The route whose shared SVG glyph to draw instead of `icon`
+   * (@prisma-docs/ui/components/site-nav-glyphs). A key rather than the
+   * component itself, because the nav data comes from a server component.
+   */
+  glyph?: string;
   desc?: string;
 }
 
@@ -50,6 +61,8 @@ export interface NavLink {
   desc?: string;
   col?: number;
   sub?: NavSubLink[];
+  /** A last row under the menu's items, after a hairline (the site's "Explore the stack"). */
+  footer?: { text: string; url: string };
 }
 
 interface HeaderProps {
@@ -63,13 +76,22 @@ function externalProps(external?: boolean) {
   return external ? { target: "_blank", rel: "noopener noreferrer" } : {};
 }
 
-// FontAwesome glyphs come from the nav data itself (`fa-regular fa-database`
-// and friends); the kit is loaded app-wide, and reusing the existing strings
-// keeps every destination's icon identical to what shipped before.
-function SubLinkGlyph({ icon }: { icon?: string }) {
+// Each menu item's glyph in a small box, styled like the site header's
+// (apps/site/src/components/header.tsx): a hairline square on the card
+// colour with the glyph in ink. Glyphs come from the shared
+// @prisma-docs/ui/components/site-nav-glyphs, the same ones the site's navbar
+// draws (client, 2026-11-25).
+function SubLinkGlyph({ icon, glyph }: { icon?: string; glyph?: string }) {
+  const Glyph = glyph
+    ? ((PLATFORM_GLYPHS as Record<string, NavGlyph | undefined>)[glyph] ?? RESOURCE_GLYPHS[glyph])
+    : undefined;
   return (
-    <span className="border-stroke-neutral bg-card-wash rounded-square-low mt-0.5 flex size-7 shrink-0 items-center justify-center border">
-      {icon ? <i aria-hidden className={cn(icon, "text-foreground-ppg text-xs")} /> : null}
+    <span className="border-stroke-neutral bg-fd-card text-foreground-neutral mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border">
+      {Glyph ? (
+        <Glyph aria-hidden className="size-3.5" strokeWidth={1.5} />
+      ) : icon ? (
+        <i aria-hidden className={cn(icon, "text-xs")} />
+      ) : null}
     </span>
   );
 }
@@ -86,13 +108,14 @@ function SearchButton({ className }: { className?: string }) {
       onFocus={preloadSearch}
       onClick={() => setOpenSearch(true)}
       className={cn(
-        "text-foreground-neutral-weak hover:text-foreground-neutral hover:bg-background-neutral rounded-circle flex size-8 cursor-pointer items-center justify-center transition-colors duration-300 outline-none",
-        "focus-visible:ring-foreground-neutral/25 focus-visible:ring-2",
+        // 44px with an 18px icon, the site header's search trigger.
+        "quiet-hover rounded-circle flex size-11 cursor-pointer items-center justify-center outline-none",
+        " focus-visible:bg-fd-foreground/[0.06]",
         "motion-reduce:transition-none",
         className,
       )}
     >
-      <Search className="size-4" aria-hidden />
+      <Search className="size-[18px]" aria-hidden />
     </button>
   );
 }
@@ -113,13 +136,17 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
       <header className="fixed inset-x-0 top-0 z-50">
         {/* one element morphs between two states: docked at the site content
             width (transparent, no shadow) and the floating pill. Every property
-            is transitioned so the change is smooth in both directions. */}
+            is transitioned so the change is smooth in both directions. Both
+            states use the site header's exact spacing (apps/site/src/
+            components/header.tsx: 28px down, 96rem wide, 64px gutters docked;
+            a 5xl pill with 20px padding floating), so the bar sits in the same
+            place when you move between the site and the blog. */}
         <div
           className={cn(
             "mx-auto flex items-center justify-between gap-3 rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
             floating
-              ? "border-stroke-neutral bg-background-default-075 mt-3 h-14 max-w-[calc(100%-1.5rem)] px-4 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-5xl sm:px-5 dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_24px_-8px_rgba(0,0,0,0.8)]"
-              : "bg-background-default/0 mt-4 h-16 max-w-[87.5rem] border-transparent px-4 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-6 sm:h-18 sm:px-10 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
+              ? "border-stroke-neutral bg-background-default-075 mt-3 h-14 max-w-[calc(100%-1.5rem)] px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-5xl dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_24px_-8px_rgba(0,0,0,0.8)]"
+              : "bg-background-default/0 mt-5 h-16 max-w-[96rem] border-transparent px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16 lg:px-12 xl:px-16 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
           )}
         >
           {/* Right-clicking the logo opens the shared brand menu (the same one
@@ -128,17 +155,20 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
             <Logo href={logoHref} />
           </PrismaLogoMenu>
 
-          <NavMenu className="hidden md:flex">
-            <NavMenuList className="gap-0.5 lg:gap-1">
+          {/* Spaced like the site header's nav (client, 2026-11-25: the items
+              should "align perfectly with the home page"): unpadded 14px
+              labels 24px apart, so each word lands where it does there. */}
+          <NavMenu className="hidden lg:flex">
+            <NavMenuList className="gap-6">
               {links.map((link) =>
                 link.sub?.length ? (
                   <NavMenuItem key={link.text}>
-                    <NavMenuTrigger>{link.text}</NavMenuTrigger>
+                    <NavMenuTrigger className="h-auto px-0">{link.text}</NavMenuTrigger>
                     <NavMenuContent>
                       <ul
                         className={cn(
                           "grid gap-0.5",
-                          link.col === 2 ? "w-[30rem] grid-cols-2" : "w-[21rem]",
+                          link.col === 2 ? "w-[26rem] grid-cols-2" : "w-[19rem]",
                         )}
                       >
                         {link.sub.map((item) => (
@@ -148,7 +178,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                               className={item.desc ? undefined : "items-center"}
                               {...externalProps(item.external)}
                             >
-                              <SubLinkGlyph icon={item.icon} />
+                              <SubLinkGlyph icon={item.icon} glyph={item.glyph} />
                               <span className="flex flex-col gap-0.5">
                                 <span className="text-foreground-neutral text-sm font-medium">
                                   {item.text}
@@ -162,12 +192,30 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                             </NavMenuLink>
                           </li>
                         ))}
+                        {link.footer ? (
+                          <li className="border-stroke-neutral mt-1 border-t pt-1">
+                            <NavMenuLink
+                              href={link.footer.url}
+                              className="group/footer items-center gap-1.5 text-sm font-medium text-foreground-neutral"
+                            >
+                              {link.footer.text}
+                              <ArrowRight
+                                aria-hidden
+                                className="size-3.5 transition-transform group-hover/footer:translate-x-0.5 motion-reduce:transition-none"
+                              />
+                            </NavMenuLink>
+                          </li>
+                        ) : null}
                       </ul>
                     </NavMenuContent>
                   </NavMenuItem>
                 ) : (
                   <NavMenuItem key={link.text}>
-                    <NavMenuTopLink href={link.url} {...externalProps(link.external)}>
+                    <NavMenuTopLink
+                      href={link.url}
+                      className="h-auto px-0"
+                      {...externalProps(link.external)}
+                    >
                       {link.text}
                     </NavMenuTopLink>
                   </NavMenuItem>
@@ -176,27 +224,33 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
             </NavMenuList>
           </NavMenu>
 
-          <div className="hidden items-center gap-2 md:flex">
+          {/* Sized like the site header (apps/site/src/components/header.tsx,
+              client 2026-11-25): 36px pills with 16px padding and 14px
+              semibold labels, 12px apart. No theme control here, so search
+              sits exactly where it does on the homepage (client,
+              2026-11-25); the theme switch lives in the footer. */}
+          <div className="hidden items-center gap-3 lg:flex">
             <SearchButton />
-            <ThemeToggle mode="light-dark" className="border-stroke-neutral" />
-            <Button
-              asChild
-              variant="default-weak"
-              className="spectrum-ink-text text-foreground-neutral px-3 hover:bg-transparent"
+            <a
+              href={loginHref}
+              className="spectrum-ink-text text-foreground-neutral inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap no-underline"
             >
-              <a href={loginHref}>Log in</a>
-            </Button>
-            <Button asChild variant="ink" className="px-4">
-              <a href={signupHref}>Get started</a>
-            </Button>
+              Log in
+            </a>
+            <a
+              href={signupHref}
+              className="bg-background-neutral-reverse-strong text-foreground-neutral-reverse inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap no-underline transition-transform duration-150 ease-out hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
+            >
+              Get Started
+            </a>
           </div>
 
-          <div className="flex items-center gap-1 md:hidden">
+          <div className="flex items-center gap-1 lg:hidden">
             <SearchButton />
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger
                 aria-label="Open menu"
-                className="text-foreground-neutral-weak hover:text-foreground-neutral hover:bg-background-neutral rounded-circle flex size-8 cursor-pointer items-center justify-center transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-foreground-neutral/25 motion-reduce:transition-none"
+                className="text-foreground-neutral-weak hover:text-foreground-neutral hover:bg-background-neutral rounded-circle flex size-8 cursor-pointer items-center justify-center transition-colors duration-300 outline-none focus-visible:bg-fd-foreground/[0.06] motion-reduce:transition-none"
               >
                 <Menu className="size-5" aria-hidden />
               </SheetTrigger>
@@ -220,6 +274,15 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                             {item.text}
                           </a>
                         ))}
+                        {link.footer ? (
+                          <a
+                            href={link.footer.url}
+                            onClick={() => setOpen(false)}
+                            className="text-foreground-neutral text-base font-medium no-underline"
+                          >
+                            {link.footer.text}
+                          </a>
+                        ) : null}
                       </div>
                     ) : null,
                   )}
@@ -245,13 +308,8 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
                       <a href={loginHref}>Log in</a>
                     </Button>
                     <Button asChild variant="ink">
-                      <a href={signupHref}>Get started</a>
+                      <a href={signupHref}>Get Started</a>
                     </Button>
-                  </div>
-
-                  <div className="border-stroke-neutral flex items-center justify-between border-t pt-6">
-                    <span className="text-foreground-neutral-weak text-sm">Theme</span>
-                    <ThemeToggle mode="light-dark-system" className="border-stroke-neutral" />
                   </div>
                 </nav>
               </SheetContent>

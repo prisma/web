@@ -4,6 +4,8 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Quotes } from "@/components/Quote";
 import { Hex } from "@/components/Hex";
 import type { MDXComponents } from "mdx/types";
+import type { ComponentProps } from "react";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import * as icons from "lucide-react";
 import { Mermaid } from "@/components/Mermaid";
@@ -35,13 +37,22 @@ import { AutoplayYoutubeEmbed } from "@/components/AutoplayYoutubeEmbed";
 import { AgentPrompt } from "@/components/AgentPrompt";
 import { ServerlessPostgresChooser } from "@/components/ServerlessPostgresChooser";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
+// A button placed in a post (`<Button asChild variant="ink">` around a link)
+// sizes to its label instead of stretching across the column, keeps clear of
+// the prose link underline (`data-card` opts out, as card links do), and gets
+// the room a paragraph would (client, 2026-11-25: "that button. it is
+// ridiculous").
+function ProseButton({ className, ...props }: ComponentProps<typeof Button>) {
+  return <Button {...props} data-card="" className={cn("not-prose my-6 w-fit", className)} />;
+}
+
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   const mdxComponents = {
     ...(icons as unknown as MDXComponents),
     ...defaultMdxComponents,
     Accordion,
     Accordions,
-    Button,
+    Button: ProseButton,
     Image,
     Link,
     Quotes,
