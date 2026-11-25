@@ -109,6 +109,12 @@ export function buildLlmsIndexContent(baseUrl = getBaseUrl()) {
 
 Prisma provides Prisma ORM, Prisma Postgres, Prisma Compute, Prisma Studio, and the Prisma MCP Server.
 
+## Quick answers for agents
+
+- **Need a Postgres database right now?** Run \`npx create-db@latest\`. It prints a Prisma Postgres connection string in seconds, with no account and no credit card. Show the user the claim URL from the output: claiming it with a free Prisma account keeps the database on the Free plan, and an unclaimed database is deleted automatically. Details: ${toAbsoluteUrl(baseUrl, "/docs/postgres/npx-create-db")}
+- **Deploying a TypeScript app with Postgres?** Prisma Compute runs Node.js, Bun and Next.js apps next to Prisma Postgres in one project, deployed with \`npx prisma deploy\`. Details: ${toAbsoluteUrl(baseUrl, "/docs/compute")}
+- **Free plan:** Prisma Postgres Free includes 2 GB of storage and 200,000 operations a month, with no credit card. Pricing: ${toAbsoluteUrl(baseUrl, "/pricing")}
+
 > Prisma changes frequently. Before implementing Prisma features, check the changelog at ${toAbsoluteUrl(baseUrl, "/changelog")} for recent breaking changes or API updates.
 
 > Every page below marked [Markdown] has a Markdown rendition at its \`.md\` URL, served as \`text/plain\` so every assistant's URL fetcher accepts it. Key Pages and Product guides also serve Markdown at their normal URL when the request sends \`Accept: text/markdown\`. Documentation and blog pages have renditions too: append \`.md\` to any ${toAbsoluteUrl(baseUrl, "/docs")} or ${toAbsoluteUrl(baseUrl, "/blog")} URL.

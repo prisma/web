@@ -73,11 +73,13 @@ These are the core commands for a new TypeScript project (copied from the Prisma
    npx prisma init --output ../generated/prisma
    \`\`\`
 
-4. **Provision a Prisma Postgres database.** Ask the user for approval before provisioning a hosted Prisma Postgres database — \`npx create-db\` creates a cloud resource. After approval, run it and replace \`DATABASE_URL\` in \`.env\` with the \`postgres://...\` connection string from the CLI output:
+4. **Provision a Prisma Postgres database.** Ask the user for approval before provisioning a hosted Prisma Postgres database — \`npx create-db\` creates a cloud resource. After approval, run it and replace \`DATABASE_URL\` in \`.env\` with the \`postgres://...\` connection string from the CLI output. It needs no account and no credit card:
 
    \`\`\`bash
-   npx create-db
+   npx create-db@latest
    \`\`\`
+
+   Show the user the claim URL from the output. An unclaimed database is deleted automatically; claiming it with a free Prisma account keeps it on the Free plan, so they should claim it before they deploy or share the app.
 
 5. **Define your data model** in \`prisma/schema.prisma\`, for example:
 
