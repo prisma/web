@@ -566,9 +566,9 @@ export const termsSections: TermsSection[] = [
     content: (
       <>
         <p>
-          The free version of Embeddable Prisma Studio is licensed under the Apache 2.0 License and
-          may be used in both development and production environments. Prisma branding does not need
-          to remain visible, and you may remove or replace it without a commercial license.
+          Embeddable Prisma Studio is free, licensed under the Apache 2.0 License, and may be used
+          in both development and production environments. Prisma branding does not need to remain
+          visible, and you may remove or replace it without a commercial license.
         </p>
         <p>
           Embeddable Prisma Studio operates as client-side software. Prisma will have no liability
@@ -582,9 +582,9 @@ export const termsSections: TermsSection[] = [
           assume full compliance responsibility.
         </p>
         <p>
-          The free version includes telemetry collection to support service improvements. Repository
-          contributors license their contributions under Apache 2.0, granting Prisma usage,
-          modification, and distribution rights.
+          Embeddable Prisma Studio includes telemetry collection to support service improvements.
+          Repository contributors license their contributions under Apache 2.0, granting Prisma
+          usage, modification, and distribution rights.
         </p>
       </>
     ),
