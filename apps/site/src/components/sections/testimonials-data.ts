@@ -18,8 +18,9 @@
  * supplied by the client (2048 px), saved at 144 px: 4x the 36 px tile.
  *
  * Solin's quote about Accelerate caching was retired 2026-09-30: Prisma
- * Postgres has no query cache and Accelerate retires on December 1, 2026, so
- * the page must not sell caching. Fluidwave's Prisma Postgres quote took its
+ * Postgres has no query cache and Accelerate is being retired (December 1,
+ * 2026 for other databases; hosted Prisma Postgres connections later, with at
+ * least 30 days' notice), so the page must not sell caching. Fluidwave's Prisma Postgres quote took its
  * slot so testimonials-reveal.tsx keeps six unique quotes per row.
  */
 
