@@ -219,12 +219,13 @@ export const GROUPS: Group[] = [
     // Accelerate limits restored 2026-08-25 — table only, not the plan cards
     // (see the header note). Values are the old site's last published figures.
     // Accelerate is being retired (December 1, 2026 for other databases, later
-    // for Prisma Postgres) and bills until then, so the rows stay, the label says so, and the header links to the switch
-    // guide at /docs/postgres/database/switch-from-accelerate.
+    // for Prisma Postgres) and bills until then, so the rows stay and the label
+    // says so. The header links to /docs/accelerate#retirement-options, which
+    // gives both dates and the switch path for each kind of database.
     label: "Accelerate cache (being retired)",
     icon: Layers,
     color: "text-prism-cyan-500",
-    note: { text: "How to switch", href: "/docs/postgres/database/switch-from-accelerate" },
+    note: { text: "How to switch", href: "/docs/accelerate#retirement-options" },
     rows: [
       {
         label: "Operations included",

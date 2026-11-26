@@ -316,8 +316,9 @@ export const comparisonSections: Array<{
   },
   {
     // Accelerate, and its cache with it, is being retired (December 1, 2026 for
-    // other databases, later for Prisma Postgres) and bills until then, so the rows stay. The switch
-    // guide is /docs/postgres/database/switch-from-accelerate.
+    // other databases, later for Prisma Postgres) and bills until then, so the
+    // rows stay. /docs/accelerate#retirement-options gives both dates and the
+    // switch path for each kind of database.
     title: "Accelerate cache (being retired)",
     rows: [
       [
