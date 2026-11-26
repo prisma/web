@@ -7,7 +7,7 @@ import {
   type TermLine,
   type TrackItem,
 } from "./GuardFigure";
-import { LayerMap, type Layer } from "./LayerMap";
+import { LayerMap, type Guardrail, type RemovedCommand } from "./LayerMap";
 import { TRACK_STATE_TEXT } from "./trackState";
 
 /* ---------------------------------------------------------------------------
@@ -139,51 +139,62 @@ const c = (text: string): ReactNode => <code>{text}</code>;
    1. Where each check sits
 --------------------------------------------------------------------------- */
 
-const LAYERS: Layer[] = [
+const REMOVED: RemovedCommand[] = [
   {
-    heading: "The reset commands are gone",
-    summary: "No migration command resets or drops a database you connect to.",
-    effect: "Removed",
-    href: "#the-commands-behind-these-incidents-no-longer-exist",
+    name: "migrate reset",
+    code: true,
+    did: "Dropped every table, then replayed the migrations into an empty database.",
   },
   {
-    heading: "Data loss needs a named decision",
+    name: "db push --force-reset",
+    code: true,
+    did: "Reset the database so that a new schema would fit.",
+  },
+  {
+    name: "Shadow database",
+    did: "A scratch database that Prisma emptied before each use, including when its URL pointed at real data.",
+  },
+];
+
+const GUARDRAILS: Guardrail[] = [
+  {
+    heading: "Deleting data needs an approval that names the field",
     summary:
-      "A change that could lose data stops until you name the field and say whether it is a rename or a deletion.",
-    effect: "Blocks",
-    href: "#a-rename-cant-quietly-become-a-deletion",
+      "A change that would drop a column stops until you say whether it is a rename or a deletion. Accepting every prompt does not count.",
+    href: "#deleting-data-needs-an-approval-that-names-the-field",
   },
   {
     heading: "Destructive operations are labeled",
+    summary: "Previews and migrations mark every operation Prisma plans that deletes data.",
+    href: "#a-reviewer-can-see-what-a-migration-deletes",
+  },
+  {
+    heading: "Edited migrations are rejected",
+    summary: "A migration that changed after it was generated fails before it runs.",
+    href: "#a-reviewer-can-see-what-a-migration-deletes",
+  },
+  {
+    heading: "A database can require migrations and forbid data loss",
     summary:
-      "The preview and the migration both mark every operation Prisma plans that deletes data.",
-    effect: "Warns",
-    href: "#destructive-operations-are-visible-in-review",
-  },
-  {
-    heading: "The reviewed migration is the one that runs",
-    summary: "A migration that was edited after it was generated is rejected.",
-    effect: "Blocks",
-    href: "#the-migration-that-runs-is-the-one-you-reviewed",
-  },
-  {
-    heading: "The database refuses what it shouldn't accept",
-    summary: "A database with a recorded policy refuses development commands, data loss, or both.",
-    effect: "Blocks",
-    needsPolicy: true,
-    href: "#production-can-refuse-changes-it-shouldnt-accept",
+      "A policy stored in the database makes Prisma refuse development commands, data loss, or both.",
+    optIn: true,
+    href: "#production-can-require-migrations-and-forbid-data-loss",
   },
   {
     heading: "The database is checked before each operation",
-    summary: "The run stops if the database is not in the state the migration expects.",
-    effect: "Blocks",
-    href: "#checking-the-database-before-applying-a-migration",
+    summary:
+      "A run stops and changes nothing if the database is not in the state the migration expects.",
+    href: "#prisma-checks-the-database-before-it-changes-anything",
   },
 ];
 
 export function ProtectionLayers() {
   return (
-    <LayerMap label="The checks a schema change meets on its way to the database" layers={LAYERS} />
+    <LayerMap
+      label="What Prisma ORM 8 removed and what it added to protect your data"
+      removed={REMOVED}
+      guardrails={GUARDRAILS}
+    />
   );
 }
 
