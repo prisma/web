@@ -67,7 +67,7 @@ test("title, meta and H1 match the brief", () => {
   assert.deepEqual(
     [...FREE_POSTGRES_HERO_CHECKS],
     [
-      "Without an account: instant databases are deleted after 24 hours unless claimed.",
+      "Without an account: instant databases are deleted after 72 hours unless claimed.",
       "With a free account: no time limit, for claimed databases and databases created in the Prisma Console.",
     ],
   );
@@ -200,7 +200,7 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.equal(FREE_POSTGRES_TERMINAL_STATUS, "Setting up a database");
   assert.equal(
     FREE_POSTGRES_TERMINAL_CLAIM,
-    "The database is deleted after 24 hours unless you claim it.",
+    "The database is deleted after 72 hours unless you claim it.",
   );
   assert.equal(
     FREE_POSTGRES_CLI_CONNECTION,
@@ -307,7 +307,7 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
     "See which queries are slow with Query Insights.",
     "Create a database. Run npx create-db, or create one in the Console.",
     "Paste it into your app. Set it as DATABASE_URL.",
-    "Claim it within 24 hours. Open the claim link and sign in. The database moves into your Free workspace",
+    "Claim it within 72 hours. Open the claim link and sign in. The database moves into your Free workspace",
   ]) {
     assert.ok(!markdown.includes(gone), `old hero copy still in markdown: ${gone}`);
   }

@@ -193,7 +193,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Can I create a database without signing up?",
       answer:
-        "Yes. Run [`npx create-db`](/docs/postgres/npx-create-db) and you get a Postgres database and its connection string in seconds, with no account and no credit card. Add `--json` when a coding agent needs machine-readable output. The database is deleted after 24 hours unless you claim it: open the claim link from the output and sign in, and it moves into your workspace under that plan's limits.",
+        "Yes. Run [`npx create-db`](/docs/postgres/npx-create-db) and you get a Postgres database and its connection string in seconds, with no account and no credit card. Add `--json` when a coding agent needs machine-readable output. The database is deleted after 72 hours unless you claim it: open the claim link from the output and sign in, and it moves into your workspace under that plan's limits.",
     },
     {
       question: "Can I manage my databases from Claude Code, Cursor or Codex?",

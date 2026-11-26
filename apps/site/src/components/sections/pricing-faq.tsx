@@ -37,13 +37,13 @@ export const PRICING_FAQS: (FaqItem & { answer: string })[] = [
   {
     // Moved here from the Free plan card (client, 2026-11-22), where "Or skip
     // sign-up" read as a property of the Free plan. Facts from docs
-    // postgres/npx-create-db: no account or card, deleted after 24 hours
+    // postgres/npx-create-db: no account or card, deleted after 72 hours
     // unless claimed, a claimed database stays on Free, database only.
     // Absolute docs URL: /docs is another zone, so it must render as a plain
     // link, not a client-side next/link.
     question: "Can I try Prisma Postgres without signing up?",
     answer:
-      "Yes. Run `npx create-db` and you get a Postgres database in seconds, with no account and no credit card. It's temporary: it's deleted after 24 hours unless you sign in and claim it, and a claimed database stays on the Free plan. It's a database only; deploying an app to Prisma Compute needs an account. [How create-db works](https://www.prisma.io/docs/postgres/npx-create-db).",
+      "Yes. Run `npx create-db` and you get a Postgres database in seconds, with no account and no credit card. It's temporary: it's deleted after 72 hours unless you sign in and claim it, and a claimed database stays on the Free plan. It's a database only; deploying an app to Prisma Compute needs an account. [How create-db works](https://www.prisma.io/docs/postgres/npx-create-db).",
   },
   {
     question: "Is Prisma ORM really free?",

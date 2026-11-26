@@ -97,7 +97,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Branches and previews",
     neon: "A Neon branch is a copy-on-write clone of Postgres. Object Storage, Functions, Auth, and AI Gateway can branch with the data. The Neon-managed Vercel integration can create a database branch per preview deployment.",
     prisma:
-      "A Prisma [preview branch](/docs/compute/branching) can own its Compute services and databases. A `postgres()` database the Composer module declares is created new for the preview, and the deploy applies your committed migrations to it; production data is not copied, so you seed the data you test with. For a throwaway database in CI, `npx create-db` gives you a Prisma Postgres database in seconds with no sign-up; it is deleted after 24 hours unless you claim it, and claiming it (free) needs a Prisma account.",
+      "A Prisma [preview branch](/docs/compute/branching) can own its Compute services and databases. A `postgres()` database the Composer module declares is created new for the preview, and the deploy applies your committed migrations to it; production data is not copied, so you seed the data you test with. For a throwaway database in CI, `npx create-db` gives you a Prisma Postgres database in seconds with no sign-up; it is deleted after 72 hours unless you claim it, and claiming it (free) needs a Prisma account.",
     sources: {
       neon: "https://neon.com/docs/introduction/branching",
       prisma: "https://www.prisma.io/docs/compute/branching",
