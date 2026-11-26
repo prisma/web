@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export const termsEffectiveDate = "October 12, 2026";
+export const termsEffectiveDate = "November 26, 2026";
 
 export type TermsSection = {
   title: string;
