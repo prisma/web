@@ -3,7 +3,7 @@ title: Types for your code
 description: Name the type of a row, a query result, or a create, update, or filter argument in Prisma ORM 8, with the Prisma ORM 7 name beside each one.
 url: /orm/fundamentals/types
 metaTitle: Model, result, and input types | Prisma ORM
-metaDescription: 'Type your own functions with Prisma ORM 8: Models, Scalars, Shape, and ResultType for rows, and CreateInput, ScalarUpdateInput, ShorthandWhereFilter, ModelAccessor, and UniqueConstraintCriterion for arguments, with the Prisma ORM 7 type each replaces.'
+metaDescription: 'Type your own functions with Prisma ORM 8: Models, Scalars, Shape, and ResultType for rows, and CreateInput, MutationUpdateInput, ShorthandWhereFilter, ModelAccessor, and UniqueConstraintCriterion for arguments, with the Prisma ORM 7 type each replaces.'
 ---
 
 When a function returns a user or takes a filter, you want to name that type instead of repeating the fields. This page shows the types for both, on PostgreSQL first and then on MongoDB.
@@ -107,7 +107,7 @@ The argument types come from `@prisma/orm-postgres/orm-client`. Each takes `Cont
 ```ts
 import type {
   CreateInput,
-  ScalarUpdateInput,
+  MutationUpdateInput,
   ShorthandWhereFilter,
   UniqueConstraintCriterion,
 } from "@prisma/orm-postgres/orm-client";
@@ -116,7 +116,7 @@ function createUser(data: CreateInput<Contract, "User">) {
   return db.orm.public.User.create(data);
 }
 
-function updateUser(id: number, data: ScalarUpdateInput<Contract, "User">) {
+function updateUser(id: number, data: MutationUpdateInput<Contract, "User">) {
   return db.orm.public.User.where({ id }).update(data);
 }
 
@@ -130,7 +130,7 @@ function findByKey(key: UniqueConstraintCriterion<Contract, "User">) {
 ```
 
 - `CreateInput` is what `create()` takes. A field with a default is optional, and a relation field can create related rows, as in `posts: (p) => p.create([{ title: "Hello" }])`, which replaces Prisma ORM 7's `posts: { create: [...] }`. `create()` returns the new row as `Scalars<Models.public_User>`.
-- `ScalarUpdateInput` is the scalar fields `update()` takes, each one optional. It does not include relation changes such as `connect`, and no exported type does yet, so pass relation changes in a separate argument of your function and write them where you call `update()`.
+- `MutationUpdateInput` is what `update()` takes: any of the scalar fields, each one optional, and relation changes, as in `posts: (p) => p.create([{ title: "Hello" }])`. It is exported since `8.0.0-rc.25`. For the scalar fields alone, use `ScalarUpdateInput`, from the same package.
 - `ShorthandWhereFilter` is a filter written as an object, such as `{ name: "Ada" }`, which matches rows whose fields equal those values. Its second argument is the PostgreSQL schema of the model.
 - `UniqueConstraintCriterion` is what `whereUnique()` takes: the `@id`, a `@unique` field, or all the fields of a `@@unique`, such as `{ email: "ada@example.com" }`. `first()` then returns that row or `null`.
 
@@ -163,7 +163,7 @@ Prisma ORM 8 has no `Prisma` namespace; each type above replaces one from Prisma
 | `Prisma.UserGetPayload<{ select: { id: true; posts: { select: { title: true } } } }>` | `Shape<Models.public_User, { "+": "id"; posts: { "+": "title" } }>` |
 | `Awaited<ReturnType<typeof getUsers>>` | still works; `ResultType<ReturnType<typeof userWithPosts>>` names the row of a function that returns a query |
 | `Prisma.UserCreateInput` | `CreateInput<Contract, "User">` |
-| `Prisma.UserUpdateInput` | `ScalarUpdateInput<Contract, "User">`, for scalar fields |
+| `Prisma.UserUpdateInput` | `MutationUpdateInput<Contract, "User">` |
 | `Prisma.UserWhereInput` | `ShorthandWhereFilter<Contract, "public", "User">` for equality, a function of `ModelAccessor` for operators and relation filters |
 | `Prisma.UserWhereUniqueInput` | `UniqueConstraintCriterion<Contract, "User">` |
 
