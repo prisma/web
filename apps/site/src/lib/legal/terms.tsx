@@ -717,10 +717,6 @@ export const termsSections: TermsSection[] = [
           need to remain visible, and you may remove or replace it without a commercial license.
         </p>
         <p>
-          Paid versions of Embeddable Prisma Studio require a separate subscription agreement with
-          terms distinct from standard Prisma billing.
-        </p>
-        <p>
           Embeddable Prisma Studio operates as client-side software. Prisma will have no liability
           or responsibility for any loss, corruption, unauthorized disclosure, or misuse of data
           arising from user or end-user misuse.
