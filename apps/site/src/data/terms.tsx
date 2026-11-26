@@ -567,8 +567,8 @@ export const termsSections: TermsSection[] = [
       <>
         <p>
           The free version of Embeddable Prisma Studio is licensed under the Apache 2.0 License and
-          may be used in both development and production environments. Prisma branding must remain
-          visible in the free version. Removal of branding requires a paid commercial license.
+          may be used in both development and production environments. Prisma branding does not need
+          to remain visible, and you may remove or replace it without a commercial license.
         </p>
         <p>
           Paid versions of Embeddable Prisma Studio require a separate subscription agreement with
