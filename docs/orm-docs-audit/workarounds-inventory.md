@@ -10,12 +10,29 @@ Section 1 lists passages that make the reader do something extra, avoid somethin
 
 Will, 2026-11-22: the docs must never work around a defect in a Prisma tool; the tool gets fixed. The rule is in `apps/docs/AGENTS.md` since prisma/web#8893 (merged 2026-11-22). Each docs passage below is removed when a release contains its fix.
 
-| Entry | Fix | State on 2026-11-24 |
+| Entry | Fix | State on 2026-11-26 |
 | --- | --- | --- |
-| O1, and most of O2, O11, P3 | prisma/orm#31169: `db migrate` advances the `db` ref when the connection comes from the config and CI is not detected | merged 2026-11-23, in `v8.0.0-rc.25`. Docs passages not yet removed. |
-| O3, O4, parts of O8 and O13 | prisma/orm#31174: when the CLI tells you to run `migration plan`, the command it prints works (after #31130 fixed the first case) | merged 2026-11-23, in `v8.0.0-rc.25`. Docs passages not yet removed. Its description lists what it does not fix. |
+| O1 | prisma/orm#31169: `db migrate` advances the `db` ref when the connection comes from the config and CI is not detected | in `v8.0.0-rc.25`. Docs passages removed by prisma/web#8896; the last redundant `--advance-ref db` (MongoDB existing-database page) by prisma/web#8946. |
+| O3, O4, parts of O8 and O13 | prisma/orm#31174: when the CLI tells you to run `migration plan`, the command it prints works (after #31130 fixed the first case) | in `v8.0.0-rc.25`. O3 and O4 passages removed by prisma/web#8896. The O8 and O13 passages still on the pages are still needed. |
+| O2 (Studio page only) | follows from #31169 and the `MIGRATION.PLAN_ORIGIN_UNKNOWN` refusal when migrations exist | Studio warning removed by prisma/web#8946. The MongoDB existing-database page keeps its recovery: with no migrations and no ref, `migration plan` still plans from empty. |
+| O20 | prisma/orm#31040: constraints on a single-table variant are created or refused | in `v8.0.0-rc.25`; the page already describes the refusal. |
+| O23 (tsconfig sentence only) | prisma/orm#30360: `orm init` keeps a bundler or ES module `nodenext` tsconfig | in `v8.0.0-rc.24` (CLI `8.0.0-rc.34`). `orm/supported-versions.mdx` corrected by prisma/web#8946. The CommonJS repair steps are still needed. |
+| O30 | prisma/orm#30611: `MutationUpdateInput` exported | in `v8.0.0-rc.25`. `orm/fundamentals/types.mdx` corrected by prisma/web#8946. |
+| O43 | prisma/orm#31060: `pg` and `@types/pg` are peer dependencies | in `v8.0.0-rc.25`; the pinned versions were already gone from the docs. |
 
-Not started: every other entry. Before starting one in prisma/orm, check current `main`: other sessions are fixing defects there too. Waiting for Will: whether the Prisma ORM 8 CLI gets a `studio` command (C1), and how to route the 67 entries outside prisma/orm. Follow-up noted during review: ADR 267 line 77 in prisma/orm tells readers to migrate "each existing database" with `--advance-ref db`, which conflicts with the rule that the `db` ref follows only the development database.
+**Release check of 2026-11-26.** Every entry owned by prisma/orm, the `prisma` CLI and `create-prisma` (O1 to O45, C1 to C14, P1 to P9) was checked against the published ORM `8.0.0-rc.25`, `prisma` `8.0.0-rc.35` and `create-prisma` `0.14.10`, from the code at each tag and, for most, by running the published packages. The findings, one section per entry, are in `release-check-2026-11-26/`. Every entry not in the table above is still present in those releases, so its passage stays. Section 4 and the Composer, Compute, Prisma Postgres, Studio and Accelerate entries were not checked.
+
+Corrections to this inventory from that check:
+
+- O11 is not fixed: `db update` followed by `migration plan` still fails with `MIGRATION.HASH_NOT_IN_GRAPH`. The table of 2026-11-24 said #31169 fixed most of it.
+- P2's claim that nothing reads `MONGODB_URL` was wrong: Composer reads it since 0.14.8, and the docs sentence is right.
+- O26 may be intended behaviour since prisma/orm#31077 (Prisma 8 is not a package manager). O37's detection was removed on purpose after rc.22; a fix would be a warning. O42's tab-separated line looks like intended machine-readable output.
+
+Statements found false during the check, not workarounds, all corrected by prisma/web#8946: `update()` with a callback or an empty object returns the matched row, not `null` (`orm/reference/orm-client.mdx`); MariaDB has a client since rc.25 (`orm/index.mdx`); `postgres/troubleshooting.mdx` blamed npx caching for `init --db` failing, while the Prisma ORM 8 CLI rejects the flag with `CLI.V7_FLAG`.
+
+New defects found during the check, not yet entries here and not yet reported: `contract infer` drops `DESC` from an index without a comment, and `db sign` accepts the result (prisma/orm); `prisma contract emit --config <path>` loads the `prisma.config.ts` at the git root instead (prisma-cli); the published `create-prisma` ships no template `.gitignore` files, so a scaffolded Next.js app does not ignore `.next/` or `.env.local` (create-prisma); `prisma studio` in rc.35 tells you to install `@prisma/prisma7` and run `prisma7 studio`, while the docs say `npx prisma@prev studio` (C1). P4's sentence that the PostGIS install "fails" is not true today, because every package is at rc.25; it becomes true again when versions diverge.
+
+Not started: fixing any remaining defect. Before starting one in prisma/orm, check current `main`: other sessions are fixing defects there too. Waiting for Will: whether the Prisma ORM 8 CLI gets a `studio` command (C1), and how to route the 67 entries outside prisma/orm. Follow-up noted during review: ADR 267 line 77 in prisma/orm tells readers to migrate "each existing database" with `--advance-ref db`, which conflicts with the rule that the `db` ref follows only the development database.
 
 ## 1. Workarounds, by the repository that owns the fix
 
