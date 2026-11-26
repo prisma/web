@@ -237,7 +237,7 @@ const SPEC_GROUPS: {
     ],
   },
   {
-    label: "Accelerate cache (retires December 1, 2026)",
+    label: "Accelerate cache (being retired)",
     note: { label: "How to switch", href: "/docs/postgres/database/switch-from-accelerate" },
     rows: [
       ["Operations included", "60,000", "60,000", "60,000", "60,000"],
