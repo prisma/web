@@ -34,7 +34,7 @@ const MONTHS = [
 ] as const;
 
 // The source strings are not one format: privacy is "7th of August, 2026",
-// terms and the SLA are "October 12, 2026", the DPA is "10 September 2025",
+// terms and the SLA are "Month D, YYYY", the DPA is "10 September 2025",
 // and the BAA publishes an ISO dateModified. Normalize those. Anything else
 // is returned unchanged so a new source shape stays visible instead of
 // being guessed.

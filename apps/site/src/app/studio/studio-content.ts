@@ -160,7 +160,7 @@ export const STUDIO_EMBED = {
     "Let your users view and edit their own data",
   ],
   facts:
-    "Works with PostgreSQL, MySQL and SQLite. Free for production use under Apache 2.0, as long as the Prisma branding stays visible.",
+    "Works with PostgreSQL, MySQL and SQLite. Free for production use under Apache 2.0, and you can remove or replace the Prisma branding.",
   cta: { label: "Read the embedding guide", href: STUDIO_EMBED_URL },
   demo: { label: "See the demo on GitHub", href: "https://github.com/prisma/studio-core-demo" },
   // Studio as a host app would show it: a live capture of the current
@@ -303,7 +303,7 @@ export const STUDIO_FAQ = [
   {
     question: "Is Prisma Studio free?",
     answer:
-      "Yes. Studio is free to run locally, and Studio in Prisma Console is included on every plan, including Free. Embedding it in your own app with `@prisma/studio-core` is free for production use under Apache 2.0, as long as the Prisma branding stays visible. Start with [free PostgreSQL hosting](/postgres/free-postgresql-hosting) and view your data in Studio straight away.",
+      "Yes. Studio is free to run locally, and Studio in Prisma Console is included on every plan, including Free. Embedding it in your own app with `@prisma/studio-core` is free for production use under Apache 2.0, and you can remove or replace the Prisma branding. Start with [free PostgreSQL hosting](/postgres/free-postgresql-hosting) and view your data in Studio straight away.",
   },
   {
     question: "How do I open Prisma Studio?",
