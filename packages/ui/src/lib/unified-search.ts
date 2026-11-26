@@ -6,7 +6,7 @@ import type { SortedResult } from "fumadocs-core/search";
 
 type Source = "all" | "website" | "docs" | "blog";
 const sources = new Set<string>(["all", "website", "docs", "blog"]);
-type Chunk = {
+export type Chunk = {
   type?: string;
   text?: string | null;
   file_id?: string;
