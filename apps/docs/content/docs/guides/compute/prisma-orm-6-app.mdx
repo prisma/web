@@ -4,10 +4,10 @@ sidebarTitle: "Deploy a Prisma ORM 6 app"
 description: 'Use when an app that still uses Prisma ORM 6 should run on Prisma Compute before it upgrades: run the Prisma 8 CLI next to the Prisma 6 one, give it its own config file, and deploy from GitHub Actions'
 url: /guides/compute/prisma-orm-6-app
 metaTitle: How to deploy a Prisma ORM 6 app to Prisma Compute without upgrading first
-metaDescription: 'Step-by-step guide to deploying a Next.js app on Prisma ORM 6 to Prisma Compute: keep Prisma Client 6, run the Prisma 8 CLI for deploys, use a separate config file, fix the effect and query engine errors, and set up the GitHub Actions workflow.'
+metaDescription: 'Step-by-step guide to deploying a Next.js app on Prisma ORM 6 to Prisma Compute: keep Prisma Client 6, run the Prisma 8 CLI for deploys, use a separate config file, generate the Linux query engine, and set up the GitHub Actions workflow.'
 ---
 
-{/* lint-versions-ignore-file: this page pins the Prisma 8 CLI, Composer and effect versions that were tested together with Prisma ORM 6.19.1. They must match each other, not npm latest; update them together. */}
+{/* lint-versions-ignore-file: this page pins the Prisma 8 CLI and Composer versions that were tested together with Prisma ORM 6.19.1. They must match each other, not npm latest; update them together. */}
 
 This guide deploys a Next.js app that uses Prisma ORM 6 to [Prisma Compute](/compute) without upgrading the ORM. The app keeps its `schema.prisma`, its migrations, Prisma Client 6 and its `DATABASE_URL`. What you add is a description of the app for [Prisma Composer](/composer), the Prisma 8 CLI that deploys it, and a GitHub Actions workflow.
 
@@ -28,16 +28,14 @@ The app runs on Compute and reads its database from `DATABASE_URL`, as it does t
 
 ## 1. Add the Composer packages
 
-Install Composer as a dependency, and three packages the deploy needs as devDependencies:
+Install Composer as a dependency, and the package that the Prisma 8 config file imports as a devDependency:
 
 ```bash
 npm install --save-exact @prisma/composer@0.40.0 @prisma/composer-prisma-cloud@0.40.0
-npm install --save-dev --save-exact @prisma/cli-engine@0.10.4 effect@4.1.4 @effect/platform-bun@4.1.4
+npm install --save-dev --save-exact @prisma/cli-engine@0.10.4
 ```
 
 Leave `prisma` and `@prisma/client` at version 6. The versions above belong to `prisma@8.0.0-rc.35`: the CLI and the Composer packages must be on the same Composer version, and `npm view prisma@8.0.0-rc.35 dependencies` prints the `@prisma/composer-cli` and `@prisma/cli-engine` versions that release uses.
-
-`effect` and `@effect/platform-bun` are listed because Prisma ORM 6 depends on `effect` 3 and Composer depends on `effect` 4. When npm places version 3 at the top of `node_modules`, the deploy stops with `Alchemy could not load the required peer dependency "@effect/platform-bun"`. Declaring both packages yourself puts version 4 at the top, and Prisma ORM 6 keeps its own copy. Use the versions that `npm view @prisma/composer-prisma-cloud@0.40.0 dependencies` prints.
 
 ## 2. Describe the app for Composer
 
@@ -168,9 +166,9 @@ storefront.web: https://<id>.ewr.prisma.build
 ✔ Deployed storefront to staging in 24.4s.
 ```
 
-:::warning[Do not use npx for the Prisma 8 CLI in this project]
+:::note[Why `bunx` and not `npx`]
 
-`npx prisma deploy` runs the Prisma ORM 6 CLI that is installed in the project, and fails with `Failed to install dynamic subcommand via npm` while it looks for a package named `@prisma/cli-deploy`. Naming the version does not make `npx` reliable either. Depending on how npm arranged `node_modules`, `npx prisma@8.0.0-rc.35 deploy` runs the installed Prisma ORM 6 CLI again, or runs the Prisma 8 CLI under Node.js, where the deploy stops with `Alchemy could not load the required peer dependency "@effect/platform-node"`. `bunx --bun -p prisma@8.0.0-rc.35 prisma` runs the version you name, under Bun. `npx prisma` remains the right command for Prisma ORM 6 itself, such as `npx prisma migrate deploy`.
+In this project `npx prisma` is the Prisma ORM 6 CLI, because npm runs the `prisma` that is installed in the project. `bunx --bun -p prisma@8.0.0-rc.35 prisma` runs the Prisma 8 CLI by its version, under Bun, which is what the deploy runs on. Keep using `npx prisma` for Prisma ORM 6 itself, such as `npx prisma migrate deploy`.
 
 :::
 
@@ -242,7 +240,7 @@ jobs:
           config: prisma.compute.config.ts
 ```
 
-The action installs dependencies with `npm ci`, runs your build command, and then deploys. `prisma-version` names the Prisma 8 CLI that deploys: the action finds the Prisma ORM 6 CLI in `node_modules`, logs that it has no `deploy` command, and runs the named version instead. `config` passes your second config file to it as `--config`, and the action names `module.ts` with `--entry`, which is the same file the config's `entry` points at. Both inputs need a release of the action newer than v1.11.0. On v1.11.0 and older, the action runs the installed Prisma ORM 6 CLI and the deploy step fails.
+The action installs dependencies with `npm ci`, runs your build command, and then deploys. `prisma-version` names the Prisma 8 CLI that deploys: the action finds the Prisma ORM 6 CLI in `node_modules`, logs that it has no `deploy` command, and runs the named version instead. `config` passes your second config file to it as `--config`, and the action names `module.ts` with `--entry`, which is the same file the config's `entry` points at.
 
 Push the default branch to deploy production, and any other branch to deploy a preview named after it:
 
@@ -267,11 +265,9 @@ $ bunx --bun -p prisma@8.0.0-rc.35 prisma deploy --entry module.ts --environment
 
 | What you see | Cause | Fix |
 | --- | --- | --- |
-| `Failed to install dynamic subcommand via npm`, with a 404 for `@prisma/cli-deploy` | The Prisma ORM 6 CLI ran `deploy`, from `npx` or from an action release up to v1.11.0. | Use `bunx --bun -p prisma@8.0.0-rc.35 prisma` locally, and `prisma-version` in the workflow. |
-| `Alchemy could not load the required peer dependency "@effect/platform-node"` | `npx` ran the Prisma 8 CLI under Node.js. | Run it with `bunx --bun`, as in step 5. |
+| `Failed to install dynamic subcommand via npm`, with a 404 for `@prisma/cli-deploy` | `npx prisma deploy` ran the Prisma ORM 6 CLI, which has no `deploy` command. | Run the Prisma 8 CLI with `bunx --bun -p prisma@8.0.0-rc.35 prisma`, as in step 5. |
 | `CLI.CONFIG_MISSING_MARKER` or `CLI.CONFIG_UNREADABLE` | The Prisma 8 CLI read the `prisma.config.ts` that belongs to Prisma ORM 6. | Pass `--config prisma.compute.config.ts`, or the `config` input. |
 | `Failed to parse syntax of config file` from `prisma generate` | `prisma.config.ts` contains the Composer settings. | Move them to `prisma.compute.config.ts`. |
-| `Alchemy could not load the required peer dependency "@effect/platform-bun"` | npm placed `effect` 3 at the top of `node_modules`. | Add `effect` and `@effect/platform-bun` as devDependencies, as in step 1. |
 | `could not locate the Query Engine for runtime "debian-openssl-3.0.x"` | Prisma Client was generated on another operating system. | Add the binary target from step 4 and build again. |
 | The workflow run is green and its log says `skipped-no-credential` | The repository is not connected to the project. | Run `git connect` from step 7. |
 
