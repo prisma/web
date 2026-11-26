@@ -1,34 +1,36 @@
 ---
 title: Domains
-description: Add a custom domain to a production app, publish the two DNS records it asks for, and the platform issues the TLS certificate.
+description: Add a custom domain to an app on any branch, publish the two DNS records it asks for, and the platform issues the TLS certificate.
 url: /compute/domains
 metaTitle: Custom domains | Prisma Compute
 metaDescription: Add a custom domain to a Prisma Compute app, publish the TXT and CNAME records, wait until it serves, and read what a domain's state means.
 ---
 
-Configure custom domains that point to your [production app](/compute/branching). You can't configure custom domains for preview apps.
+Configure custom domains that point to your app on any [branch](/compute/branching): production, staging, or a preview.
 
-A domain serves your app once your workspace has proved it owns the domain, the domain's DNS points at Prisma, the app has a live deployment, and a TLS certificate has been issued. You do the first two by publishing DNS records. The platform issues the certificate.
+A custom domain is a hostname, such as `shop.acme.com`, that routes to one app on one branch. It serves your app once your workspace's domain ownership record for the hostname is verified, the hostname's DNS points at Prisma, the app has a live deployment, and a TLS certificate has been issued. You do the first two by publishing DNS records. The platform issues the certificate.
+
+A domain ownership record is your workspace's claim to a hostname, proved by a TXT record. Adding a custom domain creates one for its exact hostname, unless the workspace already has a record for that hostname, or a verified wildcard record such as `*.acme.com` that covers it. The CLI has no commands to list or delete domain ownership records; `show` prints the TXT record a custom domain still needs and when its record expires.
 
 ## Before you start
 
 You'll need:
 
 - A [linked project](/compute/getting-started).
-- A production app. You can add a domain before the app has a [promoted, running deployment](/compute/deployments); the domain starts serving once it has one.
+- An app. You can add a custom domain before the app has a [live deployment](/compute/deployments); the custom domain starts serving once it has one.
 - Access to edit DNS records within your DNS provider.
 
-Domain commands target the [production branch](/compute/branching). Pointing them at any other branch fails with a `BRANCH_NOT_DEPLOYABLE` error. Every domain subcommand also accepts `--project` and `--branch` flags.
+Without `--branch`, domain commands pick a branch the same way as other `service` commands; see [How the CLI picks a branch](/compute/branching#how-the-cli-picks-a-branch). To use another branch, see [A custom domain on another branch](#a-custom-domain-on-another-branch).
 
 ## Add a custom domain
 
-### 1. Add the domain
+### 1. Add the custom domain
 
 ```npm
 npx prisma service domain add shop.acme.com --service web
 ```
 
-The command succeeds before any DNS is set up. Among the rows it prints are the domain's [state](#states), what it is waiting on, and the DNS records to publish:
+The command succeeds before any DNS is set up. Among the rows it prints are the custom domain's [state](#states), what it is waiting on, and the DNS records to publish:
 
 ```text
 hostname    shop.acme.com
@@ -39,7 +41,7 @@ dns TXT     _prisma-verification.shop.acme.com -> prisma-verification=3f9a… (t
 dns CNAME   shop.acme.com -> switchboard.cdg.prisma.build (ttl 300)
 ```
 
-Re-running `add` for a domain the app already has is safe: it shows the existing domain with its current state.
+Re-running `add` for a custom domain the app already has is safe: it shows the existing custom domain with its current state.
 
 ### 2. Publish the DNS records
 
@@ -47,12 +49,12 @@ Add both records at your DNS provider.
 
 | Type  | Name                                 | Value                          | TTL | What it does                               |
 | ----- | ------------------------------------ | ------------------------------ | --- | ------------------------------------------ |
-| TXT   | `_prisma-verification.shop.acme.com` | `prisma-verification=3f9a…`    | 300 | Proves your workspace owns the domain      |
-| CNAME | `shop.acme.com`                      | `switchboard.cdg.prisma.build` | 300 | Points the domain at `switchboard.{region}.prisma.build` |
+| TXT   | `_prisma-verification.shop.acme.com` | `prisma-verification=3f9a…`    | 300 | Verifies your domain ownership record      |
+| CNAME | `shop.acme.com`                      | `switchboard.cdg.prisma.build` | 300 | Points the hostname at `switchboard.{region}.prisma.build` |
 
 The CLI prints each record name as a full hostname. If your DNS provider expects a relative name, enter just the labels before your domain (`shop` and `_prisma-verification.shop`).
 
-The TXT value is the same for every domain in your workspace. Keep the TXT record in place after the domain is live: if Prisma finds it gone, the domain keeps serving for 30 more days and then stops. Workspace admins get an email, and `show` prints when ownership expires.
+The TXT value is the same for every domain ownership record in your workspace. Keep the TXT record in place after the custom domain is live: if Prisma finds it gone, the domain ownership record starts to expire, and the custom domain keeps serving for 30 more days and then stops. Workspace admins get an email, and `show` prints when the record expires.
 
 :::note[What is switchboard?]
 
@@ -60,13 +62,13 @@ Switchboard is the routing layer that sits in front of your Compute app. Switchb
 
 :::
 
-### 3. Wait until the domain serves
+### 3. Wait until the custom domain serves
 
 ```npm
 npx prisma service domain wait shop.acme.com --service web
 ```
 
-`wait` blocks until the domain's state is `active`, up to 15 minutes (`--timeout` changes that). It stops at once, with `SERVICE.DOMAIN_VERIFICATION_FAILED`, when the certificate could not be issued or the app was deleted, because waiting cannot fix either. While the domain is waiting for your DNS records, `wait` asks the platform to look them up again every 30 seconds, so you can start it before the records have propagated.
+`wait` blocks until the custom domain's state is `active`, up to 15 minutes (`--timeout` changes that). It stops at once, with `SERVICE.DOMAIN_VERIFICATION_FAILED`, when the certificate could not be issued or the app was deleted, because waiting cannot fix either. While the custom domain is waiting for your DNS records, `wait` asks the platform to look them up again every 30 seconds, so you can start it before the records have propagated.
 
 For a single read of the state, use `--timeout 0`:
 
@@ -74,45 +76,56 @@ For a single read of the state, use `--timeout 0`:
 npx prisma service domain wait shop.acme.com --service web --timeout 0 --json
 ```
 
-A single read exits non-zero while the domain is not yet active: with `SERVICE.DOMAIN_VERIFICATION_FAILED` in the two states above, and with `SERVICE.DOMAIN_VERIFICATION_TIMEOUT` otherwise. Automation should read the status event rather than the exit code. In `--json` mode, `wait` streams newline-delimited status events, one per change of state, so an agent can track the domain as it progresses.
+A single read exits non-zero while the custom domain is not yet active: with `SERVICE.DOMAIN_VERIFICATION_FAILED` in the two states above, and with `SERVICE.DOMAIN_VERIFICATION_TIMEOUT` otherwise. Automation should read the status event rather than the exit code. In `--json` mode, `wait` streams newline-delimited status events, one per change of state, so an agent can track the custom domain as it progresses.
 
-## Check a domain
+## Check a custom domain
 
 ```npm
 npx prisma service domain show shop.acme.com --service web
 npx prisma service domain retry shop.acme.com --service web
 ```
 
-`show` prints the domain's state, what it is waiting on, the DNS records still to publish, and the certificate's expiry.
+`show` prints the custom domain's state, what it is waiting on, the DNS records still to publish, and the certificate's expiry.
 
-The platform looks your DNS up when you add a domain, once more ten minutes later if it found nothing, and after that only when you ask. `retry` asks it to check now: it looks the DNS records up again, and if the last certificate failed, it orders a new one. A workspace can order a limited number of new certificates per hour. When that limit or the API's rate limit is reached, `retry` fails with `SERVICE.DOMAIN_RETRY_RATE_LIMITED` and says when to run it again.
+The platform looks your DNS up when you add a custom domain, once more ten minutes later if it found nothing, and after that only when you ask. `retry` asks it to check now: it looks the DNS records up again, and if the last certificate failed, it orders a new one. Each new certificate counts toward the workspace's [hourly limit](#limits). When that limit or the API's rate limit is reached, `retry` fails with `SERVICE.DOMAIN_RETRY_RATE_LIMITED` and says when to run it again.
 
-## Remove a domain
+## A custom domain on another branch
+
+To give a staging or preview app its own custom domain, pass `--branch` with the branch's name:
+
+```npm
+npx prisma service domain add staging.acme.com --service web --branch staging
+npx prisma service domain wait staging.acme.com --service web --branch staging
+```
+
+The custom domain belongs to the app on that branch, so pass the same `--branch` to `show`, `retry`, and `delete`. The DNS records and the states are the same as on production.
+
+## Remove a custom domain
 
 ```npm
 npx prisma service domain delete shop.acme.com --service web
 ```
 
-Deleting detaches the domain from the app. The command asks you to type the hostname to confirm; pass `--confirm shop.acme.com` to run it without a prompt. Prisma can't touch your DNS, so the records stay behind. Delete the CNAME at your provider once you no longer need it, and keep the TXT record while other domains in your workspace rely on it.
+Deleting removes the custom domain from the app. The command asks you to type the hostname to confirm; pass `--confirm shop.acme.com` to run it without a prompt. Your workspace's domain ownership record for the hostname stays, and Prisma can't touch your DNS, so both DNS records stay behind. Keep both records while another app in your workspace uses the same hostname, for example an app on another branch, or if you may add it again. Otherwise delete them at your provider.
 
 ## States
 
-A domain reports two fields. `status` is `pending` until the domain goes live, then `active`; it returns to `pending` if your proof of ownership lapses or the app is deleted. `state` says what the domain is doing right now:
+A custom domain reports two fields. `status` is `pending` until the custom domain goes live, then `active`; it returns to `pending` when no domain ownership record keeps it serving any more (the record expired, another workspace's value was found in DNS, or the record was deleted) or when the app is deleted. `state` says what the custom domain is doing right now:
 
 | State                      | Meaning                                              | What to do                                     |
 | -------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
-| `not_verified`             | Your workspace has not proved it owns the domain     | Publish the TXT record                         |
-| `waiting_for_dns`          | The domain's DNS does not point at Prisma            | Publish the CNAME record                       |
+| `not_verified`             | The domain ownership record is not verified          | Publish the TXT record                         |
+| `waiting_for_dns`          | The hostname's DNS does not point at Prisma          | Publish the CNAME record                       |
 | `no_live_deployment`       | The app has no live deployment                       | Deploy the app, or promote a deployment        |
-| `no_service`               | The app the domain pointed at was deleted            | Add the domain to another app                  |
-| `in_use_elsewhere`         | Another app holds the domain                         | Delete the domain from that app if it is yours. This app takes the domain once the other gives it up |
+| `no_service`               | The app the custom domain pointed at was deleted     | Add the custom domain to another app           |
+| `in_use_elsewhere`         | Another app holds the hostname                       | Delete the custom domain from that app if it is yours. This app takes the hostname once the other gives it up |
 | `provisioning_certificate` | The TLS certificate is being issued                  | Nothing                                        |
-| `updating`                 | The platform is bringing the domain up to date       | Nothing                                        |
+| `updating`                 | The platform is bringing the custom domain up to date, or waiting for the [hourly certificate limit](#limits) | Nothing                                        |
 | `certificate_failed`       | The certificate could not be issued                  | Read the platform's reason, then run `retry`   |
 | `update_failed`            | The platform's last update failed and is being retried | Nothing, or run `retry` to try again now     |
-| `active`                   | The domain serves your app                           | Nothing                                        |
+| `active`                   | The custom domain serves your app                    | Nothing                                        |
 
-## When a domain fails
+## When a custom domain fails
 
 When a certificate cannot be issued, the CLI prints the reason the platform reported, exactly as it was given:
 
@@ -124,14 +137,14 @@ When the platform gave no reason, the CLI says that provisioning failed for reas
 
 ## Limits
 
-- Custom domains are only available on production apps.
 - Routing uses CNAME records only. Apex domains need a DNS provider that supports CNAME-like records (ALIAS, ANAME, or CNAME flattening) at the apex.
 - Wildcard hostnames such as `*.acme.com` are rejected.
 - Up to 3 custom domains per app. Adding more returns `SERVICE.DOMAIN_QUOTA_EXCEEDED`.
-- There's no workspace-wide domain list in the CLI.
+- A workspace can order 10 new certificates in an hour, and the hour starts at its first order. Each new custom domain orders one, and so does `retry` after a failed certificate; renewals don't count. Once the 10 are used, a custom domain waiting for its certificate shows `updating`, and the platform orders the certificate by itself when the hour ends. To wait that long, pass a longer timeout: `npx prisma service domain wait shop.acme.com --service web --timeout 1h`.
+- The CLI has no workspace-wide list of custom domains or domain ownership records.
 
 ## Next steps
 
-- [Deployments](/compute/deployments): promote a deployment to production.
+- [Deployments](/compute/deployments): deploy an app and promote a deployment.
 - [Known limitations](/compute/limitations): what Compute can and can't do.
 - [`service domain` reference](/cli/service#service-domain): every domain subcommand and flag.
