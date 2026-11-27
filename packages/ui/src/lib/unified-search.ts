@@ -6,7 +6,7 @@ import type { SortedResult } from "fumadocs-core/search";
 
 type Source = "all" | "website" | "docs" | "blog";
 const sources = new Set<string>(["all", "website", "docs", "blog"]);
-type Chunk = {
+export type Chunk = {
   type?: string;
   text?: string | null;
   file_id?: string;
@@ -40,6 +40,11 @@ function sourceOfUrl(url: string): Exclude<Source, "all"> {
   if (url === "/blog" || url.startsWith("/blog/")) return "blog";
   return "website";
 }
+function ormVersionFromUrl(url: string): string | undefined {
+  if (!url.startsWith("/docs/orm")) return undefined;
+  const match = url.match(/^\/docs\/orm\/(v\d+)/);
+  return match ? `[ORM ${match[1]}]` : '[ORM Latest]';
+}
 function resultFromChunk(item: Chunk): SortedResult | undefined {
   const fileMetadata =
     typeof item.metadata === "object" && item.metadata !== null
@@ -68,12 +73,15 @@ function resultFromChunk(item: Chunk): SortedResult | undefined {
   path = path.replace(/^\/docs\/orm\/latest(?=\/|$)/, "/docs/orm");
   if (path.length > 1) path = path.replace(/\/$/, "");
   const title = blog ? metadata.metaTitle || metadata.title : metadata.title;
+  const breadcrumbs = [website ? "Website" : blog ? "Blog" : "Docs"];
+  const ormVersion = ormVersionFromUrl(path);
+  if (ormVersion) breadcrumbs.unshift(ormVersion);
   return {
     id: `${item.file_id ?? path}-page`,
     type: "page",
     content: typeof title === "string" && title ? title : "Untitled",
     url: path,
-    breadcrumbs: [website ? "Website" : blog ? "Blog" : "Docs"],
+    breadcrumbs,
   };
 }
 
