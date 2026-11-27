@@ -338,7 +338,7 @@ Restrict a query to the one row a primary key or a unique constraint names.
 
 #### Remarks
 
-- Available on PostgreSQL, SQLite, and MySQL. Not available on MongoDB yet.
+- Available on PostgreSQL, SQLite, MySQL, and MariaDB. Not available on MongoDB yet.
 - The criterion is an object with a value for every field of the primary key or of one `@@unique` constraint, such as `{ id }`, `{ email }` or `{ tenantId, userId }`. A field that is not part of such a key, or a key with a field missing, is a type error. When the call runs, a criterion without a value for every field of one key throws an error whose `code` is `ORM.ARGUMENT_INVALID`.
 - It filters exactly as `where()` with the same object does. A value cannot be `null`, because a unique constraint allows any number of rows whose column is `NULL`; to read those, use `where({ field: null })`.
 - After it, the calls that address many rows are compile errors: `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, `distinctOn()`, `all()`, `aggregate()`, `groupBy()`, `updateAll()`, `updateAndCount()`, `deleteAll()`, `deleteAndCount()`, and `prepared.all()` and `prepared.aggregate()`. `first()`, `firstOrThrow()`, `update()`, `delete()`, `select()`, `include()` and a further `where()` still compile.
@@ -981,12 +981,12 @@ const doc = await db.orm.users.where({ email }).firstOrThrow();
 
 ### Custom `Collection` subclass
 
-On PostgreSQL, SQLite, and MySQL you can subclass `Collection` to add your own methods to a model, and pass the subclass to the client in the `collections` option.
+On PostgreSQL, SQLite, MySQL, and MariaDB you can subclass `Collection` to add your own methods to a model, and pass the subclass to the client in the `collections` option.
 
 #### Remarks
 
-- PostgreSQL, SQLite, and MySQL. You cannot subclass a collection on MongoDB.
-- `collections` maps a model name to your class. You pass it to the function that creates your client: `postgres(...)`, `postgresServerless(...)` for serverless functions, `sqlite(...)` for SQLite, `mysql(...)` for MySQL, or `supabase(...)` for Supabase. Your class is then used wherever that client gives you the model: on `db.orm`, on every transaction's `tx.orm`, on each connection the serverless client opens, and on the Supabase clients that run queries as a database role, such as the one `asUser(jwt)` returns. Models you leave out keep the built-in class.
+- PostgreSQL, SQLite, MySQL, and MariaDB. You cannot subclass a collection on MongoDB.
+- `collections` maps a model name to your class. You pass it to the function that creates your client: `postgres(...)`, `postgresServerless(...)` for serverless functions, `sqlite(...)` for SQLite, `mysql(...)` for MySQL, `mariadb(...)` for MariaDB, or `supabase(...)` for Supabase. Your class is then used wherever that client gives you the model: on `db.orm`, on every transaction's `tx.orm`, on each connection the serverless client opens, and on the Supabase clients that run queries as a database role, such as the one `asUser(jwt)` returns. Models you leave out keep the built-in class.
 - If the module that defines your classes needs the contract type, import only the type, `import type { Contract } from './contract.d'`, so that it does not import the module that creates the client.
 - `Collection<Contract, 'Task'>` takes two type arguments: your contract type, and the name of the model this collection is for.
 - A method that returns `this.variant('bug')` gives back a collection narrowed to the `Bug` model. It is chainable, so you finish it with `all()`, `first()`, or any other method.
@@ -1029,7 +1029,7 @@ const lockedBugs = await db.transaction((tx) => tx.orm.public.Task.bugs().forUpd
 
 The last line runs inside a transaction, so your method works on `tx.orm` too. `forUpdate()` locks the rows it reads with `FOR UPDATE` until the transaction ends.
 
-On SQLite and MySQL, `db.orm` holds the models directly, so the same method is `db.orm.Task.bugs()`.
+On SQLite, MySQL, and MariaDB, `db.orm` holds the models directly, so the same method is `db.orm.Task.bugs()`.
 
 ### Package methods with `using` [#package-methods-with-using]
 
@@ -1074,7 +1074,7 @@ A query fragment is a function from a collection to a collection, a piece of a q
 
 #### Remarks
 
-- PostgreSQL, SQLite, and MySQL. On SQLite and MySQL, `db.orm` holds the models directly, so a fragment for one model is `db.orm.Post.fragment(body)`.
+- PostgreSQL, SQLite, MySQL, and MariaDB. On SQLite, MySQL, and MariaDB, `db.orm` holds the models directly, so a fragment for one model is `db.orm.Post.fragment(body)`.
 - `db.orm.fragment(fields, body)` makes a fragment for every model that has the given fields. Declare each field as `field.column(type.X(...))`, with `field` and `type` from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `with` does not compile.
 - `db.orm.public.Post.fragment(body)` makes a fragment for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`. Call it on the model's collection itself: on a collection with chained calls, such as `db.orm.public.Post.where(...).fragment(body)`, it throws an error whose `code` is `ORM.ARGUMENT_INVALID`, and a `where()`, `orderBy()` or `include()` before it is a compile error. Put those calls in the body instead.
 - A fragment made by `db.orm.fragment(fields, body)` that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. One that orders returns `Ordered<C>`, so `cursor()` compiles after it. A fragment made by `collection.fragment(body)` returns the type its body returns. A filter or order on the collection before `with()` is not recorded in that type, so `update()`, `delete()` or `cursor()` after `with()` compiles only when the body itself filters or orders.
