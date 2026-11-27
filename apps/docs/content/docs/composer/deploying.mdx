@@ -162,16 +162,17 @@ Two more steps apply if your app binds input fields with `envSecret` or `envPara
 - **`envSecret`:** when an environment does not have a secret's platform variable yet, the deploy copies the value from your app secrets (by default the deploying shell), and later deploys use the platform copy. So CI must export a secret on every deploy where the environment lacks it: for every secret on a new environment's first deploy, such as a new `pr-42`, and for a secret you add to the app later. If a name is absent from both the platform and the app secrets, the deploy fails early and names the missing variable. Keep secrets in CI's secret store, not in committed files.
 - **`envParam` and a root module's `input`:** the deploy reads them from the shell, or from the `config` list in `prisma.config.ts`, on every deploy, so CI must export them every time, or you commit them in a `.env.<environment>` file and list `dotenv()` in `prisma.config.ts` (see [Values from outside the code](/composer/service-input#values-from-outside-the-code)).
 
-## When prisma.config.ts fails on an effect version conflict
+## When dev or deploy fails on an effect version conflict
 
-The deploy engine Composer drives needs the exact `effect` version `@prisma/composer` pins. The extensions in your `composer` section import that engine, so when your installed tree gives it a different `effect`, evaluating `prisma.config.ts` fails before any command runs:
+The deploy engine Composer drives needs the exact `effect` version `@prisma/composer` pins. When your installed tree gives it a different `effect`, the commands that run the engine, `prisma dev` and `prisma deploy`, fail when they start it. Under `prisma dev` it looks like this:
 
 ```text no-copy
-CLI.CONFIG_UNREADABLE  /path/to/prisma.config.ts could not be evaluated:
-Cannot find module '.../node_modules/effect/dist/unstable/http/FetchHttpClient.js'
+Alchemy could not load the required peer dependency "@effect/platform-node".
+Install a compatible version of "@effect/platform-node" in the same project as "alchemy".
+✘ [DEV.CONVERGE_FAILED] The app could not be converged.
 ```
 
-The message after the colon is the module error from inside the engine, and it varies with the versions involved: a missing `effect` module, or an `effect` export that is not a function. The command exits with code 2. Commands that do not read the config, such as `prisma --version`, still run.
+The command exits with code 2. Commands that only read `prisma.config.ts`, such as `prisma dev url`, still run.
 
 This happens when your app, or another dependency of it, pins a different `effect` than `@prisma/composer` does and your package manager hoists that copy where the deploy engine resolves it. A plain Composer app never hits it: `@prisma/composer` and `@prisma/composer-prisma-cloud` pin every `effect`-family package the engine would otherwise float, so a fresh install resolves a single `effect`. The fix is to use the same `effect` as Composer: match your own `effect` dependency to `@prisma/composer`'s exact pin (see its `dependencies.effect`), or, when a dependency you cannot change pins another version, force Composer's with your package manager's override setting and reinstall. Each one takes the version in `@prisma/composer`'s `dependencies.effect`.
 
