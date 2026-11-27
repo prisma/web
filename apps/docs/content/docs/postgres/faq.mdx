@@ -162,23 +162,17 @@ Prisma Postgres bills by operation, so the more you can perform using a single o
   });
   ```
 
-- **Prefer regular (array) [transactions](/orm/v7/prisma-client/queries/transactions#transaction-api) over [interactive transactions](/orm/v7/prisma-client/queries/transactions#interactive-transactions)** when the individual queries don't depend on each other.
+- **Use a [transaction](/orm/fundamentals/transactions) only when the writes must succeed or fail together.** Operations are counted at the proxy in front of the database, one for every query your client sends, whether you connect through the pooled or the direct connection URL. `BEGIN`, `COMMIT`, and `ROLLBACK` are queries too, so each one counts as an operation, and so does a query that fails. Prisma ORM 8 sends `BEGIN` and `COMMIT` as separate statements, so a transaction costs two operations more than the queries inside it.
 
   ```ts
-  // Interactive transaction: counted as 2 operations
-  await prisma.$transaction(async (tx) => {
-    await tx.user.create({ data: { name: "Alice" } });
-    await tx.post.create({ data: { title: "Hello", authorId: 1 } });
+  // Transaction with two creates: counted as 4 operations (BEGIN, create, create, COMMIT)
+  await db.transaction(async (tx) => {
+    const user = await tx.orm.public.User.create({ email: "alice@prisma.io", name: "Alice" });
+    await tx.orm.public.Post.create({ title: "Hello", published: false, authorId: user.id });
   });
-
-  // Array transaction: counted as 1 operation
-  await prisma.$transaction([
-    prisma.user.create({ data: { name: "Alice" } }),
-    prisma.post.create({ data: { title: "Hello", authorId: 1 } }),
-  ]);
   ```
 
-If a later query needs the result of an earlier one (for example, you need the user ID you just created), stick with an interactive transaction for correctness. Otherwise, batching and array transactions let you collapse multiple queries into a single billed operation, keeping both your operation count, and your cost down.
+If the writes must succeed or fail together (for example, a user and their first post), keep the transaction for correctness: it is worth the two extra operations. Otherwise, batching lets you collapse multiple queries into a single billed operation, keeping both your operation count, and your cost down.
 
 ### Is there a sample workload to estimate my expected charges?
 
