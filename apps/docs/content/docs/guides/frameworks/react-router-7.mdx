@@ -1,18 +1,18 @@
 ---
 title: React Router
-description: 'Add Prisma ORM to a React Router app in framework mode with orm init, then build user and post pages with loaders and a form action.'
+description: 'Add Prisma ORM to a React Router app in framework mode with orm init, build user and post pages with loaders and a form action, and deploy the app to Prisma Compute.'
 url: /guides/frameworks/react-router-7
 metaTitle: How to use Prisma ORM with React Router
-metaDescription: 'Add Prisma ORM and Prisma Postgres to a React Router framework-mode app: orm init, a typed contract, a seed script, loaders that read users and posts, and a form action that creates posts.'
+metaDescription: 'Add Prisma ORM and Prisma Postgres to a React Router framework-mode app: orm init, a typed contract, a seed script, loaders that read users and posts, a form action that creates posts, and a deploy to Prisma Compute.'
 ---
 
 ## Introduction
 
-This guide shows you how to use Prisma ORM in a [React Router](https://reactrouter.com/) app running in framework mode. There is no `create-prisma` template for React Router, so you start from `create-react-router` and add Prisma ORM to the existing project with `orm init`. You then define a contract for users and posts, seed the database, read it from route loaders, and write to it from a form action.
+This guide shows you how to use Prisma ORM in a [React Router](https://reactrouter.com/) app running in framework mode. There is no `create-prisma` template for React Router, so you start from `create-react-router` and add Prisma ORM to the existing project with `orm init`. You then define a contract for users and posts, seed the database, read it from route loaders, write to it from a form action, and deploy the app to [Prisma Compute](/compute).
 
 `create-react-router@latest` scaffolds React Router 8, but the route APIs this guide uses (`loader`, `action`, `routes.ts`, and the generated `Route` types) are the same in React Router 7, and the finished app was run on both versions.
 
-Every command, page, and response below was run end to end against a local PostgreSQL database.
+Every command, page, and response below was run end to end against a local PostgreSQL database, and the deploy step against a live Prisma Compute project.
 
 :::note[Using Prisma ORM 7?]
 
@@ -24,6 +24,7 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 
 - [Node.js](https://nodejs.org) 22.22 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended). Prisma ORM itself runs on Node.js 22.18 or newer on the 22 line, but `create-react-router` and React Router 8 require Node.js 22.22 or newer
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
+- A [Prisma account](https://console.prisma.io) for the deploy step
 
 ## 1. Set up your project
 
@@ -526,6 +527,270 @@ GET /posts 200 - - 7.514 ms
 
 The server reads `DATABASE_URL` the same way the dev server does, through the `dotenv/config` import in `src/prisma/db.ts`, so a `.env` file next to the build is enough locally. On a host, set the variable in the environment instead.
 
+## 8. Deploy to Prisma Compute
+
+[Prisma Compute](/compute) runs the server build of a React Router app, so the loaders and actions from the earlier steps work there unchanged. The first deploy creates a project that holds the app's server and a new Prisma Postgres database, separate from your local one. You describe both in TypeScript with [Prisma Composer](/composer), and the Prisma CLI deploys what you describe.
+
+### 8.1. Plan the migration
+
+The deploy creates the tables in the new database from the migrations in your project, so write one first:
+
+```npm
+npx prisma migration plan --name init
+```
+
+```text no-copy
+→ Review migrations/app/20261117T1404_baseline
+→ Apply the migration: prisma db migrate
+```
+
+The earlier `db init` saved a description of the schema it created in the `migrations` directory, and `migration plan` turns it into a baseline migration that creates the same tables in an empty database. Keep the `migrations` directory in version control, because every deploy applies it before the server starts.
+
+### 8.2. Install the deploy packages
+
+Composer works with one exact version of `@prisma/orm-postgres`, which it declares as a peer dependency, so install the Composer packages together with that version:
+
+```bash
+npm install --save-exact @prisma/composer @prisma/composer-prisma-cloud \
+  "@prisma/orm-postgres@$(npm view @prisma/composer-prisma-cloud peerDependencies.@prisma/orm-postgres)"
+```
+
+If you install the Composer packages on their own and npm stops with `ERESOLVE`, the installed `@prisma/orm-postgres` is newer than the one Composer supports, and the command above fixes that.
+
+Compute starts one file, so the app also needs a server that serves both the React Router build and the browser assets. This guide uses Express with React Router's Express adapter:
+
+```npm
+npm install express @react-router/express
+npm install -D @types/express
+```
+
+### 8.3. Declare the app
+
+Create `src/prisma/composer.ts` so that the deploy files can refer to your schema. `dataContract()` wraps the emitted contract, and the server and the database both use the value it returns:
+
+```typescript title="src/prisma/composer.ts"
+import { dataContract } from "@prisma/composer-prisma-cloud/orm";
+import type { Contract } from "./contract.d.ts";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const appContract = dataContract<Contract>(contractJson);
+```
+
+Create `service.ts` in the project root. It names the service, declares the database it needs, and points at the `build` directory that `react-router build` writes. `dependencies: "external"` tells the deploy to ship the packages that the server build imports from `node_modules`, because React Router does not bundle them:
+
+```typescript title="service.ts"
+import node from "@prisma/composer/node";
+import { compute } from "@prisma/composer-prisma-cloud";
+import { postgres } from "@prisma/composer-prisma-cloud/orm";
+import { appContract } from "./src/prisma/composer.ts";
+
+export default compute({
+  name: "app",
+  deps: { database: postgres(appContract) },
+  build: node({
+    module: import.meta.url,
+    dir: "./build",
+    entry: "server/index.js",
+    dependencies: "external",
+  }),
+});
+```
+
+Create `module.ts` next to it. A module groups the server and the database into one app, and its name becomes the project name in your workspace:
+
+```typescript title="module.ts"
+import { module } from "@prisma/composer";
+import { postgres } from "@prisma/composer-prisma-cloud/orm";
+import { appContract } from "./src/prisma/composer.ts";
+import app from "./service.ts";
+
+export default module("my-app", ({ provision }) => {
+  const database = provision(
+    postgres({ name: "database", contract: appContract, config: "./prisma.config.ts" }),
+  );
+  provision(app, { deps: { database } });
+});
+```
+
+Add a `composer` section to `prisma.config.ts`. The `region` is where the first deploy creates the project, and it cannot change afterwards; [Limitations](/compute/limitations#runtime) lists the regions you can choose:
+
+```typescript title="prisma.config.ts"
+import 'dotenv/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+import { defineConfig as composer } from '@prisma/composer/config'; // [!code ++]
+import { nodeBuild } from '@prisma/composer/node/control'; // [!code ++]
+import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control'; // [!code ++]
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
+  composer: composer({ // [!code ++]
+    entry: './module.ts', // [!code ++]
+    extensions: [prismaCloud({ region: 'eu-central-1' }), nodeBuild()], // [!code ++]
+    state: prismaState(), // [!code ++]
+  }), // [!code ++]
+});
+```
+
+### 8.4. Take the client from the service
+
+On Compute the app does not read `DATABASE_URL`. The deploy hands the service a client that is already connected to the project's database, and `service.load()` returns it. Change `src/prisma/db.ts` to use that client when there is one, and to fall back to `DATABASE_URL` everywhere else:
+
+```typescript title="src/prisma/db.ts"
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
+import service from '../../service.ts'; // [!code ++]
+import type { Contract } from './contract.d.js';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const contract = contractFromJson<Contract>(contractJson);
+
+function composerClient() { // [!code ++]
+  try { // [!code ++]
+    return service.load().database.client; // [!code ++]
+  } catch { // [!code ++]
+    return undefined; // [!code ++]
+  } // [!code ++]
+} // [!code ++]
+
+export const db = postgres({ // [!code --]
+  contract, // [!code --]
+  url: process.env['DATABASE_URL']!, // [!code --]
+}); // [!code --]
+export const db = // [!code ++]
+  composerClient() ?? // [!code ++]
+  postgres({ // [!code ++]
+    contract, // [!code ++]
+    url: process.env['DATABASE_URL']!, // [!code ++]
+  }); // [!code ++]
+```
+
+Outside Compute and `prisma dev`, `service.load()` throws because nothing supplied a database, so `npm run dev` and the seed script keep using the connection string in `.env`. The client has the same type either way, and your routes do not change.
+
+### 8.5. Add a server entry
+
+Create `server.ts` in the project root. It serves the files in `build/client`, sends every other request to React Router, and listens on the port Compute assigns. The database on Compute starts empty, so the entry also creates the two users before it accepts requests:
+
+```typescript title="server.ts"
+import { fileURLToPath } from "node:url";
+import { createRequestHandler } from "@react-router/express";
+import express from "express";
+import * as build from "virtual:react-router/server-build";
+import service from "./service.ts";
+import { db } from "./src/prisma/db.ts";
+
+// The deployed database starts empty, so create the two users on first start.
+for (const user of [
+  { email: "alice@prisma.io", name: "Alice" },
+  { email: "bob@prisma.io", name: "Bob" },
+]) {
+  if (!(await db.orm.public.User.where({ email: user.email }).first())) {
+    await db.orm.public.User.create(user);
+  }
+}
+
+// The server build is written to build/server, next to build/client.
+const clientDir = fileURLToPath(new URL("../client", import.meta.url));
+
+const app = express();
+app.disable("x-powered-by");
+app.use("/assets", express.static(`${clientDir}/assets`, { immutable: true, maxAge: "1y" }));
+app.use(express.static(clientDir, { maxAge: "1h" }));
+app.use(createRequestHandler({ build }));
+
+// Outside Prisma Compute and `prisma dev` there is no Composer configuration,
+// so fall back to PORT for a plain `npm run start`.
+function port() {
+  try {
+    return service.port();
+  } catch {
+    return Number(process.env.PORT ?? 3000);
+  }
+}
+
+app.listen(port(), "0.0.0.0");
+```
+
+Tell React Router to build this file as the server entry, so that `build/server/index.js` starts the server instead of only exporting the request handler:
+
+```typescript title="vite.config.ts"
+import { reactRouter } from "@react-router/dev/vite";
+import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  environments: { // [!code ++]
+    ssr: { // [!code ++]
+      build: { // [!code ++]
+        rolldownOptions: { input: "./server.ts" }, // [!code ++]
+      }, // [!code ++]
+    }, // [!code ++]
+  }, // [!code ++]
+  plugins: [tailwindcss(), reactRouter()],
+  resolve: {
+    tsconfigPaths: true,
+  },
+});
+```
+
+The build output now starts itself, so `react-router-serve` no longer applies. Change the `start` script to run the file with Node.js:
+
+```json title="package.json"
+{
+  "scripts": {
+    "start": "react-router-serve ./build/server/index.js", // [!code --]
+    "start": "node build/server/index.js" // [!code ++]
+  }
+}
+```
+
+The CLI writes local state to `.prisma-composer` and `.alchemy`, so add both directories to `.gitignore`.
+
+### 8.6. Build and deploy
+
+Sign in once (it opens a browser):
+
+```npm
+npx prisma auth login
+```
+
+The `deploy` command does not build the app for you, so build first and then deploy from the project directory:
+
+```npm
+npm run build
+npx prisma deploy
+```
+
+```text no-copy
+my-app
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.fra.prisma.build
+```
+
+Open the URL: the home page lists Alice and Bob from the deployed database, `/posts/new` creates a post in it, and the scripts and styles under `/assets/` load from the same server. You can check the loader the way the browser does on a client-side navigation:
+
+```bash
+curl https://xyz.fra.prisma.build/posts.data
+```
+
+The deploy creates a project named after your module in your workspace, and re-running the deploy reuses it: the CLI finds the hosted state it stored on the first run and converges the project to your module. If a project with that name exists but the CLI cannot identify or verify its stored state (one left behind by a different checkout, for example), the deploy stops with `HostedStateBootstrapError`; deploy under another name with `--name <unique-name>`, or rename the module in `module.ts`.
+
+To run the app locally the way Compute runs it, build it and start `prisma dev`, which starts a local Prisma Postgres database, applies your migrations to it, and prints the local URL of the service:
+
+```npm
+npm run build
+npx prisma dev
+```
+
+For previews per Git branch and deploy on push, see [Deploy on push](/compute/deploy-on-push).
+
 ## Common gotchas
 
 :::warning
@@ -547,7 +812,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Create a new React Router app in framework mode, add Prisma ORM to it, and build a small blog on top.
+Create a new React Router app in framework mode, add Prisma ORM to it, build a small blog on top, and deploy it to Prisma Compute.
 
 1. Scaffold: `npx create-react-router@latest my-app --yes`, then `cd my-app`. Run `npx prisma@latest orm init --yes --target postgres --authoring psl` so Prisma ORM is added to the existing project, then `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them.
 2. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`; the scaffolded `src/prisma/db.ts` and `prisma.config.ts` both load `.env`.
@@ -555,6 +820,7 @@ Create a new React Router app in framework mode, add Prisma ORM to it, and build
 4. Add `allowImportingTsExtensions: true` to `tsconfig.json`, write `src/prisma/seed.ts` that creates two users with posts and closes the client, and run it with `node src/prisma/seed.ts`.
 5. Create `app/lib/db.server.ts` that re-exports `db` from `src/prisma/db.ts`. Build these routes in `app/routes.ts`: `/` lists users, `/posts` lists posts with their author, `/posts/new` has a form whose action creates a post and redirects to it, `/posts/:postId` shows one post or a 404.
 6. Start `npm run dev` in the background, wait until it reports ready, verify every route with curl including a POST to `/posts/new`, then stop the dev server. Run `npm run typecheck` and fix anything it reports.
+7. Deploy to Prisma Compute by following step 8 of https://www.prisma.io/docs/guides/frameworks/react-router-7.md exactly: plan the migration, install the Composer packages with the `@prisma/orm-postgres` version they name as a peer dependency, add `src/prisma/composer.ts`, `service.ts`, `module.ts`, the `composer` section in `prisma.config.ts`, the Composer client in `src/prisma/db.ts`, and the Express `server.ts` wired in through `vite.config.ts`. Check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Then run `npm run build` followed by `npx prisma deploy` and verify the live URL's `/` and `/posts.data`. If the deploy fails with `HostedStateBootstrapError`, re-run it with `--name <a unique name>`.
 ```
 
 </AgentPrompt>
