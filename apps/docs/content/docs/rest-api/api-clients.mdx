@@ -1,6 +1,6 @@
 ---
 title: Using API Clients
-description: 'Use the REST API with popular API clients like Postman, Insomnia, and Yaak'
+description: 'Use the REST API with popular API clients like Postman, Insomnia, Yaak, and Bruno'
 url: /rest-api/api-clients
 metaTitle: How to use the REST API with API Clients
 metaDescription: Learn how to use the REST API with API Clients
@@ -9,6 +9,8 @@ metaDescription: Learn how to use the REST API with API Clients
 This guide shows you how to configure popular API clients to work with the REST API using OAuth 2.0 authentication.
 
 <a href="/docs/prisma-rest-api.postman_collection.json" download="prisma-rest-api.postman_collection.json">Download the Postman collection</a> to import all endpoints with OAuth2 auth pre-configured. Compatible with Postman, Yaak, Insomnia, and other clients that support the Postman Collection v2.1 format.
+
+Using Bruno? A [Bruno collection](https://github.com/prisma/web/tree/main/apps/docs/public/bruno/prisma-rest-api) with the same endpoints is kept in the docs repository. See [Bruno](#bruno) for setup.
 
 ## Postman
 
@@ -230,3 +232,82 @@ With authentication configured, you can now create a project:
 3. Click **Send**
 
 A successful response contains the new project's details.
+
+## Bruno
+
+Bruno is an open-source API client that stores collections as plain files on your machine, so they work with Git.
+
+The Bruno collection is generated from the same OpenAPI specification as these docs. It has one YAML file per endpoint and comes with OAuth2 auth pre-configured.
+
+### Prerequisites
+
+Before you begin, make sure you have:
+
+- A [Prisma Console account](https://console.prisma.io)
+- [Bruno installed](https://www.usebruno.com/downloads)
+- [Git installed](https://git-scm.com/downloads)
+
+### 1. Create an OAuth2 Application
+
+Register an OAuth2 application in Prisma Console so Bruno can request tokens on your behalf:
+
+1. Navigate to [Prisma Console](https://console.prisma.io) and log in
+2. Click the **🧩 Integrations** tab in the left sidebar
+3. Under the "Published Applications" section, click **New Application**
+4. Fill in your application details:
+   - **Name**: Bruno API Client
+   - **Description**: Brief description of your application _(Optional)_
+   - **Redirect URI**: `https://localhost/callback`
+5. Click **Continue**
+6. **Important**: Copy your Client ID and Client Secret immediately and store them securely
+
+:::note
+The redirect URI can be any valid URL. Bruno intercepts the OAuth callback before the browser reaches it, as long as the URL matches what's registered with the provider.
+:::
+
+### 2. Open the collection in Bruno
+
+The collection lives in the `prisma/web` repository. Download only that folder with a sparse checkout:
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse https://github.com/prisma/web.git
+cd web
+git sparse-checkout set apps/docs/public/bruno/prisma-rest-api
+```
+
+Then load it in Bruno:
+
+1. Open Bruno and click **Open Collection**
+2. Select the `web/apps/docs/public/bruno/prisma-rest-api` folder
+3. Select **Environment 1** from the environment dropdown. It sets `baseUrl` to `https://api.prisma.io`
+
+### 3. Configure OAuth 2.0 in Bruno
+
+The collection's auth settings already point at Prisma Auth and read your credentials from environment variables:
+
+1. Open the environment dropdown and click **Configure**
+2. Add the following variables to **Environment 1**:
+
+| Variable              | Value                        |
+| --------------------- | ---------------------------- |
+| `oauth_client_id`     | `your-client-id`             |
+| `oauth_client_secret` | `your-client-secret`         |
+| `oauth_callback_url`  | `https://localhost/callback` |
+| `oauth_state`         | Any value, such as `prisma`  |
+
+3. Mark `oauth_client_secret` as a secret so Bruno doesn't write it to disk, then save
+4. Open **Collection Settings** and navigate to the **Auth** tab. You can also set a variable here: hover over it in a field, such as `{{oauth_client_id}}`, and enter its value directly
+5. Click **Get Access Token**
+6. A browser window opens for you to complete the authorization flow
+7. Return to Bruno and verify that the access token has been retrieved
+
+Every request in the collection inherits this token.
+
+### 4. Make your first request
+
+With authentication configured, list your workspaces:
+
+1. In the sidebar, open **Workspaces** and select **Get list of workspaces**
+2. Click **Send**
+
+A successful response contains the workspaces your account can access.
