@@ -59,7 +59,7 @@ To create a baseline migration:
  npx prisma migrate diff \
    --from-empty \
    --to-schema prisma/schema.prisma \
-   --script > prisma/migrations/0_init/migration.sql
+   --script --output prisma/migrations/0_init/migration.sql
  ```
 
 - Run the `prisma migrate resolve` command for each migration that should be ignored:
@@ -72,3 +72,124 @@ This command adds the target migration to the `_prisma_migrations` table and mar
 
 1. Skips all migrations marked as 'applied', including the baseline migration
 1. Applies any new migrations that come _after_ the baseline migration
+
+## Baselining a migration history that is behind your schema [#migration-history-behind-schema]
+
+A migration history falls behind when tables or columns reach the database without a migration, for example through [`prisma db push`](/orm/v7/prisma-migrate/workflows/prototyping-your-schema) or SQL that someone ran by hand. The database and the Prisma schema still agree with each other, so the application works, but the `prisma/migrations` folder can no longer recreate the database.
+
+You notice this when you move to a new database or create a new environment. `prisma migrate deploy` applies only the migrations in the folder to the empty database, reports `All migrations have been successfully applied.`, and leaves every table that never had a migration missing. `prisma migrate status` does not warn you either, because it compares the folder with the `_prisma_migrations` table and not with the tables in the database, so it prints `Database schema is up to date!` for a database in this state.
+
+### Detect the drift
+
+Compare the Prisma schema with the existing database first. This comparison does not need a shadow database, and with `--exit-code` the command exits with `0` when the two match, `2` when they differ and `1` on an error:
+
+```npm
+npx prisma migrate diff \
+  --from-schema prisma/schema.prisma \
+  --to-config-datasource \
+  --exit-code
+```
+
+The command should print `No difference detected.`. If it lists differences, the schema and the database disagree, and you need to settle that before you continue, for example by updating the schema from the database with [`prisma db pull`](/cli/v7/db/pull).
+
+Then compare the migration history with the Prisma schema. Prisma Migrate replays the migrations in a [shadow database](/orm/v7/prisma-migrate/understanding-prisma-migrate/shadow-database) to find out what they produce, so this comparison needs one. The shadow database is a second, empty database that you can throw away afterwards, and it must not be the database in `datasource.url`. For PostgreSQL, the following command starts a local one and prints its `postgres://` connection string:
+
+```npm
+npx prisma dev --detach --name shadow
+```
+
+Set that connection string as the `SHADOW_DATABASE_URL` environment variable, and then add `shadowDatabaseUrl` to the `datasource` object in `prisma.config.ts`. Keep this order, because the Prisma CLI fails to load a config file that reads an environment variable you have not set:
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+    shadowDatabaseUrl: env("SHADOW_DATABASE_URL"),
+  },
+});
+```
+
+Now run the comparison:
+
+```npm
+npx prisma migrate diff \
+  --from-migrations prisma/migrations \
+  --to-schema prisma/schema.prisma \
+  --exit-code
+```
+
+Exit code `2` means the history is behind, and the output lists what the migrations do not create:
+
+```text no-copy
+[+] Added tables
+  - Product
+  - Order
+  - OrderItem
+  - AuditLog
+```
+
+### Add a catch-up migration
+
+Write the missing SQL into a new migration. Give the folder a name that sorts after your latest migration, such as the current UTC time in the `YYYYMMDDHHMMSS` format followed by a short label. `--output` creates the folder and writes the file, so do not create the folder yourself first, because an empty migration folder makes the command fail with error `P3015`:
+
+```npm
+npx prisma migrate diff \
+  --from-migrations prisma/migrations \
+  --to-schema prisma/schema.prisma \
+  --script \
+  --output prisma/migrations/20261125150000_catch_up/migration.sql
+```
+
+Review the SQL in the new file, and then run the history comparison from the previous step again. It should now print `No difference detected.` and exit with `0`.
+
+Every database that already contains these tables must skip the new migration. With `DATABASE_URL` pointing at the existing database, mark the migration as applied:
+
+```npm
+npx prisma migrate resolve --applied 20261125150000_catch_up
+```
+
+If you copy the database to its new home with `pg_dump` and `pg_restore`, the copy includes the `_prisma_migrations` table, so resolve the migration once, either on the source before the dump or on the copy after the restore.
+
+A new, empty database needs no special handling from here on. Point `DATABASE_URL` at it and deploy, and Prisma Migrate applies the whole history, including the catch-up migration:
+
+```npm
+npx prisma migrate deploy
+```
+
+### Verify the result
+
+Run the first comparison against each database, the existing one and any new one:
+
+```npm
+npx prisma migrate diff \
+  --from-schema prisma/schema.prisma \
+  --to-config-datasource \
+  --exit-code
+```
+
+`No difference detected.` and exit code `0` on every database mean that the schema, the migration history and the databases agree.
+
+Then undo the temporary setup. Remove the `shadowDatabaseUrl` line from `prisma.config.ts` first, because `env()` stops every Prisma CLI command with `Cannot resolve environment variable: SHADOW_DATABASE_URL` once the variable is gone. After that, unset `SHADOW_DATABASE_URL` and stop the local shadow database with `npx prisma dev stop shadow`.
+
+## Write the SQL file with `--output` on Windows [#windows-powershell-encoding]
+
+Pass `--output <file>` to `prisma migrate diff` and do not redirect its output with `>`. The option writes UTF-8 without a byte order mark (BOM) in every shell, while redirection leaves the encoding to the shell. According to [Microsoft's documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-5.1), `>` in Windows PowerShell 5.1 creates a UTF-16LE file with a BOM and `Out-File -Encoding utf8` creates a UTF-8 file with a BOM, and only PowerShell 6 and later default to UTF-8 without one.
+
+PostgreSQL rejects a SQL file that starts with a BOM. `prisma db execute --file` stops with `ERROR: syntax error at or near ""`, where the quoted character is the invisible BOM, and `prisma migrate deploy` reports the same message under error `P3018` with database error code `42601`. A UTF-16 file fails in `prisma migrate deploy` with `string contains embedded null`. `psql` skips a UTF-8 BOM, so the same file can work in `psql` and fail in the Prisma CLI.
+
+To repair a migration whose file has the wrong encoding, delete its folder and generate the file again with `--output`. If `prisma migrate deploy` already failed on that migration, the database records it as failed and later deploys stop with error `P3009`, so mark it as rolled back and deploy again, with the name of your migration in place of `0_init`:
+
+```npm
+npx prisma migrate resolve --rolled-back 0_init
+```
+
+```npm
+npx prisma migrate deploy
+```
