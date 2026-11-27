@@ -2,7 +2,7 @@
 title: "Serverless Postgres compared (2026): Neon, Supabase, Amazon RDS/Aurora and Prisma Postgres"
 slug: "serverless-postgres"
 date: "2026-07-09"
-updatedAt: "2026-11-25"
+updatedAt: "2026-11-27"
 authors:
   - "Martin Janse van Rensburg"
 tags:
@@ -111,7 +111,7 @@ Same attributes for each, so you can scan across them.
 - **Bills for:** operations, the one per-query model among the [serverless Postgres](https://www.prisma.io/postgres/serverless) options here. The [pricing page](https://www.prisma.io/pricing) counts one operation per create, read, update or delete, whether it is a simple write or a query with several joins. The [Prisma Postgres FAQ](https://www.prisma.io/docs/postgres/faq#what-is-an-operation) adds that query duration does not change the price, and that with Prisma ORM each Prisma Client query is one operation, while with another client each SQL query over the direct connection is one (checked 2026-10-21).
 - **Idle behaviour:** no cold starts: the first query after an idle period does not wait for the database to wake up, and idle time adds nothing to the bill because billing is per operation ([Prisma Postgres docs](https://www.prisma.io/docs/postgres), checked 2026-11-25).
 - **Free / entry:** 200,000 operations, 2 GB, and 50 databases, no card; paid from $10/mo (1M operations, 10 GB, then $0.008 per 1,000) to $129/mo (50M operations). Allowances are account-wide, not per database.
-- **Watch out for:** no copy-on-write database copies yet (separate databases are the substitute: on Prisma Compute, every pushed branch other than the default one gets a preview with its own services and, for databases declared in the Prisma Composer module, its own new database; production data is not copied); less operational track record than Aurora or Supabase; at sustained high query volume the per-operation math can exceed always-on billing (see the [cost comparison](#the-cost-crossover)).
+- **Watch out for:** no copy-on-write database copies (separate databases are the substitute: on Prisma Compute, every pushed branch other than the default one gets a preview with its own services and, for databases declared in the Prisma Composer module, its own new database; production data is not copied); less operational track record than Aurora or Supabase; at sustained high query volume the per-operation math can exceed always-on billing (see the [cost comparison](#the-cost-crossover)).
 
 ### Neon
 
@@ -166,7 +166,7 @@ Below that crossover, operation billing keeps you off always-on costs; above it,
 
 Beyond billing and idle behavior, a production choice touches a few more things. They rarely decide the shortlist, but they can break a tie:
 
-- **Branching.** Copy-on-write storage lets several providers fork a database like a Git branch for previews or migration tests. Neon includes 10 branches per project free; Supabase bills $0.01344 per branch-hour; PlanetScale runs each branch as its own billed cluster. Prisma Postgres has no copy-on-write copies yet; its substitute is separate databases (50 free, 1,000 on paid).
+- **Branching.** Copy-on-write storage lets several providers fork a database like a Git branch for previews or migration tests. Neon includes 10 branches per project free; Supabase bills $0.01344 per branch-hour; PlanetScale runs each branch as its own billed cluster. For Prisma Postgres, a [GitHub Actions workflow in the Prisma docs](https://www.prisma.io/docs/guides/integrations/github-actions) gives each pull request its own new database to test against, with your schema and seed data, and deletes it when the pull request closes; these are new databases, not copy-on-write copies (checked 2026-11-26). Free includes 50 databases, paid plans 1,000.
 - **Connection pooling.** Serverless functions open connections fast, and Postgres tolerates a limited number. Prisma Postgres, Neon, and Supabase build in a pooler. On Aurora the answer is RDS Proxy, a separately billed service that holds connections open and, as a result, prevents auto-pause from ever engaging.
 - **Ecosystem.** Aurora buys into the full AWS stack; Supabase bundles auth, storage, and realtime; PlanetScale brings its Vitess and Metal operational heritage.
 
