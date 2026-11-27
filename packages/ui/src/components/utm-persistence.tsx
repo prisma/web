@@ -18,6 +18,7 @@ import {
 import { ATTRIBUTION_CHANGE_EVENT, type AttributionChangeDetail } from "../lib/attribution";
 import { hasAdvertisingConsent } from "../lib/consent";
 import { readExperimentVariants, syncExperimentParams } from "../lib/experiments";
+import { captureSourceTouch, syncSourceParams } from "../lib/source.browser";
 
 interface UtmPersistenceProps {
   /**
@@ -146,6 +147,88 @@ function getStoredAttribution(storageKey: string, searchParams: URLSearchParams)
   return attribution;
 }
 
+interface ConsoleLinkOptions {
+  storageKey: string;
+  fallbackConsoleRef?: (pathname: string) => string;
+}
+
+function closestAnchor(event: Event) {
+  return (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>("a[href]") ?? null;
+}
+
+/**
+ * Rewrites a Console-bound anchor's URL with attribution: the campaign tags (or
+ * the `ref` fallback), the experiment variants and the classified source.
+ * Returns the rewritten URL when something changed, or `undefined` when the
+ * anchor is not Console-bound or already carries everything.
+ */
+export function decorateConsoleAnchor(
+  anchor: HTMLAnchorElement,
+  { storageKey, fallbackConsoleRef }: ConsoleLinkOptions,
+) {
+  const href = anchor.getAttribute("href");
+
+  if (
+    !href ||
+    href.startsWith("#") ||
+    href.startsWith("mailto:") ||
+    href.startsWith("tel:") ||
+    anchor.hasAttribute("download")
+  ) {
+    return undefined;
+  }
+
+  const attribution = getActiveAttribution(storageKey);
+  const targetUrl = new URL(anchor.href, window.location.href);
+  const isInternalLink = targetUrl.origin === window.location.origin;
+  const isConsoleLink = targetUrl.hostname === CONSOLE_HOST;
+  const isConsoleRedirect =
+    isInternalLink && (targetUrl.pathname === "/login" || targetUrl.pathname === "/sign-up");
+
+  if (!isConsoleLink && !isConsoleRedirect) {
+    return undefined;
+  }
+
+  let updated = false;
+  if (attribution) {
+    updated = syncUtmAttribution(targetUrl, attribution, { includeFirstTouch: true });
+  } else if (fallbackConsoleRef) {
+    // No campaign ever touched this visitor, so the only thing the console
+    // would learn is nothing. Tell it which page sent them instead.
+    updated = syncFallbackRef(targetUrl, fallbackConsoleRef(window.location.pathname));
+  }
+  // The experiment variants the visitor saw go along with or without a
+  // campaign, so the signup counts toward the page version they saw.
+  updated = syncExperimentParams(targetUrl, readExperimentVariants()) || updated;
+  // The classified source goes along with or without a campaign. It is added
+  // after the ref fallback, which skips links that carry any `first_` key.
+  updated = syncSourceParams(targetUrl, captureSourceTouch()) || updated;
+
+  return updated ? { targetUrl, isInternalLink } : undefined;
+}
+
+/** Events that can open a link without a primary click. */
+export const OPEN_ELSEWHERE_EVENTS = ["mousedown", "auxclick", "contextmenu"] as const;
+
+/**
+ * Middle-click, right-click "Open in new tab" and a long press open a link
+ * without a primary click, so the href is decorated before the browser reads
+ * it. The primary click stays with the click handler, which may route it.
+ */
+export function decorateBeforeOpenElsewhere(event: MouseEvent, options: ConsoleLinkOptions) {
+  if (event.type !== "contextmenu" && event.button === 0) return;
+  const anchor = closestAnchor(event);
+  const decorated = anchor && decorateConsoleAnchor(anchor, options);
+  if (!anchor || !decorated) return;
+  const { targetUrl, isInternalLink } = decorated;
+  anchor.setAttribute(
+    "href",
+    isInternalLink
+      ? `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`
+      : targetUrl.toString(),
+  );
+}
+
 /**
  * Captures campaign parameters in storage and forwards them only at the Console
  * handoff. Ordinary links retain their authored URLs so copied docs links do not
@@ -164,6 +247,7 @@ export function UtmPersistence({
 
   useEffect(() => {
     getActiveAttribution(storageKey);
+    captureSourceTouch();
     const refresh = () => getActiveAttribution(storageKey);
     document.addEventListener("cookieyes_consent_update", refresh);
     document.addEventListener("cookieyes_banner_load", refresh);
@@ -180,56 +264,14 @@ export function UtmPersistence({
         return;
       }
 
-      const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
+      const anchor = closestAnchor(event);
+      const decorated = anchor && decorateConsoleAnchor(anchor, { storageKey, fallbackConsoleRef });
 
-      if (!anchor) {
+      if (!anchor || !decorated) {
         return;
       }
 
-      const href = anchor.getAttribute("href");
-
-      if (
-        !href ||
-        href.startsWith("#") ||
-        href.startsWith("mailto:") ||
-        href.startsWith("tel:") ||
-        anchor.hasAttribute("download")
-      ) {
-        return;
-      }
-
-      const attribution = getActiveAttribution(storageKey);
-      const targetUrl = new URL(anchor.href, window.location.href);
-      const isInternalLink = targetUrl.origin === window.location.origin;
-      const isConsoleLink = targetUrl.hostname === CONSOLE_HOST;
-      const isConsoleRedirect =
-        isInternalLink && (targetUrl.pathname === "/login" || targetUrl.pathname === "/sign-up");
-
-      if (!isInternalLink && !isConsoleLink) {
-        return;
-      }
-
-      const isConsoleBound = isConsoleLink || isConsoleRedirect;
-      if (!isConsoleBound) return;
-
-      let updated = false;
-      if (attribution) {
-        updated = syncUtmAttribution(targetUrl, attribution, {
-          includeFirstTouch: isConsoleBound,
-        });
-      } else if (fallbackConsoleRef && isConsoleBound) {
-        // No campaign ever touched this visitor, so the only thing the console
-        // would learn is nothing. Tell it which page sent them instead.
-        updated = syncFallbackRef(targetUrl, fallbackConsoleRef(window.location.pathname));
-      }
-      // The experiment variants the visitor saw go along with or without a
-      // campaign, so the signup counts toward the page version they saw.
-      updated = syncExperimentParams(targetUrl, readExperimentVariants()) || updated;
-
-      if (!updated) {
-        return;
-      }
-
+      const { targetUrl, isInternalLink } = decorated;
       const nextHref = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
       const isModifiedClick = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 
@@ -258,8 +300,19 @@ export function UtmPersistence({
       anchor.setAttribute("href", isInternalLink ? nextHref : targetUrl.toString());
     }
 
+    const handleOpenElsewhere = (event: MouseEvent) =>
+      decorateBeforeOpenElsewhere(event, { storageKey, fallbackConsoleRef });
+
     document.addEventListener("click", handleClick, true);
-    return () => document.removeEventListener("click", handleClick, true);
+    for (const type of OPEN_ELSEWHERE_EVENTS) {
+      document.addEventListener(type, handleOpenElsewhere, true);
+    }
+    return () => {
+      document.removeEventListener("click", handleClick, true);
+      for (const type of OPEN_ELSEWHERE_EVENTS) {
+        document.removeEventListener(type, handleOpenElsewhere, true);
+      }
+    };
   }, [router, basePath, proxiedPaths, storageKey, fallbackConsoleRef]);
 
   return null;

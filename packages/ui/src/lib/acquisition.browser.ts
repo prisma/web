@@ -7,6 +7,7 @@ import {
   observeAcquisition,
   readAcquisitionCookie,
 } from "./acquisition";
+import { readEntryReferrer } from "./source.browser";
 
 let entry: { referrer: string; hasCampaign: boolean; now: number } | undefined;
 
@@ -23,7 +24,9 @@ export function captureBrowserAcquisition(
     return {};
   try {
     entry ??= {
-      referrer: document.referrer,
+      // Read once per document and shared with the source classifier, which
+      // keeps only the classified value, never the referrer itself.
+      referrer: readEntryReferrer(),
       hasCampaign: Array.from(new URLSearchParams(window.location.search)).some(
         ([key, value]) =>
           Boolean(value) &&
