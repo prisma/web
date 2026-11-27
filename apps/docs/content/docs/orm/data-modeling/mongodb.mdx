@@ -68,6 +68,42 @@ A `Json` field holds only JSON values. A read fails with `RUNTIME.DECODE_FAILED`
 
 Every value you write is checked against its field's type. A value of the wrong type, a fraction or a number outside the 32-bit range for an `Int32` field, a value that is not one of the field's enum values, or `null` for a field that is not optional makes the write fail with `RUNTIME.ENCODE_FAILED`, and the error names the field. A value you compare a field with in `.where(...)` is converted the same way, so a filter on a `BigInt` field takes a `bigint`. A filter does accept `null` for a field that is not optional, and a value outside the field's enum, so you can find the documents that hold one. Reads give you each value as the table shows, in included documents and embedded documents too, and an optional field that a document does not have reads as `null`.
 
+### Decimal128
+
+Use `Decimal128` when money or other exact decimals must keep every digit. In your contract it is a scalar field; in TypeScript a read gives you decimal text, not a JavaScript `number`, so nothing is rounded away in transit. For broader money modeling patterns, see [Money and decimals](/orm/data-modeling/money).
+
+```prisma
+model Product {
+  id    ObjectId   @id @map("_id")
+  name  String
+  price Decimal128
+  @@map("products")
+}
+```
+
+**What to pass on writes.** Pass decimal text, such as `"129.99"`, to `create()`, `update()`, and `set()` on a `Decimal128` field. The ORM checks the text the same way it checks a filter value. A JavaScript `number`, malformed text such as `"12.3.4"`, or a value with more significant digits than BSON `Decimal128` can store throws `RUNTIME.ENCODE_FAILED` before the query runs. Do not use `Number(...)` to turn a stored price into a number for arithmetic if you need exact decimals; use a decimal library that works on strings or big decimals, or keep amounts in integer minor units in an `Int32` or `Int64` field, as [Money and decimals](/orm/data-modeling/money) describes.
+
+**Reads and filters.** A `where({ price: "19.99" })` object filter takes the same decimal text you read from the field. For operators such as `gte`, import `MongoFieldFilter` and pass decimal text there too:
+
+```ts
+import { db } from "./prisma/db";
+import { MongoFieldFilter } from "@prisma/orm-mongo/query-ast/execution";
+
+const product = await db.orm.products.create({ name: "Notebook", price: "129.99" });
+
+const sale = await db.orm.products
+  .where(MongoFieldFilter.gte("price", "100"))
+  .all();
+
+await db.orm.products.where({ id: product.id }).update({ price: "119.99" });
+```
+
+See [`MongoFieldFilter`](/orm/reference/orm-client#mongofieldfilter) for every filter helper and how values are encoded.
+
+**`inc()` and `mul()`.** The update builder offers `inc` and `mul` on numeric scalar fields. They take a JavaScript `number`, which can lose precision before the value reaches MongoDB, so prefer `set()` with decimal text when the new value must stay exact. When `inc` or `mul` fits your case, the same field-operations form as other MongoDB updates applies; see [`inc()` and `mul()` (MongoDB)](/orm/reference/orm-client#inc-and-mul-mongodb).
+
+**Pipeline builder.** ORM reads return decimal text. Once a [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) stage reshapes rows, such as after `group()`, later results follow the driver and are not re-encoded through the ORM field codecs. Treat accumulator output on a `Decimal128` field as a BSON decimal value from the MongoDB driver until you map it yourself. In [`match()`](/orm/reference/pipeline-builder#match), each filter value is sent as you give it, the same rule as for `ObjectId` filters in the pipeline reference, not with the conversions ORM `where()` applies to scalar fields. After a stage returns raw driver shapes, compare a `Decimal128` field to a value in the form the pipeline actually carries, or filter earlier in the pipeline before types change. For equality on documents the ORM still decodes, prefer `where({ price: "19.99" })` or [`MongoFieldFilter`](/orm/reference/orm-client#mongofieldfilter) instead of assuming decimal text works in every `match()` predicate.
+
 `DateTime(as: temporal)` reads an instant as a `Temporal.Instant`, `DateTime(as: string)` as text such as `"2024-01-01T00:00:00.000Z"`, and `Date(as: temporal)` and `Time(as: temporal)` read a `Temporal.PlainDate` and a `Temporal.PlainTime`. The `temporal` forms need the `temporal-polyfill` package, a peer dependency of `@prisma/orm-mongo` that npm, pnpm and bun install for you; with Yarn, or npm with `legacy-peer-deps`, add it to your dependencies yourself.
 
 Before `8.0.0-rc.24`, `Date` was an instant read as a JavaScript `Date`, the type `DateTime` is now. A contract written for an earlier release that types a timestamp as `Date` is still accepted by `contract emit`, but the field now holds a calendar date: reading a document whose value has a time of day fails, and `@onCreate(now())` writes today's date at midnight UTC. Rename such fields to `DateTime`; the [upgrade guide](https://github.com/prisma/orm/blob/v8.0.0-rc.24/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.23-to-8.0.0-rc.24/) ships a script that does it. Renaming them leaves the emitted `contract.json` as it was before the upgrade.
