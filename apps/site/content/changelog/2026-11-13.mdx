@@ -1,0 +1,163 @@
+---
+title: "Give each Prisma Console member a role and limit them to the projects they work on"
+date: "2026-11-13"
+version: "2026-11-13"
+slug: "2026-11-13"
+headline: "Give each Prisma Console member a role and limit them to the projects they work on"
+tags:
+  - "Prisma"
+  - "Prisma Console"
+  - "Prisma Compute"
+  - "Prisma ORM"
+  - "Prisma Postgres"
+canonical: "/changelog#log2026-11-13"
+metaDescription: "Every Prisma Console workspace now has four member roles, Admin, Developer, Viewer, and Billing, and Developers and Viewers can be limited to selected projects. Also new: a Prisma Compute app can read a separate .env file for each environment, and the Prisma ORM 8 release candidate lets you pick a PostgreSQL column type on the field."
+share:
+  active: true
+  content: "Look at this page: "
+---
+**Every Prisma Console workspace now has four member roles, Admin, Developer, Viewer, and Billing, and you can limit a Developer or a Viewer to the projects they work on.** Roles are available on every plan. A Prisma Compute app can now read a separate `.env` file for each environment it deploys to. Prisma ORM 8 is still a release candidate. Its library, `@prisma/orm-postgres`, and its command-line tool, `prisma`, are numbered separately, and this entry covers `8.0.0-rc.23` of the library and `8.0.0-rc.31` to `8.0.0-rc.33` of the tool. In the library, the type of a PostgreSQL column is now an argument on the field's type, as in `String(storage: varchar, length: 12)`.
+
+If your connection string contains `accelerate.prisma-data.net`, Accelerate stops working on **December 1, 2026**, as earlier entries announced. If you are an Admin of a workspace, review your team's roles. If you deploy to Prisma Compute, read "What you need to do" before your next deploy. Otherwise, if you use Prisma ORM 7, nothing in this entry needs a change in your app.
+
+## Give each workspace member a role, and limit them to selected projects
+
+Until now, everyone you invited to a workspace could do everything in it. A contractor who needed one project could also delete the others, change the payment method, and invite more people. Each member now has one of four roles:
+
+- **Admin** manages every project, the members, the workspace settings, and billing.
+- **Developer** creates and changes databases, apps, deployments, and buckets, and can read their connection strings and environment variables. A Developer cannot manage members, workspace settings, or billing.
+- **Viewer** sees project, app, and database names, deployment status, and totals such as query counts. A Viewer cannot change anything, read database records or stored files, see secrets, or run SQL.
+- **Billing** sees costs and invoices and manages payment details and subscriptions, with no access to any project's resources.
+
+A Developer or a Viewer also has a scope, which is either the entire workspace or only the projects an Admin selects. A member with selected projects does not see the other projects in lists, and cannot open them by URL. The same limit applies in the Prisma CLI, the REST API, and the Prisma MCP server when they use that member's personal token, so a coding agent that uses a member's token can reach only what that member can.
+
+To change someone's access, open the **Team** page as an Admin, open the member's menu, and choose **Edit access**. When you invite someone, you now choose their role and scope as well, and the form starts on Developer. Everyone who was a member before roles existed is still an Admin with the entire workspace, so nothing changes for your team until an Admin gives someone a lesser role.
+
+Changing a role or removing a member does not cancel credentials the member already copied, such as a database connection string or a bucket access key. Those keep working until you replace them, and the docs page lists which ones to replace when someone leaves.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://console.prisma.io/?utm_source=changelog&utm_medium=cta&utm_campaign=workspace-roles" ctaLocation="changelog-workspace-roles">Open the Console</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/docs/console/workspace-access" ctaLocation="changelog-workspace-roles">Read what each role can do</PrismButtonOutline>
+</div>
+
+## Give each environment of a Prisma Compute app its own .env file
+
+Prisma Composer is the part of the Prisma 8 command-line tool that runs and deploys a Prisma Compute app. You describe the app's services and databases in the `composer` section of `prisma.config.ts`, and `prisma dev` and `prisma deploy` read it. Until now, those two commands read the app's configuration from the shell. You could load a `.env` file yourself with `import "dotenv/config"`, but that one file was then used for every environment, so a staging value and a production value could not sit side by side.
+
+Since Composer 0.37.0, first included in `prisma@8.0.0-rc.31`, you can list where configuration comes from. The `composer` section takes two new settings, `config` for plain values and `secrets` for the values your app reads with `envSecret()`, such as an API key. `dotenv()` reads `.env` files and `environmentVariables()` reads the shell:
+
+```ts title="prisma.config.ts"
+import { defineConfig as composer, dotenv, environmentVariables } from "@prisma/composer/config";
+
+// inside definePrismaConfig({ ... })
+composer: composer({
+  entry: "./module.ts",
+  // extensions and state stay as they are
+  config: [dotenv(), environmentVariables()],
+  secrets: [dotenv(), environmentVariables()],
+}),
+```
+
+With `dotenv()` in the list, `prisma deploy --environment staging` reads `.env`, `.env.local`, `.env.staging`, and `.env.staging.local`, in that order, and a later file wins. `.env` is still read for every environment, including a deploy to production from your machine, so put a value that belongs to one environment in that environment's file. When you add `dotenv()`, remove `import "dotenv/config"` from `prisma.config.ts`, because the import would make `.env` override the per-environment files. When the same name is in a file and in the shell, the source listed later wins, which is the shell in the example. If you leave both settings out, the shell is read as before. If your app has a database, use Composer 0.38.0, which comes with `prisma@8.0.0-rc.33`, for the reason given under "What you need to do".
+
+Composer now also masks the value of each secret in its own error messages and deploy reports. The progress lines that `prisma deploy` prints while it creates resources can still show a value. ([composer#403](https://github.com/prisma/composer/pull/403), [composer#419](https://github.com/prisma/composer/pull/419))
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/docs/composer/service-input" ctaLocation="changelog-composer-config">Read about configuration</PrismButton>
+  <PrismButtonOutline href="https://github.com/prisma/composer/releases/tag/v0.38.0" ctaLocation="changelog-composer-config">Composer 0.38.0 release notes</PrismButtonOutline>
+</div>
+
+## What you need to do
+
+- **If you are an Admin of a workspace**, open the **Team** page and give each person the role they need.
+- **If you use Prisma ORM 7 and do not deploy to Prisma Compute**, nothing here needs a change in your app, apart from the Accelerate date below.
+- **If the Console set up a deploy workflow for your repository**, add `prisma` to your `devDependencies` if it is not there, or your next deploy fails. The workflow deploys with [`prisma/cloud-deploy-action`](https://github.com/prisma/cloud-deploy-action/releases/tag/v1.11.0), and a workflow that uses `@v1` already runs version 1.11.0. That version no longer falls back to a built-in `prisma` version, so a repository without one stops with a message that asks you to add it. The same version fixes preview deploys on `prisma@8.0.0-rc.30` and later, which failed with `CLI.COMMAND_MOVED`, so you no longer need to keep the workflow's `prisma` version below `8.0.0-rc.30`, as the November 4 entry asked.
+- **If you upgrade a Prisma Compute app that has a database**, install these versions together: `@prisma/composer` and `@prisma/composer-prisma-cloud` at `0.38.0`, `@prisma/orm-postgres` at `8.0.0-rc.23`, and `prisma` at `8.0.0-rc.33`. Skip Composer 0.37.0, because it requires an older `@prisma/orm-postgres` that the current `prisma` tool cannot work with. If your `package.json` lists `alchemy` or `effect`, the [Composer 0.38.0 release notes](https://github.com/prisma/composer/releases/tag/v0.38.0) give the exact version of each.
+- **If you write your own modules for a Prisma Compute app**, a module now declares its configuration as one `input` schema, the way a service already does. The older `params` and `secrets` options of `module()` and `provision()` are removed, and so are `secret()` and `paramNeed()`. Other changes in this release can stop a deploy as well, for example an input that does not match the service's schema is now a compile error. The [Composer 0.37.0 release notes](https://github.com/prisma/composer/releases/tag/v0.37.0) show each rewrite side by side. An app that uses none of these needs no code change. ([composer#403](https://github.com/prisma/composer/pull/403), [composer#412](https://github.com/prisma/composer/pull/412))
+- **If you connect a repository on Prisma ORM 6 or 7 to Prisma Compute from the Console**, the setup now stops and asks you to move the app to Prisma ORM 8 first, with a link to the [upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm). The November 4 entry said the Console offered steps for keeping the app on Prisma ORM 7, and it no longer does. An app that is already deployed is not affected.
+- **Accelerate is retired on December 1, 2026.** If your connection string contains `accelerate.prisma-data.net`, [switch to a pooled connection or to the serverless driver](https://www.prisma.io/docs/postgres/database/switch-from-accelerate) before then.
+
+## Breaking changes between Prisma ORM 8 release candidates
+
+These apply only if you already use a Prisma ORM 8 release candidate and upgrade to `8.0.0-rc.23`. The most common ones are below, and the [rc.23 release notes](https://github.com/prisma/orm/releases/tag/v8.0.0-rc.23) list every change, including those for extension authors, with a link to the [upgrade guide for this step](https://github.com/prisma/orm/blob/v8.0.0-rc.23/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.22-to-8.0.0-rc.23/). After you upgrade, run `prisma contract emit` once. That command reads your schema and writes `contract.json` and `contract.d.ts`, the files Prisma ORM 8 reads to know your data model.
+
+- **`postgres()` and `supabase()`, the functions that create the client, check the database URL when you call them.** An empty `url`, a `url` that does not start with `postgres://` or `postgresql://`, or `null` now fails at once with `RUNTIME.BINDING_INVALID`. Before, an empty `url` connected with the `PG*` environment variables or to localhost, and the mistake showed up on the first query. ([#30920](https://github.com/prisma/orm/pull/30920))
+- **Projects that already use the pgvector, PostGIS, ParadeDB, or citext package have one migration to apply.** If your schema also declares the extension itself, with a block such as `extension vector {}`, delete that declaration first. Then run `prisma contract emit`, which writes the package's new migration, and `prisma db migrate`, which records it without changing the database. ([#30956](https://github.com/prisma/orm/pull/30956))
+- **Seven PostgreSQL type names are deprecated.** `SmallInt`, `BigIntNumber`, `Numeric`, `UnboundedInt`, `Real`, `VarChar`, and `VarBit` still work for now and report the warning `PSL_DEPRECATED_SCALAR_NAME`. The release notes give the new form of each. For example, `SmallInt` becomes `Int(storage: int2)` and `VarChar(12)` becomes `String(storage: varchar, length: 12)`. The TypeScript helpers `int8Column` and `numericColumn` are now `int8BigIntColumn` and `numericStringColumn`, and the old names are removed. ([#30942](https://github.com/prisma/orm/pull/30942))
+- **Every MongoDB index now has a name in the contract.** An index you wrote without a name gets the name it already has in the database, such as `email_1`, so the database does not change. You still run the script that the upgrade guide provides, and then `prisma db sign`, which records in the database that it matches your contract. ([#30952](https://github.com/prisma/orm/pull/30952))
+
+## Prisma ORM
+
+In a Prisma ORM 8 schema on PostgreSQL, you now pick the column type with an argument on the field's type. The field stays `Int`, `String`, or `Decimal`, and the argument chooses the PostgreSQL type of the column. `Int`, `BigInt`, `Float`, `Decimal`, `String`, `Boolean`, and `Bytes` take it, as `DateTime` already did:
+
+```prisma title="contract.prisma"
+model Account {
+  id     Int                                  @id
+  visits Int(storage: int2)
+  price  Decimal(precision: 10, scale: 2)
+  code   String(storage: varchar, length: 12)
+}
+```
+
+Written without an argument, each type gives the same column as before, so an existing schema does not change. The [models and fields reference](https://www.prisma.io/docs/orm/contract-authoring/psl-syntax#models-and-fields) lists every choice. ([#30942](https://github.com/prisma/orm/pull/30942))
+
+The other additions in `8.0.0-rc.23`:
+
+- **The Prisma ORM 8 client can write to MySQL.** MySQL is an early preview in Prisma ORM 8. `create`, `update`, `upsert`, and `delete` on the ORM client now work there and return the rows they wrote, as on PostgreSQL. The [supported databases](https://www.prisma.io/docs/orm/supported-databases) page says what works today. ([#30927](https://github.com/prisma/orm/pull/30927))
+- **An existing Supabase database with pgvector, PostGIS, ParadeDB, or citext can start using Prisma ORM 8.** Supabase installs these extensions in a schema named `extensions`, which `prisma db sign` used to reject. The packages now accept the extension wherever the database connection can find it. ([#30956](https://github.com/prisma/orm/pull/30956))
+- **`supabase()` takes the options `postgres()` takes**, including `cursor`, which reads a large result from the database a batch at a time. ([#30920](https://github.com/prisma/orm/pull/30920))
+- **SQLite and MySQL get `DateTime`, `Date`, `Time`, and `Duration`** with the `as:` argument that chooses what your code reads, such as a JavaScript `Date` or a string. ([#30922](https://github.com/prisma/orm/pull/30922), [#30950](https://github.com/prisma/orm/pull/30950))
+- **On PostgreSQL and SQLite, `prisma migration plan` and `prisma db update` can rename or delete a field inside a value object**, a group of fields stored inside a row, such as an address. For example, `--rename GeoPoint.lat:GeoPoint.latitude` keeps the data in every column that holds a `GeoPoint`. ([#30929](https://github.com/prisma/orm/pull/30929))
+
+## Prisma Compute
+
+You can now choose in code which services of a Prisma Compute app are public, and at which hostname. `publicUrl()` gives a service either the `prisma.build` hostname that the platform assigns or a hostname of your own, and the hostname can differ by environment. A hostname of your own works in production only for now, and its DNS records must be in place before the deploy. The [deploy guide](https://www.prisma.io/docs/composer/deploying#make-a-service-public) has the example. ([composer#400](https://github.com/prisma/composer/pull/400))
+
+Installing a Composer app also takes about 473 MB on disk, where it took 1.6 GB before. ([composer#402](https://github.com/prisma/composer/pull/402))
+
+When you connect a GitHub repository in the Console, it opens a pull request that sets up deploys. That setup got several corrections, so more apps work on the first deploy:
+
+- **Express, Hono on Node.js, NestJS, Elysia, Bun, Astro, and SvelteKit apps no longer crash on their first import after a deploy.**
+- **The setup starts the file your app declares.** For Express, Hono on Node.js, and Elysia, it reads the `start` script, then `main` in `package.json`. Before, it always started the same file, `dist/index.js` for Express and Hono, so an app built to `dist/server.js` answered every request with a 502.
+- **A preview counts as live only when the app answers a request.** Before, a build that succeeded was shown as live even when every route returned a 502. The Console now says that the preview deployed and the app does not respond, and points you to the build's logs.
+- **A failed setup shows why it failed.** When the dependencies do not install, the setup page shows the package manager's output and the commit the setup ran on. Before, the project page kept waiting for a first deployment. A branch left over from an earlier attempt no longer blocks a new setup either.
+
+Every [app template](/apps) now starts on Composer 0.38.0, `prisma@8.0.0-rc.33`, and `@prisma/orm-postgres@8.0.0-rc.23`, and the Room Booking template can now be deployed from the Console, where the deploy used to stop with a message about an unsupported file layout. There is also a new community template, [Resource Discovery](/apps/scalable-indexing-platform-template), a searchable catalog built with Next.js.
+
+## Prisma Postgres
+
+In a database's **Connect** panel, **Connection pooling** now starts off, and the panel shows the direct connection string first. The code snippets and the `.env` line in the panel now follow the switch. Before, they always used the pooled string. This changes only what the panel shows, and the connection strings you already use keep working. The text next to the switch says when to turn pooling on, and the [connection pooling](https://www.prisma.io/docs/postgres/database/connection-pooling) page has the limits.
+
+## Prisma Console
+
+The **Topology** page of a Prisma Compute app, which draws the app's services, databases, and buckets as cards, now opens a panel when you click a card. {/* plain-language:defined */} A service's panel shows its URL and custom domains, its recent deployments, the names of its environment variables, and its live logs. A database's panel shows the schema or Studio, and a bucket's panel shows its files. You can share a link to an open panel.
+
+Members who are not Admins can now leave a workspace with **Leave Workspace** under **Workspace Settings** > **Overview**. Before, the only way to leave was on the **Team** page, which only Admins can open. The last Admin of a workspace still cannot leave until someone else is an Admin.
+
+## Docs and website
+
+- The new [Upgrade to Prisma 8](https://www.prisma.io/docs/guides/upgrade-prisma-orm) page sends you to the right guide for your database, your current version, and whether you want to move all at once or one route at a time. The all-at-once guide for PostgreSQL keeps your existing `schema.prisma`, database, and data.
+- [Deploy an existing app on Prisma Compute](https://www.prisma.io/docs/guides/compute/deploy-existing-app) takes a Node.js server that is already on Prisma ORM 8 with PostgreSQL to Prisma Compute from GitHub, with or without the Console.
+- The public [Prisma skills](https://github.com/prisma/skills) for coding agents gain `prisma-postgres-upgrade`, which takes a PostgreSQL app from Prisma ORM 6 or 7 to Prisma ORM 8 and keeps its schema and data. ([skills#38](https://github.com/prisma/skills/pull/38))
+
+## Fixes
+
+### Prisma ORM 8
+
+- Prisma ORM now resets the Supabase role of a session when the session releases its connection. ([#30920](https://github.com/prisma/orm/pull/30920))
+- Prisma ORM no longer refuses to start with `RUNTIME.MULTIPLE_ORM_COPIES`. That check, added in `8.0.0-rc.22`, also stopped every Prisma Compute app, because the platform loads the library a second time beside your app. Keep every `@prisma/orm-*` package in your project on one version, as before. ([#30961](https://github.com/prisma/orm/pull/30961))
+- On MySQL, stopping early while reading a large result no longer ends the process with an unhandled rejection. ([#30931](https://github.com/prisma/orm/pull/30931))
+
+### Prisma Console
+
+- Upgrading from Pro to Business showed "Unable to calculate charges" in the preview of the plan change, and trying again did not help. The preview now shows the charges.
+- A project with many databases, for example one preview database per pull request, could show "Unexpected Server Error" on its project page. The page now loads.
+- In **Add variable** for an app's environment variables, typing after a validation error created one variable per keystroke.
+
+## Guides and articles
+
+- [How a Prisma Compute app reaches Prisma Postgres](https://www.prisma.io/blog/prisma-compute-postgres-same-region-networking): how an app connects to a database in the same region today, and what happens to the connection when the app sleeps.
+
+---
+
+*Need help applying these changes in production? [Prisma Enterprise Support](/enterprise) can help with schema design, performance, security, and compliance.*
