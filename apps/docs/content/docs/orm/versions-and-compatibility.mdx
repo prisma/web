@@ -1,0 +1,144 @@
+---
+title: Versions and compatibility
+description: 'How Prisma ORM applies the versioning and compatibility policy: when the promise starts, the level of each package at release 8.0, what an upgrade keeps working, and what to write in package.json.'
+url: /orm/versions-and-compatibility
+metaTitle: Prisma ORM versions and compatibility
+metaDescription: 'Prisma ORM follows the Prisma versioning and compatibility policy from release 8.0, published as 8.0.1. The maturity level of each @prisma/orm package, the files and database tables every later 8.x release reads, the version ranges to write in package.json, and how to report a regression.'
+---
+
+Prisma ORM follows the [versioning and compatibility policy](/versioning-policy), which defines the maturity levels and says what an upgrade within a major version may change. This page says when that policy starts for Prisma ORM, which packages it covers at which level, and what to write in your `package.json`.
+
+## Until release 8.0
+
+The policy applies to Prisma ORM from release 8.0. Today every Prisma ORM 8 package is published as `8.0.0-rc.1`, `8.0.0-rc.2` and so on, called release candidates, and nothing on the policy page is promised yet:
+
+- Any release candidate may contain breaking changes.
+- Only the newest release candidate is maintained, and a fix ships in the next one.
+- Each release candidate comes with an upgrade guide, linked from its [release notes](https://github.com/prisma/orm/releases). The `prisma-8` agent skill, a set of instructions for AI coding agents that ships inside the Prisma packages, can apply the guide for you.
+- Every package shares the one version, whatever state it is in, so a package published as `8.0.0-rc.25` may be far from finished. The "rc" in these versions does not mean the Release Candidate level.
+
+Today, `npx prisma orm init` adds the database package to your `package.json`, with `dotenv` and, on PostgreSQL, `pg`. Write every `@prisma/orm-*` package at the same exact version, with nothing in front of the number:
+
+```json title="package.json"
+"@prisma/orm-postgres": "8.0.0-rc.25"
+```
+
+If your project cannot keep up with breaking changes, [stay on Prisma ORM 7](/orm/release-status#how-to-stay-on-prisma-orm-7) until release 8.0. Prisma ORM 7 receives fixes for bugs and security issues until 18 months after release 8.0, longer than the 12 months the policy gives a previous major.
+
+## Release 8.0 is published as 8.0.1
+
+No package is published as `8.0.0`, because a version such as `8.0.0-ea.0` would sort below the old release candidates, which stay on npm. The first versions of release 8.0 are `8.0.1` for a GA package and `8.0.1-ea.0` for one at Early Access. Never write `8.0.0` in a range. From release 8.1 on, every release starts at patch 0, such as `8.1.0`.
+
+## The packages and their levels
+
+An application installs Prisma ORM packages of the following kinds:
+
+- **A database package,** such as `@prisma/orm-postgres`. Your code imports from it, and there is one for each database.
+- **The platform packages** it is built from: `@prisma/orm-framework` (the core every database shares), `@prisma/orm-toolchain` (the code behind the `prisma orm` commands), a family package such as `@prisma/orm-family-sql` (what all SQL databases share), and a target package such as `@prisma/orm-target-postgres` (what is specific to one database). From release 8.0 your application lists them, so that it has exactly one copy of each, but your code never imports them. Extension authors build on them.
+- **Extension packages,** such as `@prisma/orm-extension-pgvector`, which add data types or features for one database.
+
+The policy covers both people who write applications and people who write extensions, under the same rules: a release within a major breaks neither.
+
+At release 8.0, the packages have these [levels](/versioning-policy#maturity-levels):
+
+| What | Level at release 8.0 | Packages |
+| --- | --- | --- |
+| PostgreSQL | Generally Available | `@prisma/orm-postgres`, `@prisma/orm-target-postgres` |
+| The packages every database shares | Generally Available | `@prisma/orm-framework`, `@prisma/orm-toolchain`, `@prisma/orm-family-sql` |
+| PostgreSQL extensions: vector search, [PostGIS](/orm/extensions/postgis), [typed JSON columns](/orm/extensions/arktype-json), and [extra PostgreSQL types such as `citext`](/orm/contract-authoring/advanced-postgresql) | Generally Available | `@prisma/orm-extension-pgvector`, `@prisma/orm-extension-postgis`, `@prisma/orm-extension-arktype-json`, `@prisma/orm-postgres-contrib` |
+| [Query cache](/orm/middleware/built-in-cache) | Generally Available | `@prisma/orm-extension-middleware-cache` |
+| Better Auth integration | Generally Available | `@prisma/orm-better-auth` |
+| MongoDB | Early Access | `@prisma/orm-mongo`, `@prisma/orm-family-mongo`, `@prisma/orm-target-mongo` |
+| MySQL | Early Access | `@prisma/orm-mysql`, `@prisma/orm-target-mysql` |
+| MariaDB | Early Access | `@prisma/orm-mariadb`, `@prisma/orm-target-mariadb` |
+| SQLite | Early Access | `@prisma/orm-sqlite`, `@prisma/orm-target-sqlite` |
+| Supabase extension | Early Access | `@prisma/orm-extension-supabase` |
+
+No package is at Preview or Release Candidate at release 8.0, and each package's README states its level. A package at Early Access has `-ea.` in its version, such as `8.0.1-ea.0`. [Supported databases](/orm/supported-databases) describes what works on each database today.
+
+`@prisma/orm-extension-paradedb` has no level, because another team maintains it. It has its own version numbers, starting at `0.18.0`, so you list it with a caret on its own version, such as `^0.18.0`.
+
+## What Prisma ORM stores, and what reads it
+
+From release 8.0, every later 8.x release reads what an earlier 8.x release wrote, so after an upgrade you do not generate anything again. That covers the files in your repository:
+
+- Your contract's generated files: `contract.json` and its TypeScript types. The contract is the description of your data model, which replaces `schema.prisma`, and you write it in PSL, the Prisma schema language, or in TypeScript.
+- Your migration files.
+- Ref files, which give a name such as `production` to one state of your contract.
+
+It also covers the tables Prisma ORM keeps in your database, which record which contract the database matches and which migrations have run.
+
+When your application runs its first query, it compares its contract with that record in the database. A mismatch never stops your application: on SQL databases it is reported as a warning to the logger you pass as `log`, as [the signature](/orm/core-concepts#the-signature-which-contract-the-database-matches) explains. To stop a deploy when the database does not match, run `prisma db verify` in the deploy.
+
+## What Prisma ORM runs on
+
+[Supported versions](/orm/supported-versions) lists the versions of Node.js, TypeScript and each database that Prisma ORM 8 needs, and the [policy](/versioning-policy#supported-versions-of-what-a-product-runs-on) says when a minimum may rise.
+
+## What to write in package.json
+
+From release 8.0, `prisma orm init` writes one line for the database package and one for each platform package. Each line is a range. A caret, as in `^8.0.1`, accepts that version and any later 8.x version. A tilde, as in `~8.0.1`, accepts later versions within release 8.0 only. Which one you use depends on the level of your database package.
+
+### A GA database: a caret on every line
+
+```json title="package.json"
+"@prisma/orm-postgres": "^8.0.1",
+"@prisma/orm-framework": "^8.0.1",
+"@prisma/orm-family-sql": "^8.0.1",
+"@prisma/orm-target-postgres": "^8.0.1",
+"@prisma/orm-toolchain": "^8.0.1"
+```
+
+When release 8.1 is published, run your package manager's update command. Every line moves to 8.1 together, and you change nothing.
+
+### A database below GA: a tilde on every line
+
+```json title="package.json"
+"@prisma/orm-sqlite": "~8.0.1-ea.0",
+"@prisma/orm-target-sqlite": "~8.0.1-ea.0",
+"@prisma/orm-framework": "~8.0.1",
+"@prisma/orm-family-sql": "~8.0.1",
+"@prisma/orm-toolchain": "~8.0.1"
+```
+
+Every line has a tilde, so the whole application stays on release 8.0 until you move it. To move to release 8.1, change every line, to `~8.1.0-ea.0` for the SQLite packages and `~8.1.0` for the others, install, and read the release notes, because a package below GA may have changed.
+
+The GA packages need a tilde too, because no range on an Early Access version accepts the next release's Early Access version. With carets on the GA lines, an update would move them to 8.1 and leave SQLite on 8.0, a mix that was never tested.
+
+Package managers rewrite these lines, so check them after you add or update a package. pnpm writes an exact version for a package below GA, such as `8.0.1-ea.0`, which never moves, so you edit it when you change release. Yarn's `yarn up` writes a caret, so change it back to a tilde.
+
+### An extension below GA in a GA application
+
+A PostgreSQL application can use an extension that is still below GA, such as `@prisma/orm-extension-supabase`. Give that one line a tilde on the extension's own version, and keep the carets on your other lines:
+
+```json title="package.json"
+"@prisma/orm-extension-supabase": "~8.0.1-ea.0"
+```
+
+This works because the extensions Prisma publishes use only GA functions of the packages they are built on, so they accept every later release of those packages. After an update to 8.1 you still have the extension's 8.0 version, and it still works. To get its 8.1 version, change that one line.
+
+### The `prisma` command-line tool
+
+The `prisma` package has its own version numbers, so its line in `package.json` is not one of the lines above, and `init` installs it. The tool carries its own copy of the Prisma ORM commands, from one Prisma ORM release, and that release must match your application's. If a `prisma` command starts failing after you update `prisma`, either move your application's Prisma ORM lines to the release the tool carries, or install the `prisma` version you had before.
+
+## For extension authors
+
+Build your extension on the platform packages, and list each one your code uses as a peer dependency, and again as a development dependency for your own build. Write these ranges on them:
+
+| Situation | Range | Example |
+| --- | --- | --- |
+| Until release 8.0 | One exact release candidate | `8.0.0-rc.25` |
+| A GA package, and you use only its GA functions | A caret on the first release your extension works with | `^8.0.1` |
+| A GA package, and you use a function below GA, such as `preview_search` | A tilde, because that function may change in the next release | `~8.0.1` |
+| A package below GA | A tilde on its first version in that release | `~8.0.1-ea.0` |
+
+With a caret, your extension keeps working when an application moves to a later release, and you publish nothing. With a tilde, you publish a new version of your extension for each release of Prisma ORM. Write `~8.0.1-ea.0`, never `~8.0.0-ea.0`, which would accept the old release candidates because `rc` sorts after `ea`.
+
+You version your own package as you choose. We recommend taking the major and minor of the first Prisma ORM release it works with, and using the same level suffixes, so a package at `8.1.2` says it needs release 8.1 or later.
+
+## How Prisma ORM checks itself
+
+CI compares the exported API of every package in each pull request with the last release. From release 8.0, that check finds a removal or an incompatible change to something GA before it is released.
+
+## Reporting a regression
+
+From release 8.0, if an upgrade within Prisma ORM 8 breaks something that is GA, and the change is not one of the [exceptions the policy lists](/versioning-policy#what-a-release-may-still-change), that is a bug. [Open an issue](https://github.com/prisma/orm/issues/new/choose) with the two versions and the smallest example that shows the problem. The fix is published in the newest release.
