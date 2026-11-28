@@ -1,0 +1,182 @@
+---
+title: Versioning and compatibility policy
+description: 'What a version number of a Prisma open-source package tells you, what each maturity level promises, and what an upgrade within a major version may change.'
+url: /versioning-policy
+metaTitle: Prisma versioning and compatibility policy
+metaDescription: 'How Prisma numbers the releases of its open-source products, the four maturity levels from Early Access to Generally Available, what stays compatible within a major version, the exceptions, and how long each major version is supported.'
+---
+
+{/* lint-versions-ignore-file: every version on this page is an example of the numbering scheme, not a pin to keep current. */}
+
+This policy is the promise Prisma makes about upgrades, in the same words for each of Prisma's open-source products. Its goal is that you can always take the newest release: within a major version, upgrading anything that is Generally Available needs no change to your code, to the files you keep in your repository, or to your database. The only exceptions are the kinds of change listed under [What a release may still change](#what-a-release-may-still-change).
+
+## Where each product applies this policy
+
+Each product applies the policy from a release that its own page names. The page lists what the product publishes and at which level, and links the product's security policy:
+
+- [Prisma ORM](/orm/versions-and-compatibility): from release 8.0.
+
+Until that release, nothing on this page is promised for the product. Some products publish versions such as `8.0.0-rc.3` before their first stable release, and those versions carry no promise and are not the Release Candidate level described below.
+
+## Version numbers
+
+A version has three parts: major, minor and patch. In `8.3.1` they are `8`, `3` and `1`.
+
+When a product is made of several packages, they are released together, and the major and minor are the number of the release. "Release 8.3" means every package of the product at `8.3`, so two packages belong together when their first two numbers match. The patch and anything after it are each package's own, because packages in one release can be at different levels:
+
+```text
+release 8.3
+  @example/db         8.3.0         Generally Available
+  @example/db-search  8.3.0-ea.0    Early Access
+```
+
+A fix to one package raises its patch number, as from `8.3.0` to `8.3.1`, or, below GA, its counter, as from `8.3.0-ea.0` to `8.3.0-ea.1`. A product's page says whether it publishes such fixes or ships every fix in its next release.
+
+## Maturity levels
+
+Every package has one of four maturity levels, and so can a single function inside a package. The level tells you how far you can rely on it. A product's page can also name a package that keeps its own version numbers and has no level. Such a package is outside this policy, and its own documentation says what it promises.
+
+| Level | What it promises |
+| --- | --- |
+| Generally Available (GA) | It is tested in full, and a release does not go out while one of its tests fails. No later release in the same major breaks code that uses it. |
+| Release Candidate | We believe it is finished, and test it as we test GA. A breaking change is still possible before it becomes GA, but we expect none. |
+| Preview | It is tested for the features it supports, and its reference documentation lists what it does not support yet. Any new version may change it. |
+| Early Access | It is published so that you can try it. It may have known failures, and any new version may change it. |
+
+"Below GA" means Release Candidate, Preview or Early Access. Only what is GA is covered by the rest of this page.
+
+A GA package depends only on GA packages, so installing something GA never brings in something below GA. A level can go down only for a package below GA, and only at a new minor: a package at Preview in release 8.3 can be at Early Access in release 8.4. A GA package never goes below GA within a major.
+
+### How you see a level
+
+You see a level in your own project, without looking it up.
+
+A package below GA has its level after its version number, followed by a counter:
+
+| Level | Its version in release 8.3 looks like |
+| --- | --- |
+| Generally Available | `8.3.0` |
+| Release Candidate | `8.3.0-rc.0` |
+| Preview | `8.3.0-preview.0` |
+| Early Access | `8.3.0-ea.0` |
+
+Package managers treat a version with a suffix as a pre-release, so a range such as `^8.3.0` in your `package.json` never installs a package below GA by accident. You get one only by asking for it, for example by naming its version:
+
+```npm
+npm install @example/db-search@8.3.0-ea.0
+```
+
+A plain install also gives you a package below GA when that package has never been GA, as [Which version a plain install gives you](#which-version-a-plain-install-gives-you) explains.
+
+A function, type or option below its package's level starts with the name of its level and an underscore: `ea_`, `preview_` or `rc_`. A type or class starts with a capital letter, as in `Preview_SearchOptions`:
+
+```ts
+import { search, preview_search } from "@example/db";
+
+search("ada");          // GA
+preview_search("ada");  // Preview: may change in any release
+```
+
+A command below GA says its level in its help text.
+
+A prefix can mark something as less finished than its package, never as more finished. So a package below GA contains nothing that is GA, because its version already says that anything in it may change.
+
+### When something moves up a level
+
+A promotion keeps the old name working, so it never breaks your code. The release adds the name for the new level, and the old name stays, marked deprecated, until the next major version. Your editor shows the old name struck through and names its replacement:
+
+```ts
+ea_search("ada");       // release 8.3: Early Access
+preview_search("ada");  // release 8.4: now Preview, and ea_search still works
+search("ada");          // release 8.6: now GA, and both older names still work
+```
+
+An old name may therefore show a lower level than the function now has: after release 8.6, `ea_search` is GA. The name that is not deprecated shows the level exactly.
+
+The one exception is a promotion that also changes the function's parameters or what it returns. Then the old name is removed in that release, because one name cannot stand for two different functions. Only something below GA may change in this way, and the release notes say so when it does.
+
+### Which version a plain install gives you
+
+A plain `npm install @example/db`, with no version, installs the version under the npm tag `latest`:
+
+| Tag | What it points at |
+| --- | --- |
+| `latest` | The newest GA version of the package. For a package that has never been GA, its newest version, whatever its level. |
+| `ea`, `preview`, `rc` | For a package that has already had a GA version, its newest version at that level. This happens in a later major, where a package can start again below GA. A plain install keeps giving you the last GA version. |
+| Other tags, such as `dev` | Builds of unreleased work, which carry no promise. A product's page lists any other tag it publishes. |
+
+## What stays compatible
+
+Each product has reference documentation: the precise description of each of its APIs, commands, file formats and error codes. Behaviour is **described** when the reference documentation states it. Where the reference documentation is silent, the behaviour is not promised. Guides and examples explain how to use a product, but they do not add to the promise.
+
+For what is GA, the promise covers each of the following, from one release to every later release in the same major.
+
+### Code you write against an API
+
+- **Types and import paths.** Code that compiles against one release compiles against every later one. A change to a type that stops your code compiling is a breaking change, and that includes the helper types a package exports.
+- **Behaviour.** Described behaviour does not change.
+- **Error codes.** An error code keeps its meaning. New codes can appear, as [Additions](#additions) explains.
+
+Nothing that is GA is removed within a major. When an API is replaced, the replacement arrives beside it, and the old API is deprecated in the same way as an old name after a [promotion](#when-something-moves-up-a-level).
+
+### Files you write for the product
+
+A file that you write by hand and the product reads, such as a configuration file or a schema, keeps working: what the reference documentation says one release accepts, every later release accepts. [Rejecting input that used to be accepted](#rejecting-input-that-used-to-be-accepted) covers input the reference documentation never described.
+
+### Data the product stores
+
+Some products write files into your repository, or records into your database, and read them back later. Every later release in the major reads them, so you do not have to recreate them after an upgrade.
+
+Files that a product reads back record the version of their format. When your release meets a file that a newer release wrote in a format your release cannot read, for example after a teammate upgraded, it stops with an error that says so and changes nothing in your repository or your database. Upgrade to the newer release to continue.
+
+### Commands
+
+For what is GA, a command, its flags and the configuration file that work on one release work on every later one, and output meant for programs to read, such as `--json` output, stays compatible.
+
+## Additions
+
+A release may add features and APIs at any time, and an addition does not affect code that does not use it. Some additions could still break code that already exists, so each of the following follows a rule:
+
+- **A new property or method on an interface that you implement** is optional, so your implementation keeps compiling. One exception: when the only way to implement an interface is to extend a class that the package exports, a new method on the interface can be required, because the package's class already has that method and your class inherits it.
+- **A new error code** can appear in any release, so if your code handles every error code, for example in a `switch`, give it a default branch.
+- **A new built-in name** never changes the meaning of a name you already wrote, because your own name wins. If you have a type of your own named `Duration` and a release adds a built-in type with that name, your `Duration` still means your type.
+
+## What a release may still change
+
+Every change to existing behaviour falls into one of the kinds below, and only a change to described behaviour waits for a new major:
+
+| Kind of change | In a minor release? |
+| --- | --- |
+| A fix: behaviour that contradicts the reference documentation, or a defect such as a crash | Yes |
+| A change to described behaviour | No. Only in a new major, or as a new API that you choose to adopt |
+| A change to detail the reference documentation does not describe, such as generated SQL text, the order of rows when you gave no order, the wording of an error message, output meant for people to read, and timing | Yes |
+| A security fix | Yes, even when it changes described behaviour. It comes with a published security notice. |
+
+So if your code depends on one of the following, it may need a change after an upgrade within a major:
+
+1. A bug, which is fixed.
+2. Detail the reference documentation does not describe.
+3. Behaviour that a security fix removed.
+4. A version of something the product runs on whose maker has stopped supporting it, as [Supported versions of what a product runs on](#supported-versions-of-what-a-product-runs-on) explains.
+
+Every release's notes list each change to behaviour.
+
+### Rejecting input that used to be accepted
+
+A release may refuse input that an earlier release accepted, when the reference documentation never said it was accepted. That is a fix or a change to detail the reference documentation does not describe. Because a new error can stop your application, the change warns in an earlier release where that is possible, makes a command that builds or checks your project fail, where it can, so that your application does not start with the input, and is listed in the release notes. Refusing input that the reference documentation says is accepted is a change to described behaviour, so it waits for a new major.
+
+## Supported versions of what a product runs on
+
+A product runs on things made by others, such as Node.js, TypeScript, a database server or a database driver. Our support for a version of one of them follows the lifetime its maker gives it, and we do not drop a version by our own choice within a major.
+
+So a minimum version rises only in a new major, with one exception: when its maker ends support for a version, a minor release may stop supporting it, and the release notes say so. A minor release may also add support for a new version when its maker publishes one.
+
+## How long a major version is supported
+
+- Within the current major, fixes go into the newest release only. To get a fix, upgrade to it, which needs no changes for what is GA.
+- When a new major is published, the previous major receives critical fixes and security fixes for 12 more months, published as new releases of that major. A product's page says where its own period is longer.
+- We aim to publish one new major a year. That is an aim, not a promise.
+
+## No feature flags
+
+There is no switch in a configuration file that turns on unfinished work. Something that is not finished ships below GA, either in a package of its own or under a name that starts with its level, so you see its level where you install it or where you call it.
