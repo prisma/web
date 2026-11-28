@@ -54,6 +54,13 @@ const STATUS_LABELS = {
   experimental: "Experimental",
 };
 
+// Packages below Generally Available at release 8.0, from prisma/orm's
+// packages/0-shared/publish-surface/src/levels.ts.
+const MATURITY_AT_8_0 = {
+  "@prisma/orm-sqlite": "Early Access",
+  "@prisma/orm-extension-supabase": "Early Access",
+};
+
 // An entry marked `hidden: true` stays in the registry file but is left out of
 // every table, the same way prisma.io/extensions leaves it out.
 function readRegistry(file) {
@@ -88,8 +95,11 @@ function renderTable(options) {
     const name = `[${escapeCell(entry.name)}](https://www.prisma.io/extensions/${entry.slug})`;
     // Release candidate is the baseline for Prisma 8 today, so only flag the
     // entries whose surface is still moving.
-    const status =
-      entry.status === "experimental" ? ` (${STATUS_LABELS[entry.status].toLowerCase()})` : "";
+    const status = MATURITY_AT_8_0[entry.package]
+      ? ` (${MATURITY_AT_8_0[entry.package]} from release 8.0)`
+      : entry.status === "experimental"
+        ? ` (${STATUS_LABELS[entry.status].toLowerCase()})`
+        : "";
     const pkg = `\`${entry.package}\``;
     const databases = entry.databases.map(databaseLabel).join(", ");
     const by =
