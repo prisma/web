@@ -15,7 +15,7 @@ The policy applies to Prisma ORM from release 8.0. Today every Prisma ORM 8 pack
 - Any release candidate may contain breaking changes.
 - Only the newest release candidate is maintained, and a fix ships in the next one.
 - Each release candidate comes with an upgrade guide, linked from its [release notes](https://github.com/prisma/orm/releases). The `prisma-8` agent skill, a set of instructions for AI coding agents that ships inside the Prisma packages, can apply the guide for you.
-- Release 8.0 refuses a contract, migration or ref file that a release candidate wrote without a format version. The upgrade instructions of the release candidate that added the format version come with a script that rewrites those files, so run it before you upgrade to 8.0.
+- Release 8.0 refuses a contract, migration or ref file that a release candidate wrote without a format version. The next release candidate adds a format version to these files, and its upgrade instructions come with a script that rewrites them. Run it before you upgrade to 8.0.
 - Every package shares the one version, whatever state it is in, so a package published as `8.0.0-rc.25` may be far from finished. The "rc" in these versions does not mean the Release Candidate level.
 
 Today, `npx prisma orm init` adds the database package to your `package.json`, with `dotenv`, and `pg` on PostgreSQL or `mongodb` on MongoDB. Write every `@prisma/orm-*` package at the same exact version, with nothing in front of the number:
@@ -35,7 +35,7 @@ No package is published as `8.0.0`, because a version such as `8.0.0-ea.0` would
 An application installs Prisma ORM packages of the following kinds:
 
 - **A database package,** such as `@prisma/orm-postgres`. Your code imports from it, and there is one for each database.
-- **The platform packages** it is built from: `@prisma/orm-framework` (the core every database shares), `@prisma/orm-toolchain` (the code behind the Prisma ORM commands, such as `prisma contract emit` and `prisma db migrate`), a family package such as `@prisma/orm-family-sql` (what all SQL databases share), and a target package such as `@prisma/orm-target-postgres` (what is specific to one database). From release 8.0 your application lists them, so that it has exactly one copy of each, but your code never imports them. Extension authors build on them.
+- **The platform packages** it is built from: `@prisma/orm-framework` (the core every database shares), `@prisma/orm-toolchain` (the code behind the Prisma ORM commands, such as `prisma contract emit` and `prisma db migrate`), a family package such as `@prisma/orm-family-sql` (what all SQL databases share), and a target package such as `@prisma/orm-target-postgres` (what is specific to one database). From release 8.0 your application lists them, so that it has exactly one copy of each, because two copies make Prisma ORM fail with an error that is hard to trace. Your code never imports them. Extension authors build on them.
 - **Extension packages,** such as `@prisma/orm-extension-pgvector`, which add data types or features for one database.
 
 The policy covers both people who write applications and people who write extensions, under the same rules: a release within a major breaks neither.
@@ -58,7 +58,7 @@ At release 8.0, the packages have these [levels](/versioning-policy#maturity-lev
 
 No package is at Preview or Release Candidate at release 8.0, and each package's README states its level. A package at Early Access has `-ea.` in its version, such as `8.0.1-ea.0`. [Supported databases](/orm/supported-databases) describes what works on each database today.
 
-`@prisma/orm-extension-paradedb` has no level, because another team maintains it, so the policy does not cover it and any new version may change it. It has its own version numbers, starting at `0.18.0`, and you list it with a caret on its own version, such as `^0.18.0`.
+`@prisma/orm-extension-paradedb` has no level, because another team maintains it, so the policy does not cover it and any new version may change it. Until release 8.0 it is published as `8.0.0-rc.N` like the other packages. From release 8.0 it has its own version numbers, starting at `0.18.0`, and you list it with a caret on its own version, such as `^0.18.0`.
 
 ## What Prisma ORM stores, and what reads it
 
@@ -104,7 +104,7 @@ When release 8.1 is published, run your package manager's update command. Every 
 
 Every line has a tilde, so the whole application stays on release 8.0 until you move it. To move to release 8.1, change every line, to `~8.1.0-ea.0` for the SQLite packages and `~8.1.0` for the others, install, and read the release notes, because a package below GA may have changed.
 
-The GA packages need a tilde too, because no range on an Early Access version accepts the next release's Early Access version. With carets on the GA lines, an update would move them to 8.1 and leave SQLite on 8.0, a mix that was never tested.
+The GA packages need a tilde too, because no range on an Early Access version accepts the next release's Early Access version: `~8.0.1-ea.0` accepts `8.0.1-ea.1`, but not `8.1.0-ea.0`. With carets on the GA lines, an update would move them to 8.1 and leave SQLite on 8.0, a mix that was never tested.
 
 Package managers rewrite these lines, so check them after you add or update a package. pnpm writes an exact version for a package below GA, such as `8.0.1-ea.0`, which never moves, so you edit it when you change release. Yarn's `yarn up` writes a caret, so change it back to a tilde.
 
@@ -120,7 +120,7 @@ This works because the extensions Prisma publishes use only GA functions of the 
 
 ### The `prisma` command-line tool
 
-The `prisma` package has its own version numbers, so its line in `package.json` is not one of the lines above, and `init` installs it. When you run a Prisma ORM command, such as `prisma db migrate`, it runs from the tool's own copy of `@prisma/orm-toolchain`, which comes from one Prisma ORM release, and that release must match your application's. Your application still lists `@prisma/orm-toolchain`, because the other Prisma ORM packages name it as a peer dependency and need exactly one copy of it. If a `prisma` command starts failing after you update `prisma`, either move your application's Prisma ORM lines to the release the tool carries, or install the `prisma` version you had before.
+The `prisma` package has its own version numbers, so its line in `package.json` is not one of the lines above, and `init` installs it. When you run a Prisma ORM command, such as `prisma db migrate`, it runs from the tool's own copy of `@prisma/orm-toolchain`, which comes from one Prisma ORM release, and that release must match your application's. This copy belongs to the tool and is separate from your application's. From release 8.0, your application also lists `@prisma/orm-toolchain`, so that the Prisma ORM packages it imports share one copy of it. The tool's copy works with your application's copy as long as both come from the same release. If a `prisma` command starts failing after you update `prisma`, either move your application's Prisma ORM lines to the release the tool carries, or install the `prisma` version you had before.
 
 ## For extension authors
 
