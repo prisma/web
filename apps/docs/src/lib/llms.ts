@@ -280,6 +280,13 @@ export const llmsSections: LLMsSection[] = [
     description: "MCP setup and tools for Prisma Postgres, Compute, Object Storage, and Composer.",
     prefixes: ["/ai/tools/mcp-server", "/ai/mcp-tools", "/cli/mcp"],
   },
+  {
+    slug: "policies",
+    title: "Policies",
+    description:
+      "The versioning and compatibility policy for Prisma's open-source products: maturity levels, what stays compatible, and support periods.",
+    prefixes: ["/versioning-policy"],
+  },
 ];
 
 function resolveLLMsHref(href: string, baseUrl: string) {
