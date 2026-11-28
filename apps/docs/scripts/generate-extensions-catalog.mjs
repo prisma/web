@@ -57,6 +57,7 @@ const STATUS_LABELS = {
 // Packages below Generally Available at release 8.0, from prisma/orm's
 // packages/0-shared/publish-surface/src/levels.ts.
 const MATURITY_AT_8_0 = {
+  "@prisma/orm-mongo": "Early Access",
   "@prisma/orm-sqlite": "Early Access",
   "@prisma/orm-extension-supabase": "Early Access",
 };
@@ -96,7 +97,7 @@ function renderTable(options) {
     // Release candidate is the baseline for Prisma 8 today, so only flag the
     // entries whose surface is still moving.
     const status = MATURITY_AT_8_0[entry.package]
-      ? ` (${MATURITY_AT_8_0[entry.package]} from release 8.0)`
+      ? ` ([${MATURITY_AT_8_0[entry.package]}](/versioning-policy#maturity-levels) from release 8.0)`
       : entry.status === "experimental"
         ? ` (${STATUS_LABELS[entry.status].toLowerCase()})`
         : "";
